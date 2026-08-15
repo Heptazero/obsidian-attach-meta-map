@@ -1,0 +1,184 @@
+{
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "commands": {
+    "openPair": "Open pair: attachment in the main area, note pinned right",
+    "refreshMetadata": "Refresh metadata (compare and choose)",
+    "createNote": "Create note for this attachment",
+    "backfill": "Create missing notes for all groups"
+  },
+  "notices": {
+    "noGroup": "\"${file}\" does not belong to any mapping group.",
+    "noAttachment": "No attachment found for \"${file}\".",
+    "noteReady": "Note ready: ${note}",
+    "noteBlocked": "A different note already occupies that path for \"${file}\".",
+    "nothingApplied": "Nothing changed.",
+    "applied": "Updated ${count} property/properties.",
+    "baseMoved": "Base file location updated.",
+    "renameNeedsBoth": "Enter both the old and the new property name.",
+    "renamed": "Renamed the property in ${count} note(s)."
+  },
+  "backfill": {
+    "nothing": "${group}: no watched attachments found.",
+    "starting": "${group}: scanning ${total} attachment(s)…",
+    "progress": "${processed}/${total} — ${created} created, ${skipped} skipped",
+    "complete": "${group}: ${created} created, ${skipped} skipped."
+  },
+  "refresh": {
+    "title": "Refresh metadata",
+    "subtitle": "Pick one side per property for \"${note}\". Unselected rows stay as they are.",
+    "noChanges": "The extracted metadata matches the note. Nothing to choose.",
+    "keepAll": "Keep all current",
+    "takeAll": "Take all extracted",
+    "apply": "Apply selected",
+    "emptyValue": "(empty)",
+    "columns": {
+      "property": "Property",
+      "current": "Current value",
+      "incoming": "Extracted value"
+    }
+  },
+  "settings": {
+    "groups": {
+      "heading": "Mapping groups",
+      "desc": "Each group maps one attachment folder to one note folder, with its own extensions, naming and field table. The most specific attachment folder wins when groups are nested.",
+      "add": "Add group",
+      "newName": "New group",
+      "empty": "No groups yet. Add one to start mapping attachments to notes."
+    },
+    "sections": {
+      "folders": "Folders",
+      "naming": "Note name and link",
+      "behavior": "Behavior",
+      "extraction": "Extraction",
+      "fields": "Fields",
+      "bases": "Base file",
+      "actions": "Actions"
+    },
+    "fieldSources": {
+      "vault": "From the vault and the file itself",
+      "pdf": "From the PDF's own metadata",
+      "lookup": "From an online lookup (DOI / ISBN)",
+      "manual": "Placeholders you fill in yourself"
+    },
+    "fields": {
+      "desc": "Toggle what gets written, and rename any property to match your vault's conventions. Two fields may share a property name — the first non-empty one wins.",
+      "defaultValue": "default value"
+    },
+    "group": {
+      "name": { "name": "Group name" },
+      "remove": "Delete this group",
+      "removeConfirm": "Delete the group \"${name}\"? Notes already created stay where they are.",
+      "attachmentsFolder": {
+        "name": "Attachments folder",
+        "desc": "Files placed here get a note."
+      },
+      "notesFolder": {
+        "name": "Notes folder",
+        "desc": "Where the notes are created. May sit above the attachments folder."
+      },
+      "mirror": {
+        "name": "Mirror subfolders",
+        "desc": "Recreate the attachment's subfolder tree under the notes folder."
+      },
+      "extensions": {
+        "name": "Watched extensions",
+        "desc": "Comma separated, e.g. .pdf, .epub. Only these files are picked up."
+      },
+      "noteName": {
+        "name": "Note name",
+        "desc": "Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. If the name is taken by another attachment, the extension is added back."
+      },
+      "linkTemplate": {
+        "name": "Link format",
+        "desc": "Value written into the link field, e.g. [[{{basename}}]] or [[{{path}}]]. Use the full path if two attachments share a name."
+      },
+      "embed": {
+        "name": "Embed the attachment",
+        "desc": "Write an embed of the attachment into the note body."
+      },
+      "heading": {
+        "name": "Write an H1 heading",
+        "desc": "Off by default so the note title is not repeated inside the note."
+      },
+      "autoCreate": { "name": "Create a note when an attachment is added" },
+      "autoDelete": {
+        "name": "Delete the note when the attachment is deleted",
+        "desc": "The note goes to the same trash as the attachment."
+      },
+      "syncUpdated": {
+        "name": "Keep the updated field in sync",
+        "desc": "Rewrites the updated property whenever the attachment changes on disk."
+      },
+      "pdfExtraction": {
+        "name": "Read PDF metadata",
+        "desc": "Title, author, subject, keywords, dates, producer and page count."
+      },
+      "doiLookup": {
+        "name": "Look up DOI / ISBN online",
+        "desc": "Finds an identifier in the PDF metadata (and, if Obsidian's PDF engine is reachable, on the first pages), then queries CrossRef or Open Library."
+      },
+      "sanitize": {
+        "name": "Sanitize list values",
+        "desc": "Strip characters Obsidian rejects in tags from list fields such as keywords."
+      },
+      "baseFile": {
+        "name": "Generate a base file",
+        "desc": "Creates a .base index whose columns follow the enabled fields. Existing base files are never overwritten."
+      },
+      "baseFolder": {
+        "name": "Base file folder",
+        "desc": "Leave empty to keep it in the notes folder.",
+        "move": "Move"
+      },
+      "backfill": {
+        "name": "Create missing notes",
+        "desc": "Scan this group's attachments and create the notes that do not exist yet.",
+        "run": "Run"
+      },
+      "renameProperty": {
+        "name": "Rename a property in existing notes",
+        "desc": "Renaming a property above only affects new writes. This rewrites notes already in this group.",
+        "from": "old name",
+        "to": "new name",
+        "run": "Rename"
+      }
+    }
+  },
+  "fields": {
+    "link": { "name": "Attachment link", "desc": "Link to the attachment, built from the link format above." },
+    "path": { "name": "File path", "desc": "Full vault path. Also used to prove which attachment a note belongs to." },
+    "fileName": { "name": "File name", "desc": "File name with extension." },
+    "fileType": { "name": "File type", "desc": "Extension without the dot." },
+    "fileSize": { "name": "File size", "desc": "Size in bytes." },
+    "fileCreated": { "name": "Created", "desc": "File creation date." },
+    "fileUpdated": { "name": "Updated", "desc": "File modification date." },
+    "pdfTitle": { "name": "Title", "desc": "PDF title, falling back to the file name." },
+    "pdfAuthor": { "name": "Author", "desc": "PDF author field." },
+    "pdfSubject": { "name": "Subject", "desc": "PDF subject field." },
+    "pdfKeywords": { "name": "Keywords", "desc": "PDF keywords, written as a list." },
+    "pdfCreated": { "name": "PDF created", "desc": "Creation date recorded inside the PDF." },
+    "pdfModified": { "name": "PDF modified", "desc": "Modification date recorded inside the PDF." },
+    "pdfCreator": { "name": "PDF creator", "desc": "Application that produced the original document." },
+    "pdfProducer": { "name": "PDF producer", "desc": "Application that wrote the PDF." },
+    "pdfPages": { "name": "Pages", "desc": "Page count." },
+    "doi": { "name": "DOI", "desc": "Identifier found in the file." },
+    "isbn": { "name": "ISBN", "desc": "Identifier found in the file." },
+    "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. Shares the title property by default." },
+    "lookupAuthor": { "name": "Author (online)", "desc": "Authors from CrossRef or Open Library." },
+    "lookupYear": { "name": "Year", "desc": "Publication year from the online lookup." },
+    "status": { "name": "Status", "desc": "Reading status placeholder." },
+    "genre": { "name": "Genre", "desc": "Free-form placeholder." },
+    "source": { "name": "Source", "desc": "Where the file came from." },
+    "notes": { "name": "Notes", "desc": "Short free-form placeholder." }
+  },
+  "bases": {
+    "views": {
+      "all": "All",
+      "unread": "Unread"
+    }
+  }
+}

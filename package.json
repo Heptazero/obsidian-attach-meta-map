@@ -1,0 +1,33 @@
+{
+  "name": "att-meta-map",
+  "version": "0.1.0",
+  "description": "Attachment -> note mapping with an opt-in metadata field table and multiple mapping groups",
+  "author": "Hzero",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "pipeline": "npm run lint && npm run test:coverage && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.6.0",
+    "eslint-plugin-obsidianmd": "^0.3.0",
+    "obsidian": "latest",
+    "tslib": "2.4.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.62.0",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "i18next": "^26.3.3",
+    "pdf-lib": "^1.17.1"
+  }
+}

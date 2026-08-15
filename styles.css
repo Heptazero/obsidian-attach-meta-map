@@ -1,0 +1,88 @@
+/* Att Meta Map */
+
+.amm-group {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  margin: 0.75em 0;
+  padding: 0 0.75em;
+}
+
+.amm-group-summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 0.6em 0;
+}
+
+.amm-group-title {
+  font-weight: var(--font-semibold);
+}
+
+.amm-group-path {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.amm-group-body {
+  padding-bottom: 0.5em;
+}
+
+.amm-field-source {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 1em 0 0.2em;
+}
+
+.amm-field-row .setting-item-control input[type="text"] {
+  max-width: 12em;
+}
+
+.amm-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0 1em;
+}
+
+.amm-diff-table th,
+.amm-diff-table td {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 0.4em 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.amm-diff-table th {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-normal);
+}
+
+.amm-diff-property {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+.amm-diff-value label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4em;
+  cursor: pointer;
+}
+
+.amm-diff-text {
+  word-break: break-word;
+}
+
+.amm-diff-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.amm-refresh-modal {
+  max-height: 70vh;
+  overflow-y: auto;
+}

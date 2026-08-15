@@ -1,0 +1,9 @@
+{
+  "id": "att-meta-map",
+  "name": "Att Meta Map",
+  "version": "0.1.0",
+  "minAppVersion": "1.7.2",
+  "description": "Maps attachments to sidecar notes with an opt-in, renameable metadata field table, several independent mapping groups, and a pair view that pins the note beside the source.",
+  "author": "Hzero (fork of Attachments Library by José Compadre Junior)",
+  "isDesktopOnly": false
+}

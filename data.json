@@ -1,0 +1,25 @@
+{
+  "attachmentsFolder": "70_research/PDF",
+  "libraryFolder": "70_research",
+  "watchedExtensions": [
+    ".pdf",
+    ".epub",
+    ".docx",
+    ".xlsx",
+    ".pptx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".mp4",
+    ".mp3",
+    ".zip"
+  ],
+  "autoCreateOnNew": true,
+  "autoDeleteOnRemove": true,
+  "mirrorFolderStructure": true,
+  "baseFolderPath": "00_hub",
+  "enablePdfMetadataExtraction": true,
+  "enableDoiIsbnLookup": true,
+  "autoCreateBaseFile": false
+}
