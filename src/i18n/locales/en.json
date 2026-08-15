@@ -111,7 +111,7 @@
       },
       "linkTemplate": {
         "name": "Link format",
-        "desc": "Value written into the link property, e.g. [[{{basename}}]] or [[{{path}}]]. Use the full path if two attachments share a name."
+        "desc": "Value written into the link property; defaults to [[{{name}}]] (with extension). Avoid [[{{basename}}]]: when the note is named after the basename too, that link resolves to the note itself rather than the attachment — the plugin adds the extension back if it detects this. Use [[{{path}}]] when two attachments share a name."
       },
       "embed": {
         "name": "Embed the attachment",

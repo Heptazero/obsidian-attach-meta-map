@@ -253,10 +253,10 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       .setName(t('settings.group.linkTemplate.name'))
       .setDesc(t('settings.group.linkTemplate.desc'))
       .addText(text => text
-        .setPlaceholder('[[{{basename}}]]')
+        .setPlaceholder('[[{{name}}]]')
         .setValue(group.linkTemplate)
         .onChange(async value => {
-          group.linkTemplate = value.trim() || '[[{{basename}}]]';
+          group.linkTemplate = value.trim() || '[[{{name}}]]';
           await this.plugin.saveSettings();
         }));
 

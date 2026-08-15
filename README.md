@@ -23,7 +23,7 @@ Fork 自 [Attachments Library](https://github.com/compadrejunior/attachments-lib
 | 映射配置 | 无 | 全局一份，输入框模糊匹配已有模板的键 |
 | 映射 | 一个附件夹 → 一个笔记夹 | 任意多组，各自的文件夹/扩展名/模板/命名 |
 | 笔记名 | `a.pdf.md` | 模板可配，默认 `a.md`，撞名自动退回带扩展名 |
-| 链接 | 写死全路径 | 模板可配，默认 `[[a]]` |
+| 链接 | 写死全路径 | 模板可配，默认 `[[a.pdf]]` |
 | 重新抽取 | 无 | 左右两列对比，逐行二选一 |
 | 打开 | 无 | 附件在主编辑区、笔记钉右侧栏，双向可触发 |
 | DOI/ISBN | 有开关没接线 | 真接上了 |
@@ -66,6 +66,7 @@ Fork 自 [Attachments Library](https://github.com/compadrejunior/attachments-lib
 - 只写映射表和模板共同认可的属性，笔记里其他 frontmatter 不动。
 - 「同步更新时间」只刷新笔记本来就有的属性，不会凭空加。
 - 目标笔记名被别的附件占用 → 退回 `a.pdf.md`，不覆盖。
+- 链接不会指向笔记自己：笔记名去掉扩展名时 `[[a]]` 会被 Obsidian 解析成 `a.md`，也就是笔记本身，所以链接默认带扩展名 `[[a.pdf]]`，检测到歧义还会自动补回来。
 - `.base` 文件已存在就不重写。
 - 删笔记走 `trashFile`，跟随 Obsidian 的删除设置。
 

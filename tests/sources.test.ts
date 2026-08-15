@@ -159,6 +159,17 @@ describe('settings migration', () => {
     expect(settings.groups[0].templatePath).toBe('');
   });
 
+  it('repairs a link template that would point at the note itself', () => {
+    const settings = normalizeSettings({
+      version: 3,
+      groups: [{
+        id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B',
+        noteNameTemplate: '{{basename}}', linkTemplate: '[[{{basename}}]]',
+      }],
+    });
+    expect(settings.groups[0].linkTemplate).toBe('[[{{name}}]]');
+  });
+
   it('keeps a v3 config as it is', () => {
     const settings = normalizeSettings({
       version: 3,

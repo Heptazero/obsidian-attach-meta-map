@@ -1,6 +1,22 @@
 import {
   AttMetaMapSettings, MappingGroup, SETTINGS_VERSION, SourceDefinition, SourceKind, SourceValues,
 } from './types';
+import { renderTemplate, templateVars } from './paths';
+
+/**
+ * `[[{{basename}}]]` next to a note named `{{basename}}` points the link at
+ * the note itself, because Obsidian resolves an extensionless link to the
+ * markdown file first. Rewrite that combination to carry the extension.
+ */
+export function unambiguousLinkTemplate(group: MappingGroup): string {
+  const vars = templateVars('folder/sample.pdf');
+  const link = renderTemplate(group.linkTemplate, vars);
+  const inner = /\[\[([^\]|#]+)/.exec(link)?.[1]?.trim();
+  const noteName = renderTemplate(group.noteNameTemplate, vars).trim();
+
+  if (!inner || inner !== noteName) return group.linkTemplate;
+  return group.linkTemplate.replace('{{basename}}', '{{name}}');
+}
 
 /**
  * Everything this plugin can read. Which of these actually reach a note is
@@ -56,7 +72,7 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     mirrorFolderStructure: true,
     templatePath: '',
     noteNameTemplate: '{{basename}}',
-    linkTemplate: '[[{{basename}}]]',
+    linkTemplate: '[[{{name}}]]',
     embedAttachment: true,
     autoCreateOnNew: true,
     autoDeleteOnRemove: true,
@@ -134,6 +150,7 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
     const groups = candidate.groups.map(group => {
       const clean = { ...createGroup(), ...group };
       delete (clean as LegacyV2Group).fields;
+      clean.linkTemplate = unambiguousLinkTemplate(clean);
       return clean;
     });
 

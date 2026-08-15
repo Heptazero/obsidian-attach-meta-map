@@ -1,9 +1,7 @@
 import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
-import {
-  attachmentCandidates, notePathCandidates, renderTemplate, templateVars,
-} from './paths';
+import { attachmentCandidates, linkFor, notePathCandidates } from './paths';
 import { ParsedTemplate, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
 import {
@@ -28,7 +26,7 @@ export class NoteManager {
   // --- mapping -----------------------------------------------------------
 
   linkFor(group: MappingGroup, attachmentPath: string): string {
-    return renderTemplate(group.linkTemplate || '[[{{path}}]]', templateVars(attachmentPath));
+    return linkFor(group, attachmentPath);
   }
 
   /** The property a source writes to, or null when it is not mapped. */

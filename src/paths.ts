@@ -98,6 +98,28 @@ export function notePathCandidates(group: MappingGroup, attachmentPath: string):
 }
 
 /**
+ * The link value for an attachment.
+ *
+ * Guards the one case that silently breaks everything: when the note drops the
+ * extension, a `[[basename]]` link resolves to the note itself, because
+ * Obsidian tries `basename.md` before `basename.pdf`. In that case the link
+ * falls back to the file name, and to the full path if even that collides.
+ */
+export function linkFor(group: MappingGroup, attachmentPath: string): string {
+  const rendered = renderTemplate(group.linkTemplate || '[[{{path}}]]', templateVars(attachmentPath));
+
+  const inner = /\[\[([^\]|#]+)/.exec(rendered)?.[1]?.trim();
+  if (!inner) return rendered;
+
+  const noteName = (notePathCandidates(group, attachmentPath).primary.split('/').pop() ?? '')
+    .replace(/\.md$/, '');
+  if (inner !== noteName) return rendered;
+
+  const fileName = attachmentPath.split('/').pop() ?? attachmentPath;
+  return rendered.replace(inner, fileName === noteName ? attachmentPath : fileName);
+}
+
+/**
  * Reverse mapping: which attachments could this note belong to? Returns paths
  * in priority order — the note name may or may not carry the extension.
  */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
-  attachmentCandidates, cleanFolder, groupForAttachment, groupForNote,
+  attachmentCandidates, cleanFolder, groupForAttachment, groupForNote, linkFor,
   notePathCandidates, relativeTo, renderTemplate,
 } from '../src/paths';
 
@@ -91,5 +91,34 @@ describe('note paths', () => {
       '70_research/PDF/nn/a.pdf',
       '70_research/PDF/nn/a.pdf.pdf',
     ]);
+  });
+});
+
+describe('linkFor', () => {
+  it('never lets the link resolve to the note itself', () => {
+    // Note is "a.md", so [[a]] would hit the note, not the PDF.
+    const ambiguous = createGroup({ ...papers, linkTemplate: '[[{{basename}}]]' });
+    expect(linkFor(ambiguous, '70_research/PDF/a.pdf')).toBe('[[a.pdf]]');
+  });
+
+  it('leaves an unambiguous template alone', () => {
+    const byName = createGroup({ ...papers, linkTemplate: '[[{{name}}]]' });
+    expect(linkFor(byName, '70_research/PDF/nn/a.pdf')).toBe('[[a.pdf]]');
+
+    const byPath = createGroup({ ...papers, linkTemplate: '[[{{path}}]]' });
+    expect(linkFor(byPath, '70_research/PDF/nn/a.pdf')).toBe('[[70_research/PDF/nn/a.pdf]]');
+  });
+
+  it('falls back to the full path when the file name is the note name too', () => {
+    // Note name keeps the extension, so [[a.pdf]] would be ambiguous as well.
+    const group = createGroup({
+      ...papers, noteNameTemplate: '{{name}}', linkTemplate: '[[{{name}}]]',
+    });
+    expect(linkFor(group, '70_research/PDF/a.pdf')).toBe('[[70_research/PDF/a.pdf]]');
+  });
+
+  it('passes through a template that is not a wikilink', () => {
+    const group = createGroup({ ...papers, linkTemplate: '{{path}}' });
+    expect(linkFor(group, '70_research/PDF/a.pdf')).toBe('70_research/PDF/a.pdf');
   });
 });
