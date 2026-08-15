@@ -5,9 +5,8 @@
     "close": "Close"
   },
   "commands": {
-    "openPair": "Open pair: attachment in the main area, note pinned right",
+    "openPair": "Open pair: attachment in the main area, note in the right sidebar (created if missing)",
     "refreshMetadata": "Refresh metadata (compare and choose)",
-    "createNote": "Create note for this attachment",
     "backfill": "Create missing notes for all groups"
   },
   "notices": {
@@ -115,7 +114,7 @@
       },
       "embed": {
         "name": "Embed the attachment",
-        "desc": "Append an embed of the attachment to the note body."
+        "desc": "Append an embed of the attachment to the note body. Off by default."
       },
       "autoCreate": { "name": "Create a note when an attachment is added" },
       "autoDelete": {

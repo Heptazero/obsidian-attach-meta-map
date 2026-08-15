@@ -5,9 +5,8 @@
     "close": "关闭"
   },
   "commands": {
-    "openPair": "成对打开：附件在主编辑区，笔记钉在右侧栏",
+    "openPair": "成对打开：附件在主编辑区，笔记在右侧栏（没有就创建）",
     "refreshMetadata": "重新抽取元数据（逐行对比选择）",
-    "createNote": "给当前附件建笔记",
     "backfill": "给所有组补齐缺失的笔记"
   },
   "notices": {
@@ -115,7 +114,7 @@
       },
       "embed": {
         "name": "在正文嵌入附件",
-        "desc": "在笔记正文末尾追加一行附件嵌入。"
+        "desc": "在笔记正文末尾追加一行附件嵌入。默认关闭。"
       },
       "autoCreate": { "name": "附件新增时自动建笔记" },
       "autoDelete": {

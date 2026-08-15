@@ -1,6 +1,6 @@
 {
   "name": "att-meta-map",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Attachment -> note mapping with an opt-in metadata field table and multiple mapping groups",
   "author": "Hzero",
   "main": "main.js",

@@ -73,7 +73,7 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     templatePath: '',
     noteNameTemplate: '{{basename}}',
     linkTemplate: '[[{{name}}]]',
-    embedAttachment: true,
+    embedAttachment: false,
     autoCreateOnNew: true,
     autoDeleteOnRemove: true,
     syncUpdatedOnModify: true,

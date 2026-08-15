@@ -12,9 +12,13 @@ export interface Pair {
 
 /**
  * Puts the pair on screen the way you read: the source in the main area, its
- * note pinned in the right sidebar. Works from either side of the pair.
+ * note in the right sidebar. Works from either side of the pair, and creates
+ * the note when there is none.
  */
 export class PairOpener {
+  /** The one sidebar tab this plugin drives. */
+  private noteLeaf: WorkspaceLeaf | null = null;
+
   constructor(private app: App, private noteManager: NoteManager) {}
 
   resolvePair(file: TFile, groups: MappingGroup[]): Pair | null {
@@ -63,11 +67,21 @@ export class PairOpener {
     await this.app.workspace.getLeaf(false).openFile(file);
   }
 
+  /**
+   * One sidebar tab, reused. The leaf is deliberately not pinned: a pinned
+   * leaf refuses the next file, which is what made every call open another tab.
+   */
   private async showInRightSidebar(file: TFile): Promise<void> {
     const existing = this.findLeafShowing(file, true);
     if (existing) {
-      existing.setPinned(true);
+      this.noteLeaf = existing;
       await this.app.workspace.revealLeaf(existing);
+      return;
+    }
+
+    if (this.noteLeaf && this.isAttached(this.noteLeaf)) {
+      await this.noteLeaf.openFile(file, { active: false });
+      await this.app.workspace.revealLeaf(this.noteLeaf);
       return;
     }
 
@@ -77,8 +91,16 @@ export class PairOpener {
       return;
     }
     await leaf.openFile(file, { active: false });
-    leaf.setPinned(true);
+    this.noteLeaf = leaf;
     await this.app.workspace.revealLeaf(leaf);
+  }
+
+  private isAttached(leaf: WorkspaceLeaf): boolean {
+    let alive = false;
+    this.app.workspace.iterateAllLeaves(candidate => {
+      if (candidate === leaf) alive = true;
+    });
+    return alive && leaf.getRoot() === this.app.workspace.rightSplit;
   }
 
   private findLeafShowing(file: TFile, inRightSidebar: boolean): WorkspaceLeaf | null {

@@ -59,23 +59,6 @@ export default class AttMetaMapPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'create-note',
-      name: t('commands.createNote'),
-      checkCallback: (checking: boolean) => {
-        const file = this.app.workspace.getActiveFile();
-        if (!file) return false;
-        const group = groupForAttachment(this.settings.groups, file.path, file.extension);
-        if (!group) return false;
-        if (checking) return true;
-        void this.noteManager.createNote(file, group).then(note => {
-          new Notice(note ? t('notices.noteReady', { note: note.basename })
-                          : t('notices.noteBlocked', { file: file.name }));
-        });
-        return true;
-      },
-    });
-
-    this.addCommand({
       id: 'backfill-all',
       name: t('commands.backfill'),
       callback: () => { void this.backfillManager.runForAll(this.settings.groups); },
