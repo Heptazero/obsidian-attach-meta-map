@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
   attachmentCandidates, cleanFolder, groupForAttachment, groupForNote, linkFor,
-  notePathCandidates, relativeTo, renderTemplate,
+  notePathCandidates, relativeTo, renderTemplate, templateVars,
 } from '../src/paths';
 
 const papers = createGroup({
@@ -17,6 +17,45 @@ const clips = createGroup({
   attachmentsFolder: '98_clip/files',
   notesFolder: '98_clip/notes',
   watchedExtensions: ['.png', '.pdf'],
+});
+
+describe('templateVars year/title parsing', () => {
+  it('splits real Zotero export names into year and title', () => {
+    const cases: [string, string, string][] = [
+      ['Hu 等 - 2025 - Nonparametric Modern Hopfield Models.pdf', '2025', 'Nonparametric Modern Hopfield Models'],
+      ['Bao和Zhao - 2025 - Binary associative memory networks A review of mathematical framework and capacity analysis.pdf',
+       '2025', 'Binary associative memory networks A review of mathematical framework and capacity analysis'],
+      ['Hopfield - 1982 - Neural networks and physical systems with emergent collective computational abilities..pdf',
+       '1982', 'Neural networks and physical systems with emergent collective computational abilities.'],
+      ['Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf', '2021', 'Hopfield Networks is All You Need'],
+    ];
+    for (const [file, year, title] of cases) {
+      const vars = templateVars(`70_research/PDF/${file}`);
+      expect(vars.year).toBe(year);
+      expect(vars.title).toBe(title);
+    }
+  });
+
+  it('falls back to the full basename when the pattern is absent', () => {
+    const vars = templateVars('70_research/PDF/random-notes.pdf');
+    expect(vars.year).toBe('');
+    expect(vars.title).toBe('random-notes');
+  });
+
+  it('takes the first "- YYYY -" when a title also contains the pattern', () => {
+    const vars = templateVars('70_research/PDF/A - 2020 - B - 2021 - C.pdf');
+    expect(vars.year).toBe('2020');
+    expect(vars.title).toBe('B - 2021 - C');
+  });
+
+  it('lets a note name template combine them as year-title', () => {
+    const group = createGroup({
+      attachmentsFolder: '70_research/PDF', notesFolder: '70_research',
+      watchedExtensions: ['.pdf'], noteNameTemplate: '{{year}}-{{title}}',
+    });
+    const { primary } = notePathCandidates(group, '70_research/PDF/Hu 等 - 2025 - Nonparametric Modern Hopfield Models.pdf');
+    expect(primary).toBe('70_research/2025-Nonparametric Modern Hopfield Models.md');
+  });
 });
 
 describe('folder helpers', () => {

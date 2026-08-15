@@ -106,7 +106,7 @@
       },
       "noteName": {
         "name": "Note name",
-        "desc": "Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. If the name is taken by another attachment, the extension is added back."
+        "desc": "Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. Also {{year}} and {{title}}: when the file name follows Zotero's common \"Author - Year - Title\" pattern, these are parsed back out of it (pure string matching, no file read) — e.g. {{year}}-{{title}} for \"2023-Title\". Files that do not match get an empty {{year}}; {{title}} falls back to the full file name. If the resulting name is taken by another attachment, the extension is added back."
       },
       "linkTemplate": {
         "name": "Link format",

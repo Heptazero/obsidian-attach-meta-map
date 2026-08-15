@@ -46,6 +46,10 @@ Fork 自 [Attachments Library](https://github.com/compadrejunior/attachments-lib
 
 属性名留空 = 不映射。两个来源可以共用一个属性名（`title` 默认同时是 PDF 标题和 CrossRef 标题的落点），按目录顺序**先非空者胜**，PDF 有值时不会被联网结果覆盖。
 
+## 笔记文件名 / 链接模板变量
+
+`{{basename}}`（不带扩展名）、`{{name}}`（带扩展名）、`{{ext}}`、`{{path}}`、`{{folder}}` 之外，还有 `{{year}}` / `{{title}}`：从文件名里按 Zotero 常见的「作者 - 年份 - 标题」格式拆出来（纯字符串解析，不读文件、不查元数据，附件建笔记前就能算出来）。想要「年份-标题」就写 `{{year}}-{{title}}`。不符合这个格式的文件 `{{year}}` 为空、`{{title}}` 退回完整文件名——不会报错，但结果会带个多余的短横线。
+
 ## 命令
 
 | 命令 | 作用 |

@@ -27,10 +27,27 @@ export function renderTemplate(template: string, vars: Record<string, string>): 
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key: string) => vars[key] ?? '');
 }
 
+/**
+ * Zotero (and Better BibTeX) export PDFs as "Author - Year - Title.pdf". Pull
+ * the year and the title back out of that pattern so a note name can reorder
+ * them, without reading the file itself — this stays a pure string operation,
+ * so it works everywhere {{basename}} does (naming, linking, before the note
+ * exists). Filenames that do not follow the pattern get an empty {{year}}
+ * and {{title}} falls back to the full basename.
+ */
+const AUTHOR_YEAR_TITLE_RE = /^.+?\s-\s(\d{4})\s-\s(.+)$/;
+
 export function templateVars(attachmentPath: string): Record<string, string> {
   const name = attachmentPath.split('/').pop() ?? attachmentPath;
   const { basename, ext } = splitName(name);
-  return { name, basename, ext, path: attachmentPath, folder: attachmentPath.split('/').slice(0, -1).join('/') };
+  const match = AUTHOR_YEAR_TITLE_RE.exec(basename);
+  return {
+    name, basename, ext,
+    path: attachmentPath,
+    folder: attachmentPath.split('/').slice(0, -1).join('/'),
+    year: match?.[1] ?? '',
+    title: match?.[2] ?? basename,
+  };
 }
 
 /**
