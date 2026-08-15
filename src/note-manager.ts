@@ -1,20 +1,27 @@
-import { App, TFile, normalizePath } from 'obsidian';
-import { MappingGroup, SourceValues } from './types';
-import { FieldValue, ResolvedField, resolveFields } from './fields';
+import { App, Notice, TFile, normalizePath } from 'obsidian';
+import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
+import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
   attachmentCandidates, notePathCandidates, renderTemplate, templateVars,
 } from './paths';
+import { ParsedTemplate, builtinTemplate, renderNote } from './template';
+import { TemplateRegistry } from './template-registry';
 import {
   EMPTY_LOOKUP, EMPTY_PDF_METADATA, LookupResult, PdfMetadataExtractor,
   lookupDoi, lookupIsbn,
 } from './pdf-extractor';
+import { t } from './i18n/i18n';
 
 const toDate = (ms: number): string => new Date(ms).toISOString().split('T')[0];
 
 export class NoteManager {
   private pdfExtractor: PdfMetadataExtractor;
 
-  constructor(private app: App) {
+  constructor(
+    private app: App,
+    private settings: () => AttMetaMapSettings,
+    private registry: TemplateRegistry,
+  ) {
     this.pdfExtractor = new PdfMetadataExtractor(app);
   }
 
@@ -24,7 +31,11 @@ export class NoteManager {
     return renderTemplate(group.linkTemplate || '[[{{path}}]]', templateVars(attachmentPath));
   }
 
-  /** The note for this attachment, if one exists. */
+  /** The property a source writes to, or null when it is not mapped. */
+  propertyOf(sourceId: string): string | null {
+    return this.settings().mapping[sourceId]?.trim() || null;
+  }
+
   findNote(group: MappingGroup, attachmentPath: string): TFile | null {
     const { primary, fallback } = notePathCandidates(group, attachmentPath);
     for (const candidate of [primary, fallback]) {
@@ -35,7 +46,6 @@ export class NoteManager {
     return null;
   }
 
-  /** Where a new note for this attachment should go. */
   targetNotePath(group: MappingGroup, attachmentPath: string): string {
     const { primary, fallback } = notePathCandidates(group, attachmentPath);
     const existing = this.app.vault.getFileByPath(normalizePath(primary));
@@ -44,19 +54,18 @@ export class NoteManager {
     return normalizePath(fallback);
   }
 
-  /** The attachment a sidecar note describes, if it can be found. */
   findAttachment(group: MappingGroup, note: TFile): TFile | null {
     const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
 
-    const pathProp = this.propertyOf(group, 'path');
-    const recorded = pathProp ? fm?.[pathProp] : undefined;
+    const pathProp = this.propertyOf('path');
+    const recorded: unknown = pathProp ? fm?.[pathProp] : undefined;
     if (typeof recorded === 'string' && recorded.trim()) {
       const direct = this.app.vault.getFileByPath(normalizePath(recorded.trim()));
       if (direct) return direct;
     }
 
-    const linkProp = this.propertyOf(group, 'link');
-    const rawLink = linkProp ? fm?.[linkProp] : undefined;
+    const linkProp = this.propertyOf('link');
+    const rawLink: unknown = linkProp ? fm?.[linkProp] : undefined;
     if (typeof rawLink === 'string') {
       const inner = /\[\[([^\]|#]+)/.exec(rawLink)?.[1]?.trim();
       if (inner) {
@@ -72,25 +81,19 @@ export class NoteManager {
     return null;
   }
 
-  private propertyOf(group: MappingGroup, fieldId: string): string | null {
-    const config = group.fields[fieldId];
-    if (!config?.enabled) return null;
-    return config.property.trim() || null;
-  }
-
   private notePointsAt(
     note: TFile, group: MappingGroup, attachmentPath: string,
   ): 'yes' | 'no' | 'unknown' {
     const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
     if (!fm) return 'unknown';
 
-    const pathProp = this.propertyOf(group, 'path');
+    const pathProp = this.propertyOf('path');
     const recordedPath: unknown = pathProp ? fm[pathProp] : undefined;
     if (typeof recordedPath === 'string' && recordedPath.trim()) {
       return normalizePath(recordedPath.trim()) === normalizePath(attachmentPath) ? 'yes' : 'no';
     }
 
-    const linkProp = this.propertyOf(group, 'link');
+    const linkProp = this.propertyOf('link');
     const recordedLink: unknown = linkProp ? fm[linkProp] : undefined;
     if (typeof recordedLink === 'string' && recordedLink.trim()) {
       return recordedLink.trim() === this.linkFor(group, attachmentPath) ? 'yes' : 'no';
@@ -99,11 +102,22 @@ export class NoteManager {
     return 'unknown';
   }
 
+  // --- template ----------------------------------------------------------
+
+  /** The group's template, or a built-in key list when none is configured. */
+  async templateFor(group: MappingGroup): Promise<{ template: ParsedTemplate; builtin: boolean }> {
+    const path = group.templatePath.trim();
+    if (path) {
+      const parsed = await this.registry.parse(path);
+      if (parsed) return { template: parsed, builtin: false };
+      new Notice(t('notices.templateMissing', { path, group: group.name }));
+    }
+    return { template: builtinTemplate(BUILTIN_TEMPLATE_KEYS), builtin: true };
+  }
+
   // --- metadata ----------------------------------------------------------
 
   async gather(file: TFile, group: MappingGroup): Promise<SourceValues> {
-    const vars = templateVars(file.path);
-
     const values: SourceValues = {
       link: this.linkFor(group, file.path),
       path: file.path,
@@ -113,7 +127,7 @@ export class NoteManager {
       fileSize: file.stat.size,
       fileCreated: toDate(file.stat.ctime),
       fileUpdated: toDate(file.stat.mtime),
-      pdfTitle: vars.basename,
+      pdfTitle: file.basename,
       pdfAuthor: '', pdfSubject: '', pdfKeywords: [],
       pdfCreated: '', pdfModified: '', pdfCreator: '', pdfProducer: '',
       pdfPages: null,
@@ -152,10 +166,14 @@ export class NoteManager {
   }
 
   async resolveFor(
-    file: TFile, group: MappingGroup, options: { skipEmpty?: boolean } = {},
+    file: TFile, group: MappingGroup, keys: string[], options: { keepEmpty?: boolean } = {},
   ): Promise<ResolvedField[]> {
     const values = await this.gather(file, group);
-    return resolveFields(group, values, options);
+    return resolveFields(this.settings().mapping, values, {
+      allowedProperties: keys,
+      sanitizeLists: group.sanitizeListValues,
+      keepEmpty: options.keepEmpty,
+    });
   }
 
   // --- writing -----------------------------------------------------------
@@ -167,42 +185,25 @@ export class NoteManager {
     const notePath = this.targetNotePath(group, attachment.path);
     if (this.app.vault.getFileByPath(notePath)) return null;
 
+    const { template, builtin } = await this.templateFor(group);
+    const rows = await this.resolveFor(attachment, group, template.keys);
+
+    const embed = group.embedAttachment ? this.embedFor(group, attachment) : '';
+    const rendered = renderNote(template, rows, embed, { dropUnfilledKeys: builtin });
+
     const folder = notePath.split('/').slice(0, -1).join('/');
     if (folder) await this.app.vault.createFolder(folder).catch(() => { /* exists */ });
 
-    const rows = await this.resolveFor(attachment, group);
-    const note = await this.app.vault.create(notePath, this.buildBody(group, attachment, rows));
-    await this.writeFields(note, rows);
+    const note = await this.app.vault.create(notePath, rendered.content);
+    if (rendered.templaterBlocks > 0) {
+      new Notice(t('notices.templaterSkipped', { count: rendered.templaterBlocks }));
+    }
     return note;
   }
 
-  private buildBody(group: MappingGroup, attachment: TFile, rows: ResolvedField[]): string {
-    const lines: string[] = [];
-
-    if (group.includeHeading) {
-      const titleRow = rows.find(r => r.id === 'pdfTitle' || r.id === 'lookupTitle');
-      const title = typeof titleRow?.value === 'string' && titleRow.value.trim()
-        ? titleRow.value.trim()
-        : attachment.basename;
-      lines.push(`# ${title}`, '');
-    }
-
-    if (group.embedAttachment) {
-      const link = this.linkFor(group, attachment.path);
-      lines.push(link.startsWith('[[') ? `!${link}` : `![[${attachment.path}]]`, '');
-    }
-
-    return lines.join('\n');
-  }
-
-  /** Writes the given rows, leaving every other property untouched. */
-  async writeFields(note: TFile, rows: ResolvedField[]): Promise<void> {
-    if (rows.length === 0) return;
-    await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
-      for (const row of rows) {
-        fm[row.property] = row.value;
-      }
-    });
+  private embedFor(group: MappingGroup, attachment: TFile): string {
+    const link = this.linkFor(group, attachment.path);
+    return link.startsWith('[[') ? `!${link}` : `![[${attachment.path}]]`;
   }
 
   async setProperty(note: TFile, property: string, value: FieldValue): Promise<void> {
@@ -211,11 +212,14 @@ export class NoteManager {
     });
   }
 
+  /** Only refreshes a property the note already carries — the template rules. */
   async touchUpdated(attachment: TFile, group: MappingGroup): Promise<void> {
-    const property = this.propertyOf(group, 'fileUpdated');
+    const property = this.propertyOf('fileUpdated');
     if (!property) return;
     const note = this.findNote(group, attachment.path);
     if (!note) return;
+    const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    if (!fm || !(property in fm)) return;
     await this.setProperty(note, property, toDate(attachment.stat.mtime));
   }
 
@@ -223,14 +227,17 @@ export class NoteManager {
     const note = this.findNote(group, oldPath);
     if (!note) return;
 
-    const linkProp = this.propertyOf(group, 'link');
-    const pathProp = this.propertyOf(group, 'path');
-    const nameProp = this.propertyOf(group, 'fileName');
+    const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    const linkProp = this.propertyOf('link');
+    const pathProp = this.propertyOf('path');
+    const nameProp = this.propertyOf('fileName');
 
-    await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
-      if (linkProp) fm[linkProp] = this.linkFor(group, newPath);
-      if (pathProp) fm[pathProp] = newPath;
-      if (nameProp) fm[nameProp] = newPath.split('/').pop() ?? newPath;
+    await this.app.fileManager.processFrontMatter(note, (frontmatter: Record<string, unknown>) => {
+      if (linkProp && fm && linkProp in fm) frontmatter[linkProp] = this.linkFor(group, newPath);
+      if (pathProp && fm && pathProp in fm) frontmatter[pathProp] = newPath;
+      if (nameProp && fm && nameProp in fm) {
+        frontmatter[nameProp] = newPath.split('/').pop() ?? newPath;
+      }
     });
 
     const target = this.targetNotePath(group, newPath);
@@ -252,7 +259,7 @@ export class NoteManager {
   async migrateProperty(group: MappingGroup, from: string, to: string): Promise<number> {
     if (!from || !to || from === to) return 0;
     const prefix = group.notesFolder.replace(/\/+$/, '') + '/';
-    const notes = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(prefix));
+    const notes = this.app.vault.getMarkdownFiles().filter(file => file.path.startsWith(prefix));
 
     let migrated = 0;
     for (const note of notes) {

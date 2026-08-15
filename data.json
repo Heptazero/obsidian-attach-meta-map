@@ -1,25 +1,144 @@
 {
-  "attachmentsFolder": "70_research/PDF",
-  "libraryFolder": "70_research",
-  "watchedExtensions": [
-    ".pdf",
-    ".epub",
-    ".docx",
-    ".xlsx",
-    ".pptx",
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".gif",
-    ".mp4",
-    ".mp3",
-    ".zip"
-  ],
-  "autoCreateOnNew": true,
-  "autoDeleteOnRemove": true,
-  "mirrorFolderStructure": true,
-  "baseFolderPath": "00_hub",
-  "enablePdfMetadataExtraction": true,
-  "enableDoiIsbnLookup": true,
-  "autoCreateBaseFile": false
+  "version": 2,
+  "groups": [
+    {
+      "id": "gmsu07vfz1",
+      "name": "论文",
+      "attachmentsFolder": "70_research/PDF",
+      "notesFolder": "70_research",
+      "watchedExtensions": [
+        ".pdf",
+        ".epub",
+        ".docx",
+        ".xlsx",
+        ".pptx",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".mp4",
+        ".mp3",
+        ".zip"
+      ],
+      "mirrorFolderStructure": true,
+      "noteNameTemplate": "{{basename}}",
+      "linkTemplate": "[[{{basename}}]]",
+      "embedAttachment": true,
+      "includeHeading": false,
+      "autoCreateOnNew": true,
+      "autoDeleteOnRemove": true,
+      "syncUpdatedOnModify": true,
+      "enablePdfMetadataExtraction": true,
+      "enableDoiIsbnLookup": true,
+      "sanitizeListValues": true,
+      "autoCreateBaseFile": false,
+      "baseFolderPath": "00_hub",
+      "fields": {
+        "link": {
+          "enabled": true,
+          "property": "attachment"
+        },
+        "path": {
+          "enabled": false,
+          "property": "filePath"
+        },
+        "fileName": {
+          "enabled": false,
+          "property": "fileName"
+        },
+        "fileType": {
+          "enabled": false,
+          "property": "fileType"
+        },
+        "fileSize": {
+          "enabled": false,
+          "property": "fileSize"
+        },
+        "fileCreated": {
+          "enabled": false,
+          "property": "created"
+        },
+        "fileUpdated": {
+          "enabled": false,
+          "property": "updated"
+        },
+        "pdfTitle": {
+          "enabled": false,
+          "property": "title"
+        },
+        "pdfAuthor": {
+          "enabled": true,
+          "property": "author"
+        },
+        "pdfSubject": {
+          "enabled": false,
+          "property": "subject"
+        },
+        "pdfKeywords": {
+          "enabled": false,
+          "property": "keywords"
+        },
+        "pdfCreated": {
+          "enabled": false,
+          "property": "pdfCreated"
+        },
+        "pdfModified": {
+          "enabled": false,
+          "property": "pdfModified"
+        },
+        "pdfCreator": {
+          "enabled": false,
+          "property": "pdfCreator"
+        },
+        "pdfProducer": {
+          "enabled": false,
+          "property": "pdfProducer"
+        },
+        "pdfPages": {
+          "enabled": false,
+          "property": "pages"
+        },
+        "doi": {
+          "enabled": true,
+          "property": "doi"
+        },
+        "isbn": {
+          "enabled": false,
+          "property": "isbn"
+        },
+        "lookupTitle": {
+          "enabled": false,
+          "property": "title"
+        },
+        "lookupAuthor": {
+          "enabled": false,
+          "property": "author"
+        },
+        "lookupYear": {
+          "enabled": true,
+          "property": "year"
+        },
+        "status": {
+          "enabled": false,
+          "property": "status",
+          "defaultValue": "unread"
+        },
+        "genre": {
+          "enabled": false,
+          "property": "genre",
+          "defaultValue": ""
+        },
+        "source": {
+          "enabled": false,
+          "property": "source",
+          "defaultValue": ""
+        },
+        "notes": {
+          "enabled": false,
+          "property": "notes",
+          "defaultValue": ""
+        }
+      }
+    }
+  ]
 }

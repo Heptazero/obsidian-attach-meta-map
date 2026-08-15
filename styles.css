@@ -86,3 +86,10 @@
   max-height: 70vh;
   overflow-y: auto;
 }
+
+.amm-template-preview {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin: -0.4em 0 0.8em;
+  word-break: break-word;
+}

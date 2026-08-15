@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildDiffRows, formatValue } from '../src/refresh-modal';
-import { ResolvedField } from '../src/fields';
+import { ResolvedField } from '../src/sources';
 
 const row = (property: string, value: ResolvedField['value']): ResolvedField =>
-  ({ id: property, property, source: 'pdf', value });
+  ({ id: property, property, kind: 'pdf', value });
 
 describe('buildDiffRows', () => {
   it('marks identical values as unchanged', () => {

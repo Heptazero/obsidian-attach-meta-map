@@ -1,82 +1,72 @@
 /**
  * Att Meta Map — settings model.
  *
- * Two ideas the upstream plugin did not have:
- *   1. Every frontmatter field is opt-in and can be renamed (see fields.ts).
- *   2. A vault can hold several independent attachment -> note mappings
- *      ("groups"), each with its own folders, extensions and field table.
+ * The template decides which properties a note has; this plugin only decides
+ * where each value comes from. So there is exactly one mapping table for the
+ * whole plugin (source -> property name), and a group only says which folders,
+ * extensions and template it uses.
  */
 
-export type FieldSource = 'vault' | 'pdf' | 'lookup' | 'manual';
+export type SourceKind = 'vault' | 'pdf' | 'lookup';
 
-export type FieldKind = 'text' | 'list' | 'date' | 'number' | 'link';
+export type ValueKind = 'text' | 'list' | 'date' | 'number' | 'link';
 
-export interface FieldDefinition {
-  /** Stable key used in settings; never shown raw to the user. */
+export interface SourceDefinition {
+  /** Stable key used in settings. */
   id: string;
-  source: FieldSource;
-  kind: FieldKind;
-  /** Frontmatter property name used until the user renames it. */
+  kind: SourceKind;
+  value: ValueKind;
+  /** Property this source fills until the user maps it elsewhere. */
   property: string;
-  enabled: boolean;
-  /** Manual fields only: value written on creation. */
-  defaultValue?: string;
-}
-
-export interface FieldConfig {
-  enabled: boolean;
-  property: string;
-  defaultValue?: string;
 }
 
 export interface MappingGroup {
   id: string;
   name: string;
 
-  /** Where the attachments live. */
   attachmentsFolder: string;
-  /** Where the sidecar notes live. */
   notesFolder: string;
   watchedExtensions: string[];
-  /** Recreate the attachment subfolder tree under notesFolder. */
   mirrorFolderStructure: boolean;
+
+  /** Template note whose frontmatter defines the fields. Empty = built-in. */
+  templatePath: string;
 
   /** Note filename, without ".md". Variables: {{basename}} {{name}} {{ext}} */
   noteNameTemplate: string;
-  /** Value written into the link field. Same variables. */
+  /** Value written into the link property. Same variables. */
   linkTemplate: string;
-  /** Embed the attachment in the note body. */
+  /** Append an embed of the attachment to the note body. */
   embedAttachment: boolean;
-  /** Write an H1 into the note body (off: the filename is the title). */
-  includeHeading: boolean;
 
   autoCreateOnNew: boolean;
   autoDeleteOnRemove: boolean;
-  /** Keep the "updated" field in sync when the attachment changes. */
   syncUpdatedOnModify: boolean;
 
   enablePdfMetadataExtraction: boolean;
   enableDoiIsbnLookup: boolean;
-  /** Strip characters Obsidian would reject in a tag from list values. */
   sanitizeListValues: boolean;
 
   autoCreateBaseFile: boolean;
   baseFolderPath: string;
-
-  /** Keyed by FieldDefinition.id. */
-  fields: Record<string, FieldConfig>;
 }
+
+export type UiLanguage = 'auto' | 'zh' | 'en';
 
 export interface AttMetaMapSettings {
   version: number;
+  language: UiLanguage;
+  /** source id -> frontmatter property. Empty string means "do not map". */
+  mapping: Record<string, string>;
+  /** Extra folders to scan for templates, beyond the ones auto-detected. */
+  extraTemplateFolders: string[];
   groups: MappingGroup[];
 }
 
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 
-/** Values gathered from every source before the field table filters them. */
+/** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {
-  /** vault */
   link: string;
   path: string;
   fileName: string;
@@ -85,7 +75,6 @@ export interface SourceValues {
   fileSize: number;
   fileCreated: string;
   fileUpdated: string;
-  /** pdf */
   pdfTitle: string;
   pdfAuthor: string;
   pdfSubject: string;
@@ -95,7 +84,6 @@ export interface SourceValues {
   pdfCreator: string;
   pdfProducer: string;
   pdfPages: number | null;
-  /** lookup */
   doi: string;
   isbn: string;
   lookupTitle: string;

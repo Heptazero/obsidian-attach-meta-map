@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGroup } from '../src/fields';
+import { createGroup } from '../src/sources';
 import {
   attachmentCandidates, cleanFolder, groupForAttachment, groupForNote,
   notePathCandidates, relativeTo, renderTemplate,

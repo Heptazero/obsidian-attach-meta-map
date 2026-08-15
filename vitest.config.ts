@@ -14,7 +14,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
-      include: ['src/fields.ts', 'src/paths.ts'],
+      include: ['src/sources.ts', 'src/paths.ts', 'src/template.ts'],
       thresholds: {
         lines: 90,
         statements: 90,

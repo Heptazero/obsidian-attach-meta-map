@@ -15,8 +15,11 @@
     "noAttachment": "No attachment found for \"${file}\".",
     "noteReady": "Note ready: ${note}",
     "noteBlocked": "A different note already occupies that path for \"${file}\".",
+    "noProperties": "\"${note}\" has no frontmatter properties to compare.",
     "nothingApplied": "Nothing changed.",
     "applied": "Updated ${count} property/properties.",
+    "templateMissing": "Template \"${path}\" not found (group ${group}); used the built-in fields.",
+    "templaterSkipped": "Skipped ${count} Templater block(s) in the template — this plugin does not run them.",
     "baseMoved": "Base file location updated.",
     "renameNeedsBoth": "Enter both the old and the new property name.",
     "renamed": "Renamed the property in ${count} note(s)."
@@ -42,34 +45,39 @@
     }
   },
   "settings": {
+    "sections": {
+      "general": "General",
+      "mapping": "Field mapping (one table for the whole vault)",
+      "groups": "Mapping groups"
+    },
+    "language": {
+      "name": "Interface language",
+      "desc": "Command names change language only after Obsidian reloads the plugin.",
+      "auto": "Follow Obsidian"
+    },
+    "templateFolders": {
+      "name": "Extra template folders",
+      "detected": "Detected: ${folders}. Add more comma-separated paths here.",
+      "none": "No template plugin folder detected. Add comma-separated paths here.",
+      "placeholder": "Templates"
+    },
+    "mapping": {
+      "desc": "Decides which source fills which property name — configured once for the whole vault. Leave a name empty to skip that source. What actually reaches a note is decided by the group's template: keys absent from the template's frontmatter are never written. To add a custom field, add a line to the template. The inputs fuzzy-match property names found in your templates.",
+      "unmapped": "not mapped"
+    },
+    "kinds": {
+      "vault": "From the vault and the file itself",
+      "pdf": "From the PDF's own metadata",
+      "lookup": "From an online lookup (DOI / ISBN)"
+    },
     "groups": {
-      "heading": "Mapping groups",
-      "desc": "Each group maps one attachment folder to one note folder, with its own extensions, naming and field table. The most specific attachment folder wins when groups are nested.",
+      "desc": "A group maps one attachment folder to one note folder, with its own extensions, template and naming. Groups may nest — the most specific attachment folder wins.",
       "add": "Add group",
       "newName": "New group",
       "empty": "No groups yet. Add one to start mapping attachments to notes."
     },
-    "sections": {
-      "folders": "Folders",
-      "naming": "Note name and link",
-      "behavior": "Behavior",
-      "extraction": "Extraction",
-      "fields": "Fields",
-      "bases": "Base file",
-      "actions": "Actions"
-    },
-    "fieldSources": {
-      "vault": "From the vault and the file itself",
-      "pdf": "From the PDF's own metadata",
-      "lookup": "From an online lookup (DOI / ISBN)",
-      "manual": "Placeholders you fill in yourself"
-    },
-    "fields": {
-      "desc": "Toggle what gets written, and rename any property to match your vault's conventions. Two fields may share a property name — the first non-empty one wins.",
-      "defaultValue": "default value"
-    },
     "group": {
-      "name": { "name": "Group name" },
+      "name": "Group name",
       "remove": "Delete this group",
       "removeConfirm": "Delete the group \"${name}\"? Notes already created stay where they are.",
       "attachmentsFolder": {
@@ -80,13 +88,22 @@
         "name": "Notes folder",
         "desc": "Where the notes are created. May sit above the attachments folder."
       },
-      "mirror": {
-        "name": "Mirror subfolders",
-        "desc": "Recreate the attachment's subfolder tree under the notes folder."
-      },
       "extensions": {
         "name": "Watched extensions",
         "desc": "Comma separated, e.g. .pdf, .epub. Only these files are picked up."
+      },
+      "template": {
+        "name": "Template file",
+        "desc": "The template's frontmatter decides which properties this group's notes get. The body is copied as-is, but Templater code in it is not executed. Empty means the built-in minimal field set.",
+        "placeholder": "Templates/paper.md",
+        "builtin": "No template — built-in fields: attachment / title / author / created / updated",
+        "missing": "File not found.",
+        "keys": "Template keys: ${keys} (✓ = a source is mapped to it)",
+        "noKeys": "This template has no frontmatter, so no properties would be written."
+      },
+      "mirror": {
+        "name": "Mirror subfolders",
+        "desc": "Recreate the attachment's subfolder tree under the notes folder."
       },
       "noteName": {
         "name": "Note name",
@@ -94,15 +111,11 @@
       },
       "linkTemplate": {
         "name": "Link format",
-        "desc": "Value written into the link field, e.g. [[{{basename}}]] or [[{{path}}]]. Use the full path if two attachments share a name."
+        "desc": "Value written into the link property, e.g. [[{{basename}}]] or [[{{path}}]]. Use the full path if two attachments share a name."
       },
       "embed": {
         "name": "Embed the attachment",
-        "desc": "Write an embed of the attachment into the note body."
-      },
-      "heading": {
-        "name": "Write an H1 heading",
-        "desc": "Off by default so the note title is not repeated inside the note."
+        "desc": "Append an embed of the attachment to the note body."
       },
       "autoCreate": { "name": "Create a note when an attachment is added" },
       "autoDelete": {
@@ -110,8 +123,8 @@
         "desc": "The note goes to the same trash as the attachment."
       },
       "syncUpdated": {
-        "name": "Keep the updated field in sync",
-        "desc": "Rewrites the updated property whenever the attachment changes on disk."
+        "name": "Keep the updated property in sync",
+        "desc": "Refreshes it when the attachment changes on disk. Never adds the property to a note that lacks it."
       },
       "pdfExtraction": {
         "name": "Read PDF metadata",
@@ -127,7 +140,7 @@
       },
       "baseFile": {
         "name": "Generate a base file",
-        "desc": "Creates a .base index whose columns follow the enabled fields. Existing base files are never overwritten."
+        "desc": "Columns follow the template keys. Existing base files are never overwritten."
       },
       "baseFolder": {
         "name": "Base file folder",
@@ -141,15 +154,15 @@
       },
       "renameProperty": {
         "name": "Rename a property in existing notes",
-        "desc": "Renaming a property above only affects new writes. This rewrites notes already in this group.",
+        "desc": "The mapping above only affects new writes. This rewrites notes already in this group.",
         "from": "old name",
         "to": "new name",
         "run": "Rename"
       }
     }
   },
-  "fields": {
-    "link": { "name": "Attachment link", "desc": "Link to the attachment, built from the link format above." },
+  "sources": {
+    "link": { "name": "Attachment link", "desc": "Link built from the link format above." },
     "path": { "name": "File path", "desc": "Full vault path. Also used to prove which attachment a note belongs to." },
     "fileName": { "name": "File name", "desc": "File name with extension." },
     "fileType": { "name": "File type", "desc": "Extension without the dot." },
@@ -167,13 +180,9 @@
     "pdfPages": { "name": "Pages", "desc": "Page count." },
     "doi": { "name": "DOI", "desc": "Identifier found in the file." },
     "isbn": { "name": "ISBN", "desc": "Identifier found in the file." },
-    "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. Shares the title property by default." },
+    "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. May share a property with the PDF title; a value found in the PDF is not overwritten." },
     "lookupAuthor": { "name": "Author (online)", "desc": "Authors from CrossRef or Open Library." },
-    "lookupYear": { "name": "Year", "desc": "Publication year from the online lookup." },
-    "status": { "name": "Status", "desc": "Reading status placeholder." },
-    "genre": { "name": "Genre", "desc": "Free-form placeholder." },
-    "source": { "name": "Source", "desc": "Where the file came from." },
-    "notes": { "name": "Notes", "desc": "Short free-form placeholder." }
+    "lookupYear": { "name": "Year", "desc": "Publication year from the online lookup." }
   },
   "bases": {
     "views": {

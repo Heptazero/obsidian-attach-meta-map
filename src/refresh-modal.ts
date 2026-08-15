@@ -1,5 +1,5 @@
 import { App, Modal, Setting, TFile } from 'obsidian';
-import { FieldValue, ResolvedField } from './fields';
+import { FieldValue, ResolvedField } from './sources';
 import { t } from './i18n/i18n';
 
 export interface DiffRow {

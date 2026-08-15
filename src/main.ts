@@ -1,7 +1,8 @@
 import { Notice, Plugin, TAbstractFile, TFile } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup } from './types';
-import { normalizeSettings } from './fields';
+import { normalizeSettings } from './sources';
 import { NoteManager } from './note-manager';
+import { TemplateRegistry } from './template-registry';
 import { BackfillManager } from './backfill';
 import { BasesCreator } from './bases-creator';
 import { PairOpener } from './pair-opener';
@@ -12,6 +13,7 @@ import { initI18n, t } from './i18n/i18n';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
+  registry: TemplateRegistry;
   noteManager: NoteManager;
   backfillManager: BackfillManager;
   basesCreator: BasesCreator;
@@ -19,9 +21,10 @@ export default class AttMetaMapPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    await initI18n();
+    await this.applyLanguage();
 
-    this.noteManager = new NoteManager(this.app);
+    this.registry = new TemplateRegistry(this.app, () => this.settings);
+    this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.basesCreator = new BasesCreator(this.app);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
@@ -81,6 +84,10 @@ export default class AttMetaMapPlugin extends Plugin {
     this.addSettingTab(new AttMetaMapSettingTab(this.app, this));
   }
 
+  async applyLanguage(): Promise<void> {
+    await initI18n(this.settings.language);
+  }
+
   /** Re-extract, then let the user pick a side per property. */
   async refreshMetadata(file: TFile): Promise<void> {
     const pair = this.pairOpener.resolvePair(file, this.settings.groups);
@@ -103,8 +110,19 @@ export default class AttMetaMapPlugin extends Plugin {
     }
 
     const resolvedNote = note;
-    const rows = await this.noteManager.resolveFor(pair.attachment, pair.group, { skipEmpty: false });
     const frontmatter = this.app.metadataCache.getFileCache(resolvedNote)?.frontmatter;
+
+    // The note's own properties are what can be refreshed; the template only
+    // decides what a *new* note gets.
+    const keys = Object.keys(frontmatter ?? {});
+    if (keys.length === 0) {
+      new Notice(t('notices.noProperties', { note: resolvedNote.basename }));
+      return;
+    }
+
+    const rows = await this.noteManager.resolveFor(
+      pair.attachment, pair.group, keys, { keepEmpty: true },
+    );
     const diff = buildDiffRows(rows, frontmatter);
 
     new RefreshModal(this.app, resolvedNote, diff, async accepted => {
@@ -119,9 +137,14 @@ export default class AttMetaMapPlugin extends Plugin {
     }).open();
   }
 
+  async ensureBaseFile(group: MappingGroup): Promise<void> {
+    const { template } = await this.noteManager.templateFor(group);
+    await this.basesCreator.createOrUpdate(group, template.keys);
+  }
+
   async refreshBaseFiles(): Promise<void> {
     for (const group of this.settings.groups) {
-      await this.basesCreator.createOrUpdate(group);
+      await this.ensureBaseFile(group);
     }
   }
 
@@ -150,13 +173,9 @@ export default class AttMetaMapPlugin extends Plugin {
       void (async () => {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
-        } else if (before && !after) {
-          if (before.autoDeleteOnRemove) await this.noteManager.deleteNote(before, oldPath);
-        } else if (!before && after) {
-          if (after.autoCreateOnNew) await this.noteManager.createNote(file, after);
-        } else if (before && after) {
-          if (before.autoDeleteOnRemove) await this.noteManager.deleteNote(before, oldPath);
-          if (after.autoCreateOnNew) await this.noteManager.createNote(file, after);
+        } else {
+          if (before?.autoDeleteOnRemove) await this.noteManager.deleteNote(before, oldPath);
+          if (after?.autoCreateOnNew) await this.noteManager.createNote(file, after);
         }
       })();
     }));
@@ -167,6 +186,9 @@ export default class AttMetaMapPlugin extends Plugin {
       if (!group?.syncUpdatedOnModify) return;
       void this.noteManager.touchUpdated(file, group);
     }));
+
+    // Templates change; the suggestion list should not go stale.
+    this.registerEvent(this.app.metadataCache.on('changed', () => this.registry.invalidate()));
   }
 
   private groupFor(file: TFile): MappingGroup | null {

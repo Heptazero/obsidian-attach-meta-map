@@ -1,0 +1,193 @@
+{
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "close": "关闭"
+  },
+  "commands": {
+    "openPair": "成对打开：附件在主编辑区，笔记钉在右侧栏",
+    "refreshMetadata": "重新抽取元数据（逐行对比选择）",
+    "createNote": "给当前附件建笔记",
+    "backfill": "给所有组补齐缺失的笔记"
+  },
+  "notices": {
+    "noGroup": "「${file}」不属于任何映射组。",
+    "noAttachment": "找不到「${file}」对应的附件。",
+    "noteReady": "笔记已就绪：${note}",
+    "noteBlocked": "「${file}」的目标路径已被另一篇笔记占用。",
+    "noProperties": "「${note}」没有 frontmatter 属性，没有可对比的字段。",
+    "nothingApplied": "没有改动。",
+    "applied": "更新了 ${count} 个属性。",
+    "templateMissing": "找不到模板「${path}」（组：${group}），本次用内置字段。",
+    "templaterSkipped": "跳过了模板里的 ${count} 段 Templater 代码（本插件不执行它）。",
+    "baseMoved": "base 文件位置已更新。",
+    "renameNeedsBoth": "新旧属性名都要填。",
+    "renamed": "在 ${count} 篇笔记里改了这个属性名。"
+  },
+  "backfill": {
+    "nothing": "${group}：没有找到受监听的附件。",
+    "starting": "${group}：开始扫描 ${total} 个附件…",
+    "progress": "${processed}/${total} —— 新建 ${created}，跳过 ${skipped}",
+    "complete": "${group}：新建 ${created}，跳过 ${skipped}。"
+  },
+  "refresh": {
+    "title": "重新抽取元数据",
+    "subtitle": "为「${note}」逐行二选一，没选中的行原样不动。",
+    "noChanges": "抽取结果和笔记一致，没有可选的差异。",
+    "keepAll": "全选当前值",
+    "takeAll": "全选抽取值",
+    "apply": "应用选中项",
+    "emptyValue": "（空）",
+    "columns": {
+      "property": "属性",
+      "current": "当前值",
+      "incoming": "抽取值"
+    }
+  },
+  "settings": {
+    "sections": {
+      "general": "通用",
+      "mapping": "字段映射（全局只有这一份）",
+      "groups": "映射组"
+    },
+    "language": {
+      "name": "界面语言",
+      "desc": "命令名要重启 Obsidian 或重新加载插件后才会换语言。",
+      "auto": "跟随 Obsidian"
+    },
+    "templateFolders": {
+      "name": "额外的模板文件夹",
+      "detected": "已自动检测到：${folders}。这里再补几个用逗号分隔的路径。",
+      "none": "没检测到模板插件的文件夹，这里手动填，逗号分隔。",
+      "placeholder": "99_assets/template"
+    },
+    "mapping": {
+      "desc": "决定「哪个来源的值写进哪个属性名」，全库只配一次。属性名留空就是不写。真正写进笔记的字段由每组选定的模板决定——模板 frontmatter 里没有的键不会被写入。想加自定义字段，直接往模板里加一行即可。输入框支持模糊匹配已有模板里的属性名。",
+      "unmapped": "不映射"
+    },
+    "kinds": {
+      "vault": "来自库和文件本身",
+      "pdf": "来自 PDF 自带的元数据",
+      "lookup": "来自联网查询（DOI / ISBN）"
+    },
+    "groups": {
+      "desc": "一组 = 一个附件夹 → 一个笔记夹，各自的扩展名、模板和命名规则。组可以嵌套，最长前缀的组胜出。",
+      "add": "新增组",
+      "newName": "新建组",
+      "empty": "还没有映射组。新增一个才会开始建笔记。"
+    },
+    "group": {
+      "name": "组名",
+      "remove": "删除这一组",
+      "removeConfirm": "删除组「${name}」？已经建好的笔记不会动。",
+      "attachmentsFolder": {
+        "name": "附件文件夹",
+        "desc": "放进这里的文件会自动获得一篇笔记。"
+      },
+      "notesFolder": {
+        "name": "笔记文件夹",
+        "desc": "笔记建在哪里，可以是附件夹的上层目录。"
+      },
+      "extensions": {
+        "name": "监听的扩展名",
+        "desc": "逗号分隔，例如 .pdf, .epub。只有这些文件会被接管。"
+      },
+      "template": {
+        "name": "模板文件",
+        "desc": "模板的 frontmatter 决定这一组的笔记有哪些字段；正文照抄，但模板里的 Templater 代码不会执行。留空则用内置的最小字段。",
+        "placeholder": "99_assets/template/tmp_paper.md",
+        "builtin": "未选模板，使用内置字段：attachment / title / author / created / updated",
+        "missing": "找不到这个文件。",
+        "keys": "模板字段：${keys}（✓ 表示映射表里有来源）",
+        "noKeys": "这个模板没有 frontmatter，不会写入任何属性。"
+      },
+      "mirror": {
+        "name": "镜像子文件夹",
+        "desc": "在笔记夹里重建附件的子目录结构。"
+      },
+      "noteName": {
+        "name": "笔记文件名",
+        "desc": "变量：{{basename}}（不带扩展名）、{{name}}（带扩展名）、{{ext}}。这个名字被别的附件占了会自动加回扩展名。"
+      },
+      "linkTemplate": {
+        "name": "链接格式",
+        "desc": "写进链接属性的值，例如 [[{{basename}}]] 或 [[{{path}}]]。两个附件重名时改用完整路径。"
+      },
+      "embed": {
+        "name": "在正文嵌入附件",
+        "desc": "在笔记正文末尾追加一行附件嵌入。"
+      },
+      "autoCreate": { "name": "附件新增时自动建笔记" },
+      "autoDelete": {
+        "name": "附件删除时同时删笔记",
+        "desc": "跟随 Obsidian 的删除设置进回收站。"
+      },
+      "syncUpdated": {
+        "name": "同步「更新时间」属性",
+        "desc": "附件在磁盘上变动时刷新该属性。笔记本来没有这个属性就不加。"
+      },
+      "pdfExtraction": {
+        "name": "读取 PDF 元数据",
+        "desc": "标题、作者、主题、关键词、日期、producer、页数。"
+      },
+      "doiLookup": {
+        "name": "联网查 DOI / ISBN",
+        "desc": "先在 PDF 元数据里找标识符（Obsidian 的 pdf.js 可用时还会读前两页），再查 CrossRef 或 Open Library。"
+      },
+      "sanitize": {
+        "name": "清洗列表值",
+        "desc": "把关键词这类列表字段里 Obsidian 标签不接受的字符去掉。"
+      },
+      "baseFile": {
+        "name": "生成 base 索引文件",
+        "desc": "列按模板字段生成。已存在的 base 文件不会被覆盖。"
+      },
+      "baseFolder": {
+        "name": "base 文件位置",
+        "desc": "留空则跟笔记夹同目录。",
+        "move": "移动"
+      },
+      "backfill": {
+        "name": "补齐缺失的笔记",
+        "desc": "扫描这一组的附件，给还没有笔记的建上。",
+        "run": "执行"
+      },
+      "renameProperty": {
+        "name": "批量改已有笔记里的属性名",
+        "desc": "上面的映射表只影响以后写入。这里把已经写进这一组笔记的属性名改掉。",
+        "from": "原属性名",
+        "to": "新属性名",
+        "run": "改名"
+      }
+    }
+  },
+  "sources": {
+    "link": { "name": "附件链接", "desc": "按上面的链接格式生成的双链。" },
+    "path": { "name": "文件路径", "desc": "库内完整路径。也用来判定笔记属于哪个附件。" },
+    "fileName": { "name": "文件名", "desc": "带扩展名的文件名。" },
+    "fileType": { "name": "文件类型", "desc": "不带点的扩展名。" },
+    "fileSize": { "name": "文件大小", "desc": "字节数。" },
+    "fileCreated": { "name": "创建时间", "desc": "文件创建日期。" },
+    "fileUpdated": { "name": "修改时间", "desc": "文件修改日期。" },
+    "pdfTitle": { "name": "标题", "desc": "PDF 自带标题，没有则退回文件名。" },
+    "pdfAuthor": { "name": "作者", "desc": "PDF 的 author 字段。" },
+    "pdfSubject": { "name": "主题", "desc": "PDF 的 subject 字段。" },
+    "pdfKeywords": { "name": "关键词", "desc": "PDF 的 keywords，写成列表。" },
+    "pdfCreated": { "name": "PDF 创建日期", "desc": "PDF 内部记录的创建时间。" },
+    "pdfModified": { "name": "PDF 修改日期", "desc": "PDF 内部记录的修改时间。" },
+    "pdfCreator": { "name": "PDF creator", "desc": "生成原始文档的程序。" },
+    "pdfProducer": { "name": "PDF producer", "desc": "写出这个 PDF 的程序。" },
+    "pdfPages": { "name": "页数", "desc": "总页数。" },
+    "doi": { "name": "DOI", "desc": "在文件里找到的标识符。" },
+    "isbn": { "name": "ISBN", "desc": "在文件里找到的标识符。" },
+    "lookupTitle": { "name": "标题（联网）", "desc": "CrossRef / Open Library 的标题。可以和 PDF 标题共用一个属性名，PDF 有值时不会被覆盖。" },
+    "lookupAuthor": { "name": "作者（联网）", "desc": "CrossRef / Open Library 的作者。" },
+    "lookupYear": { "name": "年份", "desc": "联网查询得到的出版年份。" }
+  },
+  "bases": {
+    "views": {
+      "all": "全部",
+      "unread": "未读"
+    }
+  }
+}

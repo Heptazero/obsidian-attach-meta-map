@@ -1,7 +1,8 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type AttMetaMapPlugin from './main';
-import { FIELD_DEFS, createGroup } from './fields';
-import { FieldSource, MappingGroup } from './types';
+import { SOURCE_DEFS, createGroup } from './sources';
+import { MappingGroup, SourceKind, UiLanguage } from './types';
+import { PropertySuggest, TemplateFileSuggest } from './suggesters';
 import { t } from './i18n/i18n';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
@@ -25,10 +26,9 @@ function confirmModal(app: App, message: string): Promise<boolean> {
   });
 }
 
-const SOURCE_ORDER: FieldSource[] = ['vault', 'pdf', 'lookup', 'manual'];
+const KIND_ORDER: SourceKind[] = ['vault', 'pdf', 'lookup'];
 
 export class AttMetaMapSettingTab extends PluginSettingTab {
-  /** Group ids whose card is expanded, kept across re-renders. */
   private expanded = new Set<string>();
 
   constructor(app: App, private plugin: AttMetaMapPlugin) {
@@ -39,9 +39,97 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('amm-settings');
+    this.plugin.registry.invalidate();
+
+    this.renderGeneral(containerEl);
+    this.renderMapping(containerEl);
+    this.renderGroups(containerEl);
+  }
+
+  // --- general -----------------------------------------------------------
+
+  private renderGeneral(containerEl: HTMLElement): void {
+    new Setting(containerEl).setName(t('settings.sections.general')).setHeading();
 
     new Setting(containerEl)
-      .setName(t('settings.groups.heading'))
+      .setName(t('settings.language.name'))
+      .setDesc(t('settings.language.desc'))
+      .addDropdown(drop => drop
+        .addOption('auto', t('settings.language.auto'))
+        .addOption('zh', '中文')
+        .addOption('en', 'English')
+        .setValue(this.plugin.settings.language)
+        .onChange(async value => {
+          this.plugin.settings.language = value as UiLanguage;
+          await this.plugin.saveSettings();
+          await this.plugin.applyLanguage();
+          this.display();
+        }));
+
+    const detected = this.plugin.registry.detectedFolders();
+    new Setting(containerEl)
+      .setName(t('settings.templateFolders.name'))
+      .setDesc(detected.length
+        ? t('settings.templateFolders.detected', { folders: detected.join('、') })
+        : t('settings.templateFolders.none'))
+      .addText(text => text
+        .setPlaceholder(t('settings.templateFolders.placeholder'))
+        .setValue(this.plugin.settings.extraTemplateFolders.join(', '))
+        .onChange(async value => {
+          this.plugin.settings.extraTemplateFolders = value
+            .split(',').map(part => part.trim()).filter(part => part.length > 0);
+          this.plugin.registry.invalidate();
+          await this.plugin.saveSettings();
+        }));
+  }
+
+  // --- the one mapping table ---------------------------------------------
+
+  private renderMapping(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName(t('settings.sections.mapping'))
+      .setDesc(t('settings.mapping.desc'))
+      .setHeading();
+
+    for (const kind of KIND_ORDER) {
+      const defs = SOURCE_DEFS.filter(def => def.kind === kind);
+      if (defs.length === 0) continue;
+
+      containerEl.createEl('div', { text: t(`settings.kinds.${kind}`), cls: 'amm-field-source' });
+
+      for (const def of defs) {
+        new Setting(containerEl)
+          .setClass('amm-field-row')
+          .setName(t(`sources.${def.id}.name`))
+          .setDesc(t(`sources.${def.id}.desc`))
+          .addText(text => {
+            text
+              .setPlaceholder(t('settings.mapping.unmapped'))
+              .setValue(this.plugin.settings.mapping[def.id] ?? '')
+              .onChange(async value => {
+                this.plugin.settings.mapping[def.id] = value.trim();
+                await this.plugin.saveSettings();
+              });
+
+            new PropertySuggest(
+              this.app,
+              text.inputEl,
+              () => this.plugin.registry.knownKeys(),
+              async value => {
+                this.plugin.settings.mapping[def.id] = value;
+                await this.plugin.saveSettings();
+              },
+            );
+          });
+      }
+    }
+  }
+
+  // --- groups ------------------------------------------------------------
+
+  private renderGroups(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName(t('settings.sections.groups'))
       .setDesc(t('settings.groups.desc'))
       .setHeading()
       .addButton(btn => btn
@@ -83,7 +171,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     const body = card.createEl('div', { cls: 'amm-group-body' });
 
     new Setting(body)
-      .setName(t('settings.group.name.name'))
+      .setName(t('settings.group.name'))
       .addText(text => text
         .setValue(group.name)
         .onChange(async value => {
@@ -100,18 +188,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           this.display();
         })(); }));
-
-    this.renderFolders(body, group);
-    this.renderNaming(body, group);
-    this.renderBehavior(body, group);
-    this.renderExtraction(body, group);
-    this.renderFields(body, group);
-    this.renderBases(body, group);
-    this.renderActions(body, group);
-  }
-
-  private renderFolders(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.folders')).setHeading();
 
     new Setting(body)
       .setName(t('settings.group.attachmentsFolder.name'))
@@ -136,16 +212,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         }));
 
     new Setting(body)
-      .setName(t('settings.group.mirror.name'))
-      .setDesc(t('settings.group.mirror.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.mirrorFolderStructure)
-        .onChange(async value => {
-          group.mirrorFolderStructure = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(body)
       .setName(t('settings.group.extensions.name'))
       .setDesc(t('settings.group.extensions.desc'))
       .addText(text => text
@@ -159,10 +225,18 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
             .map(part => (part.startsWith('.') ? part : `.${part}`));
           await this.plugin.saveSettings();
         }));
-  }
 
-  private renderNaming(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.naming')).setHeading();
+    this.renderTemplatePicker(body, group);
+
+    new Setting(body)
+      .setName(t('settings.group.mirror.name'))
+      .setDesc(t('settings.group.mirror.desc'))
+      .addToggle(toggle => toggle
+        .setValue(group.mirrorFolderStructure)
+        .onChange(async value => {
+          group.mirrorFolderStructure = value;
+          await this.plugin.saveSettings();
+        }));
 
     new Setting(body)
       .setName(t('settings.group.noteName.name'))
@@ -196,20 +270,62 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(body)
-      .setName(t('settings.group.heading.name'))
-      .setDesc(t('settings.group.heading.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.includeHeading)
+    this.renderBehavior(body, group);
+    this.renderActions(body, group);
+  }
+
+  private renderTemplatePicker(body: HTMLElement, group: MappingGroup): void {
+    const setting = new Setting(body)
+      .setName(t('settings.group.template.name'))
+      .setDesc(t('settings.group.template.desc'));
+
+    const preview = body.createEl('div', { cls: 'amm-template-preview' });
+
+    const showKeys = (path: string): void => {
+      void (async () => {
+        if (!path) {
+          preview.setText(t('settings.group.template.builtin'));
+          return;
+        }
+        const parsed = await this.plugin.registry.parse(path);
+        if (!parsed) {
+          preview.setText(t('settings.group.template.missing'));
+          return;
+        }
+        const mapped = new Set(Object.values(this.plugin.settings.mapping).filter(Boolean));
+        const keys = parsed.keys.map(key => (mapped.has(key) ? `${key} ✓` : key));
+        preview.setText(keys.length
+          ? t('settings.group.template.keys', { keys: keys.join('  ·  ') })
+          : t('settings.group.template.noKeys'));
+      })();
+    };
+
+    setting.addText(text => {
+      text
+        .setPlaceholder(t('settings.group.template.placeholder'))
+        .setValue(group.templatePath)
         .onChange(async value => {
-          group.includeHeading = value;
+          group.templatePath = value.trim();
           await this.plugin.saveSettings();
-        }));
+          showKeys(group.templatePath);
+        });
+
+      new TemplateFileSuggest(
+        this.app,
+        text.inputEl,
+        () => this.plugin.registry.files(),
+        async value => {
+          group.templatePath = value;
+          await this.plugin.saveSettings();
+          showKeys(value);
+        },
+      );
+    });
+
+    showKeys(group.templatePath);
   }
 
   private renderBehavior(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.behavior')).setHeading();
-
     new Setting(body)
       .setName(t('settings.group.autoCreate.name'))
       .addToggle(toggle => toggle
@@ -238,10 +354,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           group.syncUpdatedOnModify = value;
           await this.plugin.saveSettings();
         }));
-  }
-
-  private renderExtraction(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.extraction')).setHeading();
 
     new Setting(body)
       .setName(t('settings.group.pdfExtraction.name'))
@@ -272,62 +384,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           group.sanitizeListValues = value;
           await this.plugin.saveSettings();
         }));
-  }
-
-  private renderFields(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body)
-      .setName(t('settings.sections.fields'))
-      .setDesc(t('settings.fields.desc'))
-      .setHeading();
-
-    for (const source of SOURCE_ORDER) {
-      const defs = FIELD_DEFS.filter(def => def.source === source);
-      if (defs.length === 0) continue;
-
-      body.createEl('div', {
-        text: t(`settings.fieldSources.${source}`),
-        cls: 'amm-field-source',
-      });
-
-      for (const def of defs) {
-        const config = group.fields[def.id] ?? { enabled: def.enabled, property: def.property };
-        group.fields[def.id] = config;
-
-        const setting = new Setting(body)
-          .setClass('amm-field-row')
-          .setName(t(`fields.${def.id}.name`))
-          .setDesc(t(`fields.${def.id}.desc`));
-
-        setting.addToggle(toggle => toggle
-          .setValue(config.enabled)
-          .onChange(async value => {
-            config.enabled = value;
-            await this.plugin.saveSettings();
-          }));
-
-        setting.addText(text => text
-          .setPlaceholder(def.property)
-          .setValue(config.property)
-          .onChange(async value => {
-            config.property = value.trim() || def.property;
-            await this.plugin.saveSettings();
-          }));
-
-        if (def.source === 'manual') {
-          setting.addText(text => text
-            .setPlaceholder(t('settings.fields.defaultValue'))
-            .setValue(config.defaultValue ?? def.defaultValue ?? '')
-            .onChange(async value => {
-              config.defaultValue = value;
-              await this.plugin.saveSettings();
-            }));
-        }
-      }
-    }
-  }
-
-  private renderBases(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.bases')).setHeading();
 
     new Setting(body)
       .setName(t('settings.group.baseFile.name'))
@@ -337,32 +393,29 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .onChange(async value => {
           group.autoCreateBaseFile = value;
           await this.plugin.saveSettings();
-          if (value) await this.plugin.basesCreator.createOrUpdate(group);
+          if (value) await this.plugin.ensureBaseFile(group);
         }));
 
-    let pendingFolder = group.baseFolderPath;
+    let pendingBaseFolder = group.baseFolderPath;
     new Setting(body)
       .setName(t('settings.group.baseFolder.name'))
       .setDesc(t('settings.group.baseFolder.desc'))
       .addText(text => text
         .setPlaceholder(group.notesFolder)
         .setValue(group.baseFolderPath)
-        .onChange(value => { pendingFolder = value.trim(); }))
+        .onChange(value => { pendingBaseFolder = value.trim(); }))
       .addButton(btn => btn
         .setButtonText(t('settings.group.baseFolder.move'))
         .onClick(() => { void (async () => {
-          const oldFolder = group.baseFolderPath;
-          await this.plugin.basesCreator.move(group, oldFolder, pendingFolder);
-          group.baseFolderPath = pendingFolder;
+          await this.plugin.basesCreator.move(group, group.baseFolderPath, pendingBaseFolder);
+          group.baseFolderPath = pendingBaseFolder;
           await this.plugin.saveSettings();
-          await this.plugin.basesCreator.createOrUpdate(group);
+          await this.plugin.ensureBaseFile(group);
           new Notice(t('notices.baseMoved'));
         })(); }));
   }
 
   private renderActions(body: HTMLElement, group: MappingGroup): void {
-    new Setting(body).setName(t('settings.sections.actions')).setHeading();
-
     new Setting(body)
       .setName(t('settings.group.backfill.name'))
       .setDesc(t('settings.group.backfill.desc'))
