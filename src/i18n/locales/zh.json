@@ -168,6 +168,8 @@
     "fileSize": { "name": "文件大小", "desc": "字节数。" },
     "fileCreated": { "name": "创建时间", "desc": "文件创建日期。" },
     "fileUpdated": { "name": "修改时间", "desc": "文件修改日期。" },
+    "fileNameYear": { "name": "年份（文件名）", "desc": "从「作者 - 年份 - 标题」格式的文件名里解析出的年份，不联网、不读 PDF 内容。默认映射到 year，且排在联网查询之前——文件名里有就不必联网。不符合这个格式则为空。" },
+    "fileNameTitle": { "name": "标题（文件名）", "desc": "同上，解析出的标题部分；不符合格式则整个文件名。默认不映射，需要时手动填属性名。" },
     "pdfTitle": { "name": "标题", "desc": "PDF 自带标题，没有则退回文件名。" },
     "pdfAuthor": { "name": "作者", "desc": "PDF 的 author 字段。" },
     "pdfSubject": { "name": "主题", "desc": "PDF 的 subject 字段。" },
@@ -181,7 +183,7 @@
     "isbn": { "name": "ISBN", "desc": "在文件里找到的标识符。" },
     "lookupTitle": { "name": "标题（联网）", "desc": "CrossRef / Open Library 的标题。可以和 PDF 标题共用一个属性名，PDF 有值时不会被覆盖。" },
     "lookupAuthor": { "name": "作者（联网）", "desc": "CrossRef / Open Library 的作者。" },
-    "lookupYear": { "name": "年份", "desc": "联网查询得到的出版年份。" }
+    "lookupYear": { "name": "年份（联网）", "desc": "联网查询得到的出版年份，作为 fileNameYear 解析失败时的兜底。" }
   },
   "bases": {
     "views": {

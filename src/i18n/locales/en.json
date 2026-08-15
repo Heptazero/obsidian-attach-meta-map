@@ -168,6 +168,8 @@
     "fileSize": { "name": "File size", "desc": "Size in bytes." },
     "fileCreated": { "name": "Created", "desc": "File creation date." },
     "fileUpdated": { "name": "Updated", "desc": "File modification date." },
+    "fileNameYear": { "name": "Year (from file name)", "desc": "Parsed from a \"Author - Year - Title\" style file name — no network, no file read. Maps to year by default, and is tried before the online lookup: if the file name already carries the year, there is no need to go online. Empty when the name does not match." },
+    "fileNameTitle": { "name": "Title (from file name)", "desc": "Same parsing, the title part; falls back to the full file name when the pattern does not match. Not mapped by default — set a property name if you want it." },
     "pdfTitle": { "name": "Title", "desc": "PDF title, falling back to the file name." },
     "pdfAuthor": { "name": "Author", "desc": "PDF author field." },
     "pdfSubject": { "name": "Subject", "desc": "PDF subject field." },
@@ -181,7 +183,7 @@
     "isbn": { "name": "ISBN", "desc": "Identifier found in the file." },
     "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. May share a property with the PDF title; a value found in the PDF is not overwritten." },
     "lookupAuthor": { "name": "Author (online)", "desc": "Authors from CrossRef or Open Library." },
-    "lookupYear": { "name": "Year", "desc": "Publication year from the online lookup." }
+    "lookupYear": { "name": "Year (online)", "desc": "Publication year from the online lookup — a fallback for when fileNameYear cannot be parsed." }
   },
   "bases": {
     "views": {

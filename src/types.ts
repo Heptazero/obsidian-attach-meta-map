@@ -75,6 +75,8 @@ export interface SourceValues {
   fileSize: number;
   fileCreated: string;
   fileUpdated: string;
+  fileNameYear: string;
+  fileNameTitle: string;
   pdfTitle: string;
   pdfAuthor: string;
   pdfSubject: string;

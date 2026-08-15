@@ -14,6 +14,8 @@ const values: SourceValues = {
   fileSize: 1024,
   fileCreated: '2026-01-01',
   fileUpdated: '2026-02-02',
+  fileNameYear: '',
+  fileNameTitle: 'a',
   pdfTitle: '',
   pdfAuthor: 'Hopfield, J.',
   pdfSubject: '',
@@ -85,6 +87,17 @@ describe('resolveFields', () => {
     const rows = resolveFields(mapping, values, allow('pages', 'size'));
     expect(rows.find(r => r.property === 'pages')?.value).toBe(5);
     expect(rows.find(r => r.property === 'size')?.value).toBe(1024);
+  });
+
+  it('prefers the year parsed from the file name over the online lookup', () => {
+    const rows = resolveFields(defaultMapping(), { ...values, fileNameYear: '2023' }, allow('year'));
+    expect(rows).toEqual([{ id: 'fileNameYear', property: 'year', kind: 'vault', value: '2023' }]);
+  });
+
+  it('falls back to the online lookup when the file name has no year', () => {
+    // values.fileNameYear is '' in the fixture — the name did not match "A - YYYY - T".
+    const rows = resolveFields(defaultMapping(), values, allow('year'));
+    expect(rows).toEqual([{ id: 'lookupYear', property: 'year', kind: 'lookup', value: '1982' }]);
   });
 
   it('covers the built-in key set with default mapping', () => {

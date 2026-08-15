@@ -1,7 +1,7 @@
 import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
-import { attachmentCandidates, linkFor, notePathCandidates } from './paths';
+import { attachmentCandidates, linkFor, notePathCandidates, templateVars } from './paths';
 import { ParsedTemplate, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
 import {
@@ -116,6 +116,7 @@ export class NoteManager {
   // --- metadata ----------------------------------------------------------
 
   async gather(file: TFile, group: MappingGroup): Promise<SourceValues> {
+    const parsed = templateVars(file.path);
     const values: SourceValues = {
       link: this.linkFor(group, file.path),
       path: file.path,
@@ -125,6 +126,8 @@ export class NoteManager {
       fileSize: file.stat.size,
       fileCreated: toDate(file.stat.ctime),
       fileUpdated: toDate(file.stat.mtime),
+      fileNameYear: parsed.year,
+      fileNameTitle: parsed.title,
       pdfTitle: file.basename,
       pdfAuthor: '', pdfSubject: '', pdfKeywords: [],
       pdfCreated: '', pdfModified: '', pdfCreator: '', pdfProducer: '',

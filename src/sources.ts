@@ -31,6 +31,8 @@ export const SOURCE_DEFS: SourceDefinition[] = [
   { id: 'fileSize',    kind: 'vault', value: 'number', property: '' },
   { id: 'fileCreated', kind: 'vault', value: 'date',   property: 'created' },
   { id: 'fileUpdated', kind: 'vault', value: 'date',   property: 'updated' },
+  { id: 'fileNameYear',  kind: 'vault', value: 'text', property: 'year' },
+  { id: 'fileNameTitle', kind: 'vault', value: 'text', property: '' },
 
   { id: 'pdfTitle',    kind: 'pdf', value: 'text',   property: 'title' },
   { id: 'pdfAuthor',   kind: 'pdf', value: 'text',   property: 'author' },
@@ -217,6 +219,8 @@ function rawValueFor(id: string, values: SourceValues): FieldValue | null {
     case 'fileSize': return values.fileSize;
     case 'fileCreated': return values.fileCreated;
     case 'fileUpdated': return values.fileUpdated;
+    case 'fileNameYear': return values.fileNameYear;
+    case 'fileNameTitle': return values.fileNameTitle;
     case 'pdfTitle': return values.pdfTitle;
     case 'pdfAuthor': return values.pdfAuthor;
     case 'pdfSubject': return values.pdfSubject;

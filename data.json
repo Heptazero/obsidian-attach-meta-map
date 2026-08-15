@@ -28,7 +28,7 @@
   "groups": [
     {
       "id": "gmsu07vfz1",
-      "name": "\u8bba\u6587",
+      "name": "论文",
       "attachmentsFolder": "70_research/PDF",
       "notesFolder": "70_research",
       "watchedExtensions": [
@@ -47,8 +47,8 @@
       ],
       "mirrorFolderStructure": true,
       "templatePath": "99_assets/template/tmp_paper.md",
-      "noteNameTemplate": "{{basename}}",
-      "linkTemplate": "[[{{basename}}]]",
+      "noteNameTemplate": "{{year}}-{{title}}",
+      "linkTemplate": "[[{{name}}]]",
       "embedAttachment": false,
       "autoCreateOnNew": true,
       "autoDeleteOnRemove": false,
