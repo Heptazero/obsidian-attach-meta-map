@@ -122,6 +122,22 @@ describe('note paths', () => {
     expect(notePathCandidates(custom, '70_research/PDF/a.pdf').primary).toBe('70_research/a-pdf.md');
   });
 
+  it('falls back to the plain file name when {{year}} cannot be parsed, instead of a bare "-Title"', () => {
+    const group = createGroup({ ...papers, noteNameTemplate: '{{year}}-{{title}}' });
+    // Real incident: a PDF renamed (outside Obsidian, so no rename event) to
+    // "Year-Title.pdf" no longer matches "Author - Year - Title", so year=''
+    // and a naive render would have produced "-Hopfield....md".
+    const { primary } = notePathCandidates(group, '70_research/PDF/2021-Hopfield Networks is All You Need.pdf');
+    expect(primary).toBe('70_research/2021-Hopfield Networks is All You Need.md');
+    expect(primary.split('/').pop()?.startsWith('-')).toBe(false);
+  });
+
+  it('still uses the template when {{year}} does parse', () => {
+    const group = createGroup({ ...papers, noteNameTemplate: '{{year}}-{{title}}' });
+    const { primary } = notePathCandidates(group, '70_research/PDF/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf');
+    expect(primary).toBe('70_research/2021-Hopfield Networks is All You Need.md');
+  });
+
   it('lists reverse candidates in priority order', () => {
     expect(attachmentCandidates(papers, '70_research/nn/a.md')).toEqual([
       '70_research/PDF/nn/a.pdf',

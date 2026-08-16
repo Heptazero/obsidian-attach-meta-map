@@ -29,7 +29,7 @@
     {
       "id": "gmsu07vfz1",
       "name": "论文",
-      "attachmentsFolder": "70_research/PDF",
+      "attachmentsFolder": "70_research/00_PDF",
       "notesFolder": "70_research",
       "watchedExtensions": [
         ".pdf",
@@ -50,9 +50,9 @@
       "noteNameTemplate": "{{year}}-{{title}}",
       "linkTemplate": "[[{{name}}]]",
       "embedAttachment": false,
-      "autoCreateOnNew": true,
+      "autoCreateOnNew": false,
       "autoDeleteOnRemove": false,
-      "syncUpdatedOnModify": true,
+      "syncUpdatedOnModify": false,
       "enablePdfMetadataExtraction": true,
       "enableDoiIsbnLookup": true,
       "sanitizeListValues": true,

@@ -14,7 +14,7 @@
     "noAttachment": "No attachment found for \"${file}\".",
     "noteReady": "Note ready: ${note}",
     "noteBlocked": "A different note already occupies that path for \"${file}\".",
-    "noProperties": "\"${note}\" has no frontmatter properties to compare.",
+    "noProperties": "\"${note}\" has no frontmatter properties and the template has no keys either — nothing to compare.",
     "nothingApplied": "Nothing changed.",
     "applied": "Updated ${count} property/properties.",
     "templateMissing": "Template \"${path}\" not found (group ${group}); used the built-in fields.",

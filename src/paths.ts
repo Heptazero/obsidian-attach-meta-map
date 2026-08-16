@@ -94,6 +94,20 @@ export interface NotePathCandidates {
   fallback: string;
 }
 
+/**
+ * {{year}} can fail to parse (see templateVars); every other variable always
+ * resolves to something. A template that names {{year}} but gets '' for this
+ * attachment would otherwise render a half-filled, delimiter-scarred name
+ * (e.g. "{{year}}-{{title}}" -> "-Full File Name") instead of failing loudly
+ * or degrading cleanly — so treat that combination as "template not usable
+ * for this file" and fall back to the plain file name instead.
+ */
+const FALLIBLE_VARS = ['year'];
+
+function templateUsable(template: string, vars: Record<string, string>): boolean {
+  return !FALLIBLE_VARS.some(name => template.includes(`{{${name}}}`) && !vars[name]);
+}
+
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
   const relative = relativeTo(attachmentPath, group.attachmentsFolder);
   const fileName = relative.split('/').pop() ?? relative;
@@ -102,7 +116,8 @@ export function notePathCandidates(group: MappingGroup, attachmentPath: string):
     : '';
 
   const vars = templateVars(attachmentPath);
-  const rendered = renderTemplate(group.noteNameTemplate || '{{basename}}', vars).trim();
+  const template = group.noteNameTemplate || '{{basename}}';
+  const rendered = templateUsable(template, vars) ? renderTemplate(template, vars).trim() : '';
   const safe = (rendered || vars.basename).replace(/[\\/:*?"<>|]/g, '-');
 
   const notes = cleanFolder(group.notesFolder);

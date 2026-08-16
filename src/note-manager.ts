@@ -4,6 +4,7 @@ import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from 
 import { attachmentCandidates, linkFor, notePathCandidates, templateVars } from './paths';
 import { ParsedTemplate, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
+import { autoFillableRows, buildDiffRows } from './refresh-modal';
 import {
   EMPTY_LOOKUP, EMPTY_PDF_METADATA, LookupResult, PdfMetadataExtractor,
   lookupDoi, lookupIsbn,
@@ -211,6 +212,32 @@ export class NoteManager {
     await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
       fm[property] = value;
     });
+  }
+
+  /**
+   * Brings a note up to the group's current template: keys the template
+   * defines that the note lacks get filled from the current mapping,
+   * matching the safe-default rule the refresh modal already uses — never
+   * touches a property that already has a value, never removes a property
+   * the template doesn't know about. Returns how many properties it added.
+   */
+  async upgradeNote(note: TFile, group: MappingGroup): Promise<number> {
+    const attachment = this.findAttachment(group, note);
+    if (!attachment) return 0;
+
+    const { template } = await this.templateFor(group);
+    const frontmatter = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    const keys = Array.from(new Set([...Object.keys(frontmatter ?? {}), ...template.keys]));
+    if (keys.length === 0) return 0;
+
+    const rows = await this.resolveFor(attachment, group, keys, { keepEmpty: true });
+    const fillable = autoFillableRows(buildDiffRows(rows, frontmatter));
+    if (fillable.length === 0) return 0;
+
+    await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
+      for (const row of fillable) fm[row.property] = row.incoming;
+    });
+    return fillable.length;
   }
 
   /** Only refreshes a property the note already carries — the template rules. */

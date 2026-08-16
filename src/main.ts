@@ -4,6 +4,7 @@ import { normalizeSettings } from './sources';
 import { NoteManager } from './note-manager';
 import { TemplateRegistry } from './template-registry';
 import { BackfillManager } from './backfill';
+import { UpgradeManager } from './upgrade';
 import { BasesCreator } from './bases-creator';
 import { PairOpener } from './pair-opener';
 import { RefreshModal, buildDiffRows } from './refresh-modal';
@@ -16,6 +17,7 @@ export default class AttMetaMapPlugin extends Plugin {
   registry: TemplateRegistry;
   noteManager: NoteManager;
   backfillManager: BackfillManager;
+  upgradeManager: UpgradeManager;
   basesCreator: BasesCreator;
   pairOpener: PairOpener;
 
@@ -26,6 +28,7 @@ export default class AttMetaMapPlugin extends Plugin {
     this.registry = new TemplateRegistry(this.app, () => this.settings);
     this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
+    this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.basesCreator = new BasesCreator(this.app);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
 
@@ -95,9 +98,11 @@ export default class AttMetaMapPlugin extends Plugin {
     const resolvedNote = note;
     const frontmatter = this.app.metadataCache.getFileCache(resolvedNote)?.frontmatter;
 
-    // The note's own properties are what can be refreshed; the template only
-    // decides what a *new* note gets.
-    const keys = Object.keys(frontmatter ?? {});
+    // Compare against the note's own properties *and* whatever the group's
+    // current template calls for — an old note missing a key the template
+    // now has shows up as a row too, not just properties it already carries.
+    const { template } = await this.noteManager.templateFor(pair.group);
+    const keys = Array.from(new Set([...Object.keys(frontmatter ?? {}), ...template.keys]));
     if (keys.length === 0) {
       new Notice(t('notices.noProperties', { note: resolvedNote.basename }));
       return;

@@ -14,7 +14,7 @@
     "noAttachment": "找不到「${file}」对应的附件。",
     "noteReady": "笔记已就绪：${note}",
     "noteBlocked": "「${file}」的目标路径已被另一篇笔记占用。",
-    "noProperties": "「${note}」没有 frontmatter 属性，没有可对比的字段。",
+    "noProperties": "「${note}」没有 frontmatter 属性，模板也没有字段，没有可对比的东西。",
     "nothingApplied": "没有改动。",
     "applied": "更新了 ${count} 个属性。",
     "templateMissing": "找不到模板「${path}」（组：${group}），本次用内置字段。",
@@ -28,6 +28,12 @@
     "starting": "${group}：开始扫描 ${total} 个附件…",
     "progress": "${processed}/${total} —— 新建 ${created}，跳过 ${skipped}",
     "complete": "${group}：新建 ${created}，跳过 ${skipped}。"
+  },
+  "upgrade": {
+    "nothing": "${group}：这一组还没有笔记。",
+    "starting": "${group}：开始检查 ${total} 篇笔记…",
+    "progress": "${processed}/${total} —— 已更新 ${notesUpdated} 篇，补了 ${propertiesAdded} 个属性",
+    "complete": "${group}：更新了 ${notesUpdated} 篇笔记，补了 ${propertiesAdded} 个属性。只填空的，没碰任何已有内容。"
   },
   "refresh": {
     "title": "重新抽取元数据",

@@ -45,6 +45,16 @@ export function buildDiffRows(
   });
 }
 
+/**
+ * The rows a hands-off pass may write: exactly the ones the modal's default
+ * selection would already take (empty on the note, non-empty freshly
+ * resolved). Used by the modal's initial state and by the group-wide upgrade,
+ * so "safe to fill automatically" has one definition.
+ */
+export function autoFillableRows(rows: DiffRow[]): DiffRow[] {
+  return rows.filter(row => !row.unchanged && row.takeIncoming);
+}
+
 export class RefreshModal extends Modal {
   constructor(
     app: App,

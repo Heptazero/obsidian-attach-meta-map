@@ -426,6 +426,15 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           void this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups);
         }));
 
+    new Setting(body)
+      .setName(t('settings.group.upgrade.name'))
+      .setDesc(t('settings.group.upgrade.desc'))
+      .addButton(btn => btn
+        .setButtonText(t('settings.group.upgrade.run'))
+        .onClick(() => {
+          void this.plugin.upgradeManager.runForGroup(group);
+        }));
+
     let renameFrom = '';
     let renameTo = '';
     new Setting(body)
