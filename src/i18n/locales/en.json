@@ -5,7 +5,7 @@
     "close": "Close"
   },
   "commands": {
-    "openPair": "Open pair: attachment in the main area, note in the right sidebar (created if missing)",
+    "openPair": "Open pair: side by side, attachment left, note right (created if missing)",
     "refreshMetadata": "Refresh metadata (compare and choose)",
     "backfill": "Create missing notes for all groups"
   },

@@ -11,12 +11,15 @@ export interface Pair {
 }
 
 /**
- * Puts the pair on screen the way you read: the source in the main area, its
- * note in the right sidebar. Works from either side of the pair, and creates
- * the note when there is none.
+ * Puts the pair on screen the way you read: the source and its note side by
+ * side in the main area (source left, note right), not in the sidebar —
+ * Obsidian gives no public API to set the pane-size ratio, so the source
+ * pane starts equal width; drag the divider once and Obsidian remembers it
+ * for the rest of the session. Works from either side of the pair, and
+ * creates the note when there is none.
  */
 export class PairOpener {
-  /** The one sidebar tab this plugin drives. */
+  /** The one note-side leaf this plugin drives, reused across calls. */
   private noteLeaf: WorkspaceLeaf | null = null;
 
   constructor(private app: App, private noteManager: NoteManager) {}
@@ -53,46 +56,63 @@ export class PairOpener {
       note = await this.noteManager.createNote(pair.attachment, pair.group);
     }
 
-    if (pair.attachment) await this.showInMain(pair.attachment);
-    if (note) await this.showInRightSidebar(note);
-    else if (!pair.attachment) new Notice(t('notices.noAttachment', { file: file.name }));
-  }
+    const attachmentLeaf = pair.attachment ? await this.showInMain(pair.attachment, note) : null;
 
-  private async showInMain(file: TFile): Promise<void> {
-    const existing = this.findLeafShowing(file, false);
-    if (existing) {
-      this.app.workspace.setActiveLeaf(existing, { focus: true });
-      return;
+    if (note && attachmentLeaf) {
+      await this.showBeside(attachmentLeaf, note);
+    } else if (note) {
+      await this.showInMain(note, null);
+    } else if (!pair.attachment) {
+      new Notice(t('notices.noAttachment', { file: file.name }));
     }
-    await this.app.workspace.getLeaf(false).openFile(file);
   }
 
   /**
-   * One sidebar tab, reused. The leaf is deliberately not pinned: a pinned
-   * leaf refuses the next file, which is what made every call open another tab.
+   * `avoid`: never land on a leaf that is currently showing this file — the
+   * command can fire while the note itself is the active tab, and with both
+   * panes now living in the main area, {@link Workspace.getLeaf}(false)
+   * would otherwise hand back that very leaf and the note it's showing would
+   * be silently replaced by the attachment.
    */
-  private async showInRightSidebar(file: TFile): Promise<void> {
+  private async showInMain(file: TFile, avoid: TFile | null): Promise<WorkspaceLeaf> {
     const existing = this.findLeafShowing(file, true);
     if (existing) {
+      this.app.workspace.setActiveLeaf(existing, { focus: true });
+      return existing;
+    }
+
+    let leaf = this.app.workspace.getLeaf(false);
+    const shown = (leaf.view as unknown as { file?: TFile }).file;
+    if (avoid && shown?.path === avoid.path) {
+      leaf = this.app.workspace.getLeaf(true);
+    }
+    await leaf.openFile(file);
+    return leaf;
+  }
+
+  /**
+   * One note-side leaf, reused. Never pinned: a pinned leaf refuses the next
+   * file, which is what previously made every call open another tab.
+   */
+  private async showBeside(attachmentLeaf: WorkspaceLeaf, note: TFile): Promise<void> {
+    const existing = this.findLeafShowing(note, true);
+    if (existing && existing !== attachmentLeaf) {
       this.noteLeaf = existing;
       await this.app.workspace.revealLeaf(existing);
       return;
     }
 
-    if (this.noteLeaf && this.isAttached(this.noteLeaf)) {
-      await this.noteLeaf.openFile(file, { active: false });
+    if (this.noteLeaf && this.noteLeaf !== attachmentLeaf && this.isAttached(this.noteLeaf)) {
+      await this.noteLeaf.openFile(note, { active: false });
       await this.app.workspace.revealLeaf(this.noteLeaf);
       return;
     }
 
-    const leaf = this.app.workspace.getRightLeaf(false);
-    if (!leaf) {
-      await this.app.workspace.getLeaf('split').openFile(file);
-      return;
-    }
-    await leaf.openFile(file, { active: false });
+    // before=false: the new leaf lands after (to the right of, for a
+    // vertical split) the attachment leaf.
+    const leaf = this.app.workspace.createLeafBySplit(attachmentLeaf, 'vertical', false);
+    await leaf.openFile(note, { active: false });
     this.noteLeaf = leaf;
-    await this.app.workspace.revealLeaf(leaf);
   }
 
   private isAttached(leaf: WorkspaceLeaf): boolean {
@@ -100,19 +120,19 @@ export class PairOpener {
     this.app.workspace.iterateAllLeaves(candidate => {
       if (candidate === leaf) alive = true;
     });
-    return alive && leaf.getRoot() === this.app.workspace.rightSplit;
+    return alive && leaf.getRoot() === this.app.workspace.rootSplit;
   }
 
-  private findLeafShowing(file: TFile, inRightSidebar: boolean): WorkspaceLeaf | null {
-    const rightRoot = this.app.workspace.rightSplit;
+  private findLeafShowing(file: TFile, inMainArea: boolean): WorkspaceLeaf | null {
+    const mainRoot = this.app.workspace.rootSplit;
     let found: WorkspaceLeaf | null = null;
 
     this.app.workspace.iterateAllLeaves(leaf => {
       if (found) return;
       const shown = (leaf.view as unknown as { file?: TFile }).file;
       if (!shown || shown.path !== file.path) return;
-      const isRight = leaf.getRoot() === rightRoot;
-      if (isRight === inRightSidebar) found = leaf;
+      const isMain = leaf.getRoot() === mainRoot;
+      if (isMain === inMainArea) found = leaf;
     });
 
     return found;
