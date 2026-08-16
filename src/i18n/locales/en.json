@@ -29,6 +29,12 @@
     "progress": "${processed}/${total} — ${created} created, ${skipped} skipped",
     "complete": "${group}: ${created} created, ${skipped} skipped."
   },
+  "upgrade": {
+    "nothing": "${group}: no notes yet.",
+    "starting": "${group}: checking ${total} note(s)…",
+    "progress": "${processed}/${total} — ${notesUpdated} updated, ${propertiesAdded} properties added",
+    "complete": "${group}: updated ${notesUpdated} note(s), added ${propertiesAdded} propert(y/ies). Only filled what was empty — nothing already there was touched."
+  },
   "refresh": {
     "title": "Refresh metadata",
     "subtitle": "Pick one side per property for \"${note}\". Unselected rows stay as they are.",
@@ -149,6 +155,11 @@
       "backfill": {
         "name": "Create missing notes",
         "desc": "Scan this group's attachments and create the notes that do not exist yet.",
+        "run": "Run"
+      },
+      "upgrade": {
+        "name": "Align all notes to the current template",
+        "desc": "Scans this group's existing notes: properties the template now calls for that a note is missing get filled from the current mapping. Fills only what is empty — never touches a property that already has a value, never removes anything the template does not know about. Good for after the template or a mapping name changes and old notes need to catch up.",
         "run": "Run"
       },
       "renameProperty": {

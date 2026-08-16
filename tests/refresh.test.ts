@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDiffRows, formatValue } from '../src/refresh-modal';
+import { autoFillableRows, buildDiffRows, formatValue } from '../src/refresh-modal';
 import { ResolvedField } from '../src/sources';
 
 const row = (property: string, value: ResolvedField['value']): ResolvedField =>
@@ -34,5 +34,30 @@ describe('buildDiffRows', () => {
     expect(formatValue(undefined)).toBe('');
     expect(formatValue(['a', 'b'])).toBe('a, b');
     expect(formatValue(12)).toBe('12');
+  });
+
+  it('proposes a row for a property the note is entirely missing, not just an empty one', () => {
+    // frontmatter has no "year" key at all — the gap the batch upgrade targets.
+    const [row] = buildDiffRows([{ id: 'fileNameYear', property: 'year', kind: 'vault', value: '2023' }], {});
+    expect(row.unchanged).toBe(false);
+    expect(row.takeIncoming).toBe(true);
+  });
+});
+
+describe('autoFillableRows', () => {
+  it('keeps only the rows the default selection would already take: empty on the note, non-empty incoming', () => {
+    const rows = buildDiffRows([
+      row('year', '2023'),      // missing on the note -> fillable
+      row('author', 'Hopfield'), // already has a value -> not fillable
+      row('subject', ''),        // nothing new to offer -> not fillable
+    ], { author: 'Hand written' });
+
+    expect(autoFillableRows(rows).map(r => r.property)).toEqual(['year']);
+  });
+
+  it('is what the modal itself starts with, so batch and manual agree', () => {
+    const rows = buildDiffRows([row('year', '2023')], {});
+    const changed = rows.filter(r => !r.unchanged);
+    expect(autoFillableRows(rows)).toEqual(changed.filter(r => r.takeIncoming));
   });
 });
