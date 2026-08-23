@@ -1,7 +1,7 @@
 import { App, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 import { MappingGroup } from './types';
 import { NoteManager } from './note-manager';
-import { groupForAttachment, groupForNote } from './paths';
+import { groupForAttachment, groupForFoldedAttachment, groupForNote } from './paths';
 import { t } from './i18n/i18n';
 
 export interface Pair {
@@ -34,14 +34,26 @@ export class PairOpener {
       };
     }
 
-    if (file.extension !== 'md') return null;
-    const asNote = groupForNote(groups, file.path);
-    if (!asNote) return null;
-    return {
-      group: asNote,
-      note: file,
-      attachment: this.noteManager.findAttachment(asNote, file),
-    };
+    if (file.extension === 'md') {
+      const asNote = groupForNote(groups, file.path);
+      if (asNote) {
+        return {
+          group: asNote,
+          note: file,
+          attachment: this.noteManager.findAttachment(asNote, file),
+        };
+      }
+      return null;
+    }
+
+    // Not markdown, not under any attachmentsFolder: might already be a
+    // folded attachment, sitting beside its note inside a folder-layout
+    // group's notesFolder.
+    const asFolded = groupForFoldedAttachment(groups, file.path);
+    if (!asFolded) return null;
+    const note = this.noteManager.findNote(asFolded, file.path);
+    if (!note) return null;
+    return { group: asFolded, attachment: file, note };
   }
 
   async openPair(file: TFile, groups: MappingGroup[], createIfMissing = true): Promise<void> {

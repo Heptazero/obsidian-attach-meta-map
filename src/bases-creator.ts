@@ -51,7 +51,12 @@ export class BasesCreator {
 
     const lines: string[] = [
       'filters:',
-      `  file.inFolder("${cleanFolder(group.notesFolder)}")`,
+      '  and:',
+      // Folder layout puts the attachment beside the note, inside the same
+      // notesFolder tree — restrict to markdown so it does not show up as a
+      // spurious, property-less row next to the note that describes it.
+      `    - file.inFolder("${cleanFolder(group.notesFolder)}")`,
+      '    - file.ext == "md"',
       '',
       'views:',
       '  - type: table',

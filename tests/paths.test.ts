@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
-  attachmentCandidates, cleanFolder, groupForAttachment, groupForNote, linkFor,
-  notePathCandidates, relativeTo, renderTemplate, templateVars,
+  attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
+  linkFor, notePathCandidates, relativeTo, renderTemplate, templateVars,
 } from '../src/paths';
 
 const papers = createGroup({
@@ -146,6 +146,42 @@ describe('note paths', () => {
       '70_research/PDF/nn/a.pdf',
       '70_research/PDF/nn/a.pdf.pdf',
     ]);
+  });
+});
+
+describe('folderItemCandidates', () => {
+  const folderPapers = createGroup({
+    ...papers, layout: 'folder', noteNameTemplate: '{{year}}-{{title}}',
+  });
+
+  it('puts the note and the attachment (its own file name) as siblings in one folder', () => {
+    const { primary } = folderItemCandidates(
+      folderPapers, '70_research/PDF/nn/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
+    );
+    expect(primary.folder).toBe('70_research/nn/2021-Hopfield Networks is All You Need');
+    expect(primary.notePath).toBe('70_research/nn/2021-Hopfield Networks is All You Need/2021-Hopfield Networks is All You Need.md');
+    expect(primary.attachmentPath).toBe(
+      '70_research/nn/2021-Hopfield Networks is All You Need/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
+    );
+  });
+
+  it('falls back to the attachment file name for the folder when the template name collides', () => {
+    const { fallback } = folderItemCandidates(folderPapers, '70_research/PDF/a.pdf');
+    expect(fallback.folder).toBe('70_research/a.pdf');
+    expect(fallback.notePath).toBe('70_research/a.pdf/a.pdf.md');
+    expect(fallback.attachmentPath).toBe('70_research/a.pdf/a.pdf');
+  });
+
+  it('never produces a folder name with a stray leading dash when {{year}} fails to parse', () => {
+    const { primary } = folderItemCandidates(folderPapers, '70_research/PDF/random-notes.pdf');
+    expect(primary.folder.split('/').pop()?.startsWith('-')).toBe(false);
+    expect(primary.folder).toBe('70_research/random-notes');
+  });
+
+  it('respects mirrorFolderStructure', () => {
+    const flat = createGroup({ ...folderPapers, mirrorFolderStructure: false });
+    expect(folderItemCandidates(flat, '70_research/PDF/nn/a.pdf').primary.folder)
+      .toBe('70_research/a');
   });
 });
 

@@ -20,9 +20,21 @@ export interface SourceDefinition {
   property: string;
 }
 
+/**
+ * sidecar: the attachment stays where it is; the note lives in a mirrored
+ *   tree under notesFolder.
+ * folder: a new folder (named like the note) is created under notesFolder,
+ *   the attachment is moved into it, and the note lives beside it. Once
+ *   folded, the item leaves attachmentsFolder for good — the plugin's
+ *   watchers stop tracking it and Obsidian's own link-rename handling takes
+ *   over from there.
+ */
+export type GroupLayout = 'sidecar' | 'folder';
+
 export interface MappingGroup {
   id: string;
   name: string;
+  layout: GroupLayout;
 
   attachmentsFolder: string;
   notesFolder: string;

@@ -70,6 +70,27 @@ export function groupForAttachment(
   return best;
 }
 
+/**
+ * Recognizes an attachment that has already been folded (folder layout): it
+ * no longer sits under any attachmentsFolder, but its own folder sits under
+ * a folder-layout group's notesFolder. Extension is not checked here — an
+ * already-folded item may sit beside its note regardless of which watched
+ * extension it has, and the caller (findAttachment / the pair opener)
+ * confirms the pairing by content, not by this lookup alone.
+ */
+export function groupForFoldedAttachment(groups: MappingGroup[], path: string): MappingGroup | null {
+  let best: MappingGroup | null = null;
+  let bestLen = -1;
+  for (const group of groups) {
+    if (group.layout !== 'folder') continue;
+    const notes = cleanFolder(group.notesFolder);
+    if (!notes) continue;
+    if (!isInFolder(path, notes)) continue;
+    if (notes.length > bestLen) { best = group; bestLen = notes.length; }
+  }
+  return best;
+}
+
 /** The mirror of the above for markdown notes. */
 export function groupForNote(groups: MappingGroup[], path: string): MappingGroup | null {
   let best: MappingGroup | null = null;
@@ -108,6 +129,14 @@ function templateUsable(template: string, vars: Record<string, string>): boolean
   return !FALLIBLE_VARS.some(name => template.includes(`{{${name}}}`) && !vars[name]);
 }
 
+/** The name-template render, filesystem-safe, with the {{year}} guard applied. */
+function safeItemName(group: MappingGroup, attachmentPath: string): string {
+  const vars = templateVars(attachmentPath);
+  const template = group.noteNameTemplate || '{{basename}}';
+  const rendered = templateUsable(template, vars) ? renderTemplate(template, vars).trim() : '';
+  return (rendered || vars.basename).replace(/[\\/:*?"<>|]/g, '-');
+}
+
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
   const relative = relativeTo(attachmentPath, group.attachmentsFolder);
   const fileName = relative.split('/').pop() ?? relative;
@@ -115,11 +144,7 @@ export function notePathCandidates(group: MappingGroup, attachmentPath: string):
     ? relative.split('/').slice(0, -1).join('/')
     : '';
 
-  const vars = templateVars(attachmentPath);
-  const template = group.noteNameTemplate || '{{basename}}';
-  const rendered = templateUsable(template, vars) ? renderTemplate(template, vars).trim() : '';
-  const safe = (rendered || vars.basename).replace(/[\\/:*?"<>|]/g, '-');
-
+  const safe = safeItemName(group, attachmentPath);
   const notes = cleanFolder(group.notesFolder);
   const dir = [notes, subfolder].filter(Boolean).join('/');
 
@@ -128,6 +153,52 @@ export function notePathCandidates(group: MappingGroup, attachmentPath: string):
     fallback: [dir, `${fileName}.md`].filter(Boolean).join('/'),
   };
 }
+
+export interface FolderItem {
+  /** The per-item folder. */
+  folder: string;
+  /** The note inside it. */
+  notePath: string;
+  /** Where the attachment lands after being moved into the folder. */
+  attachmentPath: string;
+}
+
+export interface FolderItemCandidates {
+  /** Preferred, from the name template. */
+  primary: FolderItem;
+  /** Used when a *different* item already has the preferred folder name. */
+  fallback: FolderItem;
+}
+
+function buildFolderItem(dir: string, folderName: string, fileName: string): FolderItem {
+  const folder = [dir, folderName].filter(Boolean).join('/');
+  return { folder, notePath: `${folder}/${folderName}.md`, attachmentPath: `${folder}/${fileName}` };
+}
+
+/**
+ * Folder layout: attachment and note become siblings inside one new folder,
+ * named from the same template as sidecar mode's note name. The attachment
+ * keeps its own file name — only its location changes. Mirrors
+ * notePathCandidates' primary/fallback shape so a name collision degrades
+ * the same way: fall back to the attachment's own file name for the folder.
+ */
+export function folderItemCandidates(group: MappingGroup, attachmentPath: string): FolderItemCandidates {
+  const relative = relativeTo(attachmentPath, group.attachmentsFolder);
+  const fileName = relative.split('/').pop() ?? relative;
+  const subfolder = group.mirrorFolderStructure
+    ? relative.split('/').slice(0, -1).join('/')
+    : '';
+
+  const safe = safeItemName(group, attachmentPath);
+  const notes = cleanFolder(group.notesFolder);
+  const dir = [notes, subfolder].filter(Boolean).join('/');
+
+  return {
+    primary: buildFolderItem(dir, safe, fileName),
+    fallback: buildFolderItem(dir, fileName, fileName),
+  };
+}
+
 
 /**
  * The link value for an attachment.

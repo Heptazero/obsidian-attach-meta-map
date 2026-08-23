@@ -190,6 +190,19 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         })(); }));
 
     new Setting(body)
+      .setName(t('settings.group.layout.name'))
+      .setDesc(t(`settings.group.layout.desc.${group.layout}`))
+      .addDropdown(drop => drop
+        .addOption('sidecar', t('settings.group.layout.sidecar'))
+        .addOption('folder', t('settings.group.layout.folder'))
+        .setValue(group.layout)
+        .onChange(async value => {
+          group.layout = value as MappingGroup['layout'];
+          await this.plugin.saveSettings();
+          this.display();
+        }));
+
+    new Setting(body)
       .setName(t('settings.group.attachmentsFolder.name'))
       .setDesc(t('settings.group.attachmentsFolder.desc'))
       .addText(text => text
@@ -327,7 +340,8 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
   private renderBehavior(body: HTMLElement, group: MappingGroup): void {
     new Setting(body)
-      .setName(t('settings.group.autoCreate.name'))
+      .setName(t(`settings.group.autoCreate.name.${group.layout}`))
+      .setDesc(t(`settings.group.autoCreate.desc.${group.layout}`))
       .addToggle(toggle => toggle
         .setValue(group.autoCreateOnNew)
         .onChange(async value => {
