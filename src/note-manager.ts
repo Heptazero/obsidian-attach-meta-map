@@ -272,7 +272,16 @@ export class NoteManager {
    */
   private async createFolderItem(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
     const { primary, fallback } = folderItemCandidates(group, attachment.path);
-    const item = this.app.vault.getFolderByPath(normalizePath(primary.folder)) ? fallback : primary;
+
+    // Only fall back to the differently-named folder when the *specific*
+    // note/attachment file names are already taken — a real collision with
+    // a different item. An existing folder that merely happens to share the
+    // name (created by hand ahead of time, e.g. to drop a translation in)
+    // is not a collision: reuse it and land the note/attachment inside it,
+    // rather than spinning up a second, differently-named folder next to it.
+    const primaryTaken = Boolean(this.app.vault.getFileByPath(normalizePath(primary.notePath))) ||
+      Boolean(this.app.vault.getFileByPath(normalizePath(primary.attachmentPath)));
+    const item = primaryTaken ? fallback : primary;
 
     if (this.app.vault.getFileByPath(normalizePath(item.notePath))) return null;
     if (this.app.vault.getFileByPath(normalizePath(item.attachmentPath))) return null;
