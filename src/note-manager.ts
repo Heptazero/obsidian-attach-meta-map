@@ -2,7 +2,8 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  attachmentCandidates, folderItemCandidates, isInFolder, linkFor, notePathCandidates, templateVars,
+  attachmentCandidates, cleanFolder, folderItemCandidates, isInFolder, linkFor, normalizeForMatch,
+  notePathCandidates, stripPrefix, templateVars,
 } from './paths';
 import { ParsedTemplate, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
@@ -236,6 +237,10 @@ export class NoteManager {
   // --- writing -----------------------------------------------------------
 
   async createNote(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
+    if (this.isAuxiliaryFile(attachment, group)) {
+      return this.foldAuxiliaryFile(attachment, group);
+    }
+
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
@@ -307,6 +312,45 @@ export class NoteManager {
       new Notice(t('notices.templaterSkipped', { count: rendered.templaterBlocks }));
     }
     return note;
+  }
+
+  isAuxiliaryFile(file: TFile, group: MappingGroup): boolean {
+    const prefix = group.auxiliaryPrefix.trim();
+    return group.layout === 'folder' && prefix.length > 0 && file.name.startsWith(prefix);
+  }
+
+  /**
+   * A companion file (translation, etc.) never gets a note of its own: find
+   * the item it belongs to by normalized-name match against every note under
+   * notesFolder, and move it in beside that note. No match — most likely it
+   * arrived before the primary item did, or the names differ too much —
+   * leaves it exactly where it is rather than guessing.
+   */
+  private async foldAuxiliaryFile(file: TFile, group: MappingGroup): Promise<TFile | null> {
+    const key = normalizeForMatch(stripPrefix(file.basename, group.auxiliaryPrefix.trim()));
+    const notesFolder = cleanFolder(group.notesFolder);
+
+    const match = this.app.vault.getMarkdownFiles().find(note =>
+      isInFolder(note.path, notesFolder) && normalizeForMatch(note.basename) === key);
+
+    if (!match?.parent) {
+      new Notice(t('notices.auxiliaryUnmatched', { file: file.name }));
+      return null;
+    }
+
+    const targetPath = normalizePath(`${match.parent.path}/${file.name}`);
+    if (this.app.vault.getFileByPath(targetPath)) return match;
+
+    const oldPath = normalizePath(file.path);
+    this.pendingMoves.add(oldPath);
+    try {
+      await this.app.fileManager.renameFile(file, targetPath);
+    } finally {
+      this.pendingMoves.delete(oldPath);
+    }
+
+    new Notice(t('notices.auxiliaryMatched', { file: file.name, note: match.basename }));
+    return match;
   }
 
   private embedFor(group: MappingGroup, attachment: TFile): string {

@@ -202,6 +202,18 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           this.display();
         }));
 
+    if (group.layout === 'folder') {
+      new Setting(body)
+        .setName(t('settings.group.auxiliaryPrefix.name'))
+        .setDesc(t('settings.group.auxiliaryPrefix.desc'))
+        .addText(text => text
+          .setValue(group.auxiliaryPrefix)
+          .onChange(async value => {
+            group.auxiliaryPrefix = value.trim();
+            await this.plugin.saveSettings();
+          }));
+    }
+
     new Setting(body)
       .setName(t('settings.group.attachmentsFolder.name'))
       .setDesc(t('settings.group.attachmentsFolder.desc'))

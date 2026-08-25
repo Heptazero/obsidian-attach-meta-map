@@ -69,6 +69,7 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     id: `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
     name: 'New group',
     layout: 'sidecar',
+    auxiliaryPrefix: '',
     attachmentsFolder: 'Attachments',
     notesFolder: 'Library',
     watchedExtensions: ['.pdf'],

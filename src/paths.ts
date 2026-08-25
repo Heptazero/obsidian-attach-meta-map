@@ -241,3 +241,20 @@ export function attachmentCandidates(group: MappingGroup, notePath: string): str
   }
   return out;
 }
+
+/**
+ * Loose equality for matching an auxiliary file (a translation, `cn_`-style)
+ * to the primary item it belongs to: strip everything but letters, digits
+ * and CJK, lowercase the rest. Punctuation/spacing conventions differ enough
+ * between a Zotero export and a hand-named translation ("cn_2021-Hopfield-
+ * Networks-is-All-You-Need.pdf" vs "2021-Hopfield Networks is All You Need")
+ * that an exact-string match would miss almost everything.
+ */
+export function normalizeForMatch(name: string): string {
+  return name.replace(/[^a-zA-Z0-9一-鿿]+/g, '').toLowerCase();
+}
+
+/** Drops a configured prefix (e.g. "cn_") if the name actually starts with it. */
+export function stripPrefix(name: string, prefix: string): string {
+  return prefix && name.startsWith(prefix) ? name.slice(prefix.length) : name;
+}

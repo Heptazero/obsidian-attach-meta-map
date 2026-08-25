@@ -14,6 +14,8 @@
     "noAttachment": "No attachment found for \"${file}\".",
     "noteReady": "Note ready: ${note}",
     "noteBlocked": "A different note already occupies that path for \"${file}\".",
+    "auxiliaryMatched": "\"${file}\" matched \"${note}\" as an auxiliary file and was moved into its folder.",
+    "auxiliaryUnmatched": "\"${file}\" has the auxiliary prefix but matched no note — left where it is.",
     "noProperties": "\"${note}\" has no frontmatter properties and the template has no keys either — nothing to compare.",
     "nothingApplied": "Nothing changed.",
     "applied": "Updated ${count} property/properties.",
@@ -93,6 +95,10 @@
           "sidecar": "The attachment stays in the attachments folder; the note lives in a mirrored path under the notes folder. The two recognize each other through the frontmatter link.",
           "folder": "A new folder, named like the note, is created under the notes folder; the attachment is moved into it and the note lives beside it — store as one, delete as one. Once moved, the attachment leaves the attachments folder and the plugin stops watching it; Obsidian's own link-updating takes over from there. Existing attachments are never retroactively affected by this setting — only ones that show up afterward."
         }
+      },
+      "auxiliaryPrefix": {
+        "name": "Auxiliary file prefix",
+        "desc": "A new file whose name starts with this prefix (e.g. cn_) never gets its own note — it's matched by normalized name (prefix stripped) against existing paper notes and moved straight into that folder. No match (e.g. the translation arrived before the original) leaves it exactly where it is. Empty disables this."
       },
       "attachmentsFolder": {
         "name": "Attachments folder",

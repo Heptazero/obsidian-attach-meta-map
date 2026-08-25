@@ -41,6 +41,15 @@ export interface MappingGroup {
   watchedExtensions: string[];
   mirrorFolderStructure: boolean;
 
+  /**
+   * Folder layout only. A file whose name starts with this prefix (e.g.
+   * "cn_") is a companion to an existing item, not a new one: it gets moved
+   * into the matching item's folder instead of getting its own note. Empty
+   * disables this. Matching is by normalized name after stripping the
+   * prefix — see normalizeForMatch in paths.ts.
+   */
+  auxiliaryPrefix: string;
+
   /** Template note whose frontmatter defines the fields. Empty = built-in. */
   templatePath: string;
 

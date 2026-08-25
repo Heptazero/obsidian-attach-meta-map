@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
-  linkFor, notePathCandidates, relativeTo, renderTemplate, templateVars,
+  linkFor, normalizeForMatch, notePathCandidates, relativeTo, renderTemplate, stripPrefix, templateVars,
 } from '../src/paths';
 
 const papers = createGroup({
@@ -182,6 +182,34 @@ describe('folderItemCandidates', () => {
     const flat = createGroup({ ...folderPapers, mirrorFolderStructure: false });
     expect(folderItemCandidates(flat, '70_research/PDF/nn/a.pdf').primary.folder)
       .toBe('70_research/a');
+  });
+});
+
+describe('auxiliary-file matching', () => {
+  it('stripPrefix only drops a prefix the name actually starts with', () => {
+    expect(stripPrefix('cn_2021-Hopfield-Networks.pdf', 'cn_')).toBe('2021-Hopfield-Networks.pdf');
+    expect(stripPrefix('2021-Hopfield-Networks.pdf', 'cn_')).toBe('2021-Hopfield-Networks.pdf');
+    expect(stripPrefix('cn_x', '')).toBe('cn_x');
+  });
+
+  it('normalizeForMatch ignores punctuation, spacing and case', () => {
+    const a = normalizeForMatch('2021-Hopfield-Networks-is-All-You-Need');
+    const b = normalizeForMatch('2021 Hopfield Networks is All You Need');
+    expect(a).toBe(b);
+  });
+
+  it('matches a real Zotero note basename against its differently-punctuated translation', () => {
+    // Mirrors what note-manager.ts actually compares: TFile.basename on both
+    // sides, so neither string carries an extension.
+    const noteKey = normalizeForMatch('2021-Hopfield Networks is All You Need');
+    const transKey = normalizeForMatch(stripPrefix('cn_2021-Hopfield-Networks-is-All-You-Need', 'cn_'));
+    expect(transKey).toBe(noteKey);
+  });
+
+  it('does not match an unrelated name', () => {
+    const noteKey = normalizeForMatch('2021-Hopfield Networks is All You Need');
+    const transKey = normalizeForMatch(stripPrefix('cn_2025-Attention-Is-Not-What-You-Need', 'cn_'));
+    expect(transKey).not.toBe(noteKey);
   });
 });
 
