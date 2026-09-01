@@ -42,13 +42,19 @@ export interface MappingGroup {
   mirrorFolderStructure: boolean;
 
   /**
-   * Folder layout only. A file whose name starts with this prefix (e.g.
-   * "cn_") is a companion to an existing item, not a new one: it gets moved
-   * into the matching item's folder instead of getting its own note. Empty
-   * disables this. Matching is by normalized name after stripping the
-   * prefix — see normalizeForMatch in paths.ts.
+   * Folder layout only. Comma-separated prefixes (e.g. "cn_, zh_") mark
+   * companion files. A companion joins the matching resource folder and its
+   * link is appended to the note's source property.
    */
   auxiliaryPrefix: string;
+
+  /**
+   * Folder layout only. When false, folding an attachment still creates the
+   * folder and moves the attachment in, but skips creating and maintaining
+   * the note — for material that just needs a folder of its own, not
+   * metadata. Everything template/metadata-related is irrelevant then.
+   */
+  createNoteFile: boolean;
 
   /** Template note whose frontmatter defines the fields. Empty = built-in. */
   templatePath: string;
@@ -68,8 +74,6 @@ export interface MappingGroup {
   enableDoiIsbnLookup: boolean;
   sanitizeListValues: boolean;
 
-  autoCreateBaseFile: boolean;
-  baseFolderPath: string;
 }
 
 export type UiLanguage = 'auto' | 'zh' | 'en';
@@ -77,7 +81,7 @@ export type UiLanguage = 'auto' | 'zh' | 'en';
 export interface AttMetaMapSettings {
   version: number;
   language: UiLanguage;
-  /** source id -> frontmatter property. Empty string means "do not map". */
+  /** Metadata source id -> frontmatter property. The source relation itself is fixed. */
   mapping: Record<string, string>;
   /** Extra folders to scan for templates, beyond the ones auto-detected. */
   extraTemplateFolders: string[];
@@ -88,7 +92,6 @@ export const SETTINGS_VERSION = 3;
 
 /** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {
-  link: string;
   path: string;
   fileName: string;
   basename: string;

@@ -49,6 +49,45 @@
   min-height: 2em;
 }
 
+.amm-accordion {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  margin-bottom: 0.75em;
+  padding: 0 0.75em;
+}
+
+.amm-accordion-summary {
+  cursor: pointer;
+  padding: 0.6em 0;
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+  list-style: none;
+}
+
+.amm-accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.amm-accordion-summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  color: var(--text-muted);
+  transition: transform 0.1s ease;
+}
+
+.amm-accordion[open] > .amm-accordion-summary::before {
+  transform: rotate(90deg);
+}
+
+.amm-accordion-body {
+  padding-bottom: 0.5em;
+}
+
+.amm-accordion-body > .setting-item:first-child {
+  border-top: none;
+}
+
 .amm-field-source {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);

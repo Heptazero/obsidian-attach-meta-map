@@ -24,7 +24,6 @@ export function unambiguousLinkTemplate(group: MappingGroup): string {
  * template must contain that property.
  */
 export const SOURCE_DEFS: SourceDefinition[] = [
-  { id: 'link',        kind: 'vault', value: 'link',   property: 'attachment' },
   { id: 'path',        kind: 'vault', value: 'text',   property: '' },
   { id: 'fileName',    kind: 'vault', value: 'text',   property: '' },
   { id: 'fileType',    kind: 'vault', value: 'text',   property: '' },
@@ -55,7 +54,7 @@ export const SOURCE_DEF_BY_ID: Record<string, SourceDefinition> =
   Object.fromEntries(SOURCE_DEFS.map(def => [def.id, def]));
 
 /** Properties written when a group has no template of its own. */
-export const BUILTIN_TEMPLATE_KEYS = ['attachment', 'title', 'author', 'created', 'updated'];
+export const BUILTIN_TEMPLATE_KEYS = ['source', 'title', 'author', 'created', 'updated'];
 
 export function defaultMapping(): Record<string, string> {
   return Object.fromEntries(SOURCE_DEFS.map(def => [def.id, def.property]));
@@ -70,6 +69,7 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     name: 'New group',
     layout: 'sidecar',
     auxiliaryPrefix: '',
+    createNoteFile: true,
     attachmentsFolder: 'Attachments',
     notesFolder: 'Library',
     watchedExtensions: ['.pdf'],
@@ -84,8 +84,6 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     enablePdfMetadataExtraction: true,
     enableDoiIsbnLookup: false,
     sanitizeListValues: true,
-    autoCreateBaseFile: false,
-    baseFolderPath: '',
     ...partial,
   };
 }
@@ -100,6 +98,11 @@ export function defaultSettings(): AttMetaMapSettings {
   };
 }
 
+/** Sidecar always has a note; folder layout may be used as folder-only organization. */
+export function groupCreatesNotes(group: MappingGroup): boolean {
+  return group.layout === 'sidecar' || group.createNoteFile;
+}
+
 interface LegacyV1 {
   attachmentsFolder?: string;
   libraryFolder?: string;
@@ -107,15 +110,15 @@ interface LegacyV1 {
   autoCreateOnNew?: boolean;
   autoDeleteOnRemove?: boolean;
   mirrorFolderStructure?: boolean;
-  baseFolderPath?: string;
   enablePdfMetadataExtraction?: boolean;
   enableDoiIsbnLookup?: boolean;
-  autoCreateBaseFile?: boolean;
   tagsPropertyName?: string;
 }
 
 interface LegacyV2Group extends Partial<MappingGroup> {
   fields?: Record<string, { enabled?: boolean; property?: string }>;
+  autoCreateBaseFile?: boolean;
+  baseFolderPath?: string;
 }
 
 /**
@@ -154,6 +157,8 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
     const groups = candidate.groups.map(group => {
       const clean = { ...createGroup(), ...group };
       delete (clean as LegacyV2Group).fields;
+      delete (clean as LegacyV2Group).autoCreateBaseFile;
+      delete (clean as LegacyV2Group).baseFolderPath;
       clean.linkTemplate = unambiguousLinkTemplate(clean);
       return clean;
     });
@@ -187,8 +192,6 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       autoDeleteOnRemove: candidate.autoDeleteOnRemove ?? true,
       enablePdfMetadataExtraction: candidate.enablePdfMetadataExtraction ?? true,
       enableDoiIsbnLookup: candidate.enableDoiIsbnLookup ?? false,
-      autoCreateBaseFile: candidate.autoCreateBaseFile ?? false,
-      baseFolderPath: candidate.baseFolderPath ?? '',
     })],
   };
 }
@@ -214,7 +217,6 @@ export interface ResolvedField {
 
 function rawValueFor(id: string, values: SourceValues): FieldValue | null {
   switch (id) {
-    case 'link': return values.link;
     case 'path': return values.path;
     case 'fileName': return values.fileName;
     case 'fileType': return values.fileType;

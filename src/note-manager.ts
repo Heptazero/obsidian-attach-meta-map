@@ -3,9 +3,9 @@ import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, isInFolder, linkFor, normalizeForMatch,
-  notePathCandidates, stripPrefix, templateVars,
+  notePathCandidates, templateVars,
 } from './paths';
-import { ParsedTemplate, builtinTemplate, renderNote } from './template';
+import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
 import { autoFillableRows, buildDiffRows } from './refresh-modal';
 import {
@@ -13,6 +13,9 @@ import {
   lookupDoi, lookupIsbn,
 } from './pdf-extractor';
 import { t } from './i18n/i18n';
+import {
+  appendSourceLink, SOURCE_PROPERTY, sourceLinkTargets, stripAuxiliaryPrefix,
+} from './resource-links';
 
 const toDate = (ms: number): string => new Date(ms).toISOString().split('T')[0];
 
@@ -50,6 +53,62 @@ export class NoteManager {
     return this.settings().mapping[sourceId]?.trim() || null;
   }
 
+  private filesFromProperty(note: TFile, property: string): TFile[] {
+    const value: unknown = this.app.metadataCache.getFileCache(note)?.frontmatter?.[property];
+    const files: TFile[] = [];
+    for (const target of sourceLinkTargets(value)) {
+      const file = this.app.metadataCache.getFirstLinkpathDest(target, note.path);
+      if (file && !files.some(existing => existing.path === file.path)) files.push(file);
+    }
+    return files;
+  }
+
+  /** Canonical resources, in source-property order; the first is primary. */
+  sourceFiles(note: TFile): TFile[] {
+    return this.filesFromProperty(note, SOURCE_PROPERTY);
+  }
+
+  /** Canonical source first, followed by old configurable/attachment fields. */
+  private linkedResourceFiles(note: TFile): TFile[] {
+    const properties = [SOURCE_PROPERTY, this.propertyOf('link'), 'attachment']
+      .filter((property): property is string => Boolean(property));
+    const files: TFile[] = [];
+    for (const property of new Set(properties)) {
+      for (const file of this.filesFromProperty(note, property)) {
+        if (!files.some(existing => existing.path === file.path)) files.push(file);
+      }
+    }
+    return files;
+  }
+
+  private noteReferences(note: TFile, attachmentPath: string): boolean {
+    const normalized = normalizePath(attachmentPath);
+    const frontmatter = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    const canonical = sourceLinkTargets(frontmatter?.[SOURCE_PROPERTY]);
+    const files = canonical.length > 0 ? this.sourceFiles(note) : this.linkedResourceFiles(note);
+    return files.some(file => normalizePath(file.path) === normalized);
+  }
+
+  private findNoteBySourceInGroup(group: MappingGroup, attachmentPath: string): TFile | null {
+    const notesFolder = cleanFolder(group.notesFolder);
+    if (!notesFolder) return null;
+    return this.app.vault.getMarkdownFiles().find(note =>
+      isInFolder(note.path, notesFolder) && this.noteReferences(note, attachmentPath),
+    ) ?? null;
+  }
+
+  /** Reverse source lookup works even when the resource is outside attachmentsFolder. */
+  findNoteBySource(
+    groups: MappingGroup[], attachmentPath: string,
+  ): { group: MappingGroup; note: TFile } | null {
+    const ordered = [...groups].sort((a, b) => cleanFolder(b.notesFolder).length - cleanFolder(a.notesFolder).length);
+    for (const group of ordered) {
+      const note = this.findNoteBySourceInGroup(group, attachmentPath);
+      if (note) return { group, note };
+    }
+    return null;
+  }
+
   /**
    * Tries the group's current layout first, then the other layout as a
    * fallback — so an item folded in the past (or left as a sidecar) is still
@@ -57,6 +116,9 @@ export class NoteManager {
    * are never mistaken for "not yet handled".
    */
   findNote(group: MappingGroup, attachmentPath: string): TFile | null {
+    const linked = this.findNoteBySourceInGroup(group, attachmentPath);
+    if (linked) return linked;
+
     // Already folded: the attachment no longer sits under attachmentsFolder,
     // so recomputing candidates from it would use a stale relative path. The
     // note is simply the markdown sibling in the same folder.
@@ -101,6 +163,9 @@ export class NoteManager {
   findAttachment(group: MappingGroup, note: TFile): TFile | null {
     const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
 
+    const source = this.sourceFiles(note)[0];
+    if (source) return source;
+
     const pathProp = this.propertyOf('path');
     const recorded: unknown = pathProp ? fm?.[pathProp] : undefined;
     if (typeof recorded === 'string' && recorded.trim()) {
@@ -109,14 +174,10 @@ export class NoteManager {
     }
 
     const linkProp = this.propertyOf('link');
-    const rawLink: unknown = linkProp ? fm?.[linkProp] : undefined;
-    if (typeof rawLink === 'string') {
-      const inner = /\[\[([^\]|#]+)/.exec(rawLink)?.[1]?.trim();
-      if (inner) {
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(inner, note.path);
-        if (resolved) return resolved;
-      }
-    }
+    const legacyLink = linkProp && linkProp !== SOURCE_PROPERTY
+      ? this.filesFromProperty(note, linkProp)[0]
+      : this.filesFromProperty(note, 'attachment')[0];
+    if (legacyLink) return legacyLink;
 
     for (const candidate of attachmentCandidates(group, note.path)) {
       const file = this.app.vault.getFileByPath(normalizePath(candidate));
@@ -141,6 +202,12 @@ export class NoteManager {
   ): 'yes' | 'no' | 'unknown' {
     const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
     if (!fm) return 'unknown';
+
+    const sourceTargets = sourceLinkTargets(fm[SOURCE_PROPERTY]);
+    if (sourceTargets.length > 0) {
+      const normalized = normalizePath(attachmentPath);
+      return this.sourceFiles(note).some(file => normalizePath(file.path) === normalized) ? 'yes' : 'no';
+    }
 
     const pathProp = this.propertyOf('path');
     const recordedPath: unknown = pathProp ? fm[pathProp] : undefined;
@@ -170,12 +237,29 @@ export class NoteManager {
     return { template: builtinTemplate(BUILTIN_TEMPLATE_KEYS), builtin: true };
   }
 
+  private renderNewNote(
+    template: ParsedTemplate, rows: ResolvedField[], group: MappingGroup,
+    attachment: TFile, embed: string, builtin: boolean,
+  ): RenderedNote {
+    const withSource = template.keys.includes(SOURCE_PROPERTY) ? template : {
+      ...template,
+      frontmatterLines: [`${SOURCE_PROPERTY}:`, ...template.frontmatterLines],
+      keys: [SOURCE_PROPERTY, ...template.keys],
+    };
+    const sourceRow: ResolvedField = {
+      id: SOURCE_PROPERTY,
+      property: SOURCE_PROPERTY,
+      kind: 'vault',
+      value: this.linkFor(group, attachment.path),
+    };
+    return renderNote(withSource, [sourceRow, ...rows], embed, { dropUnfilledKeys: builtin });
+  }
+
   // --- metadata ----------------------------------------------------------
 
   async gather(file: TFile, group: MappingGroup): Promise<SourceValues> {
     const parsed = templateVars(file.path);
     const values: SourceValues = {
-      link: this.linkFor(group, file.path),
       path: file.path,
       fileName: file.name,
       basename: file.basename,
@@ -244,6 +328,12 @@ export class NoteManager {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
+    if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) {
+      // Already moved into its own folder (createNoteFile groups never get a
+      // note to find above) — nothing left to fold.
+      return null;
+    }
+
     return group.layout === 'folder'
       ? this.createFolderItem(attachment, group)
       : this.createSidecarNote(attachment, group);
@@ -257,7 +347,7 @@ export class NoteManager {
     const rows = await this.resolveFor(attachment, group, template.keys);
 
     const embed = group.embedAttachment ? this.embedFor(group, attachment) : '';
-    const rendered = renderNote(template, rows, embed, { dropUnfilledKeys: builtin });
+    const rendered = this.renderNewNote(template, rows, group, attachment, embed, builtin);
 
     const folder = notePath.split('/').slice(0, -1).join('/');
     if (folder) await this.app.vault.createFolder(folder).catch(() => { /* exists */ });
@@ -301,11 +391,13 @@ export class NoteManager {
       this.pendingMoves.delete(oldPath);
     }
 
+    if (!group.createNoteFile) return null;
+
     const { template, builtin } = await this.templateFor(group);
     const rows = await this.resolveFor(attachment, group, template.keys);
 
     const embed = group.embedAttachment ? this.embedFor(group, attachment) : '';
-    const rendered = renderNote(template, rows, embed, { dropUnfilledKeys: builtin });
+    const rendered = this.renderNewNote(template, rows, group, attachment, embed, builtin);
 
     const note = await this.app.vault.create(normalizePath(item.notePath), rendered.content);
     if (rendered.templaterBlocks > 0) {
@@ -315,8 +407,8 @@ export class NoteManager {
   }
 
   isAuxiliaryFile(file: TFile, group: MappingGroup): boolean {
-    const prefix = group.auxiliaryPrefix.trim();
-    return group.layout === 'folder' && prefix.length > 0 && file.name.startsWith(prefix);
+    return group.layout === 'folder' && group.createNoteFile &&
+      stripAuxiliaryPrefix(file.name, group.auxiliaryPrefix) !== null;
   }
 
   /**
@@ -327,11 +419,18 @@ export class NoteManager {
    * leaves it exactly where it is rather than guessing.
    */
   private async foldAuxiliaryFile(file: TFile, group: MappingGroup): Promise<TFile | null> {
-    const key = normalizeForMatch(stripPrefix(file.basename, group.auxiliaryPrefix.trim()));
+    const stripped = stripAuxiliaryPrefix(file.basename, group.auxiliaryPrefix);
+    if (stripped === null) return null;
+    const key = normalizeForMatch(stripped);
     const notesFolder = cleanFolder(group.notesFolder);
 
-    const match = this.app.vault.getMarkdownFiles().find(note =>
-      isInFolder(note.path, notesFolder) && normalizeForMatch(note.basename) === key);
+    const match = this.app.vault.getMarkdownFiles().find(note => {
+      if (!isInFolder(note.path, notesFolder)) return false;
+      const names = [note.basename, ...this.linkedResourceFiles(note).map(resource => {
+        return stripAuxiliaryPrefix(resource.basename, group.auxiliaryPrefix) ?? resource.basename;
+      })];
+      return names.some(name => normalizeForMatch(name) === key);
+    });
 
     if (!match?.parent) {
       new Notice(t('notices.auxiliaryUnmatched', { file: file.name }));
@@ -339,7 +438,11 @@ export class NoteManager {
     }
 
     const targetPath = normalizePath(`${match.parent.path}/${file.name}`);
-    if (this.app.vault.getFileByPath(targetPath)) return match;
+    const existing = this.app.vault.getFileByPath(targetPath);
+    if (existing instanceof TFile) {
+      await this.appendSource(match, group, existing);
+      return match;
+    }
 
     const oldPath = normalizePath(file.path);
     this.pendingMoves.add(oldPath);
@@ -349,8 +452,16 @@ export class NoteManager {
       this.pendingMoves.delete(oldPath);
     }
 
+    await this.appendSource(match, group, file);
     new Notice(t('notices.auxiliaryMatched', { file: file.name, note: match.basename }));
     return match;
+  }
+
+  private async appendSource(note: TFile, group: MappingGroup, file: TFile): Promise<void> {
+    const link = this.linkFor(group, file.path);
+    await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
+      fm[SOURCE_PROPERTY] = appendSourceLink(fm[SOURCE_PROPERTY], link);
+    });
   }
 
   private embedFor(group: MappingGroup, attachment: TFile): string {
@@ -431,23 +542,5 @@ export class NoteManager {
     const note = this.findNote(group, attachmentPath);
     if (!note) return;
     await this.app.fileManager.trashFile(note);
-  }
-
-  /** Rename a property across every note of a group. Returns notes touched. */
-  async migrateProperty(group: MappingGroup, from: string, to: string): Promise<number> {
-    if (!from || !to || from === to) return 0;
-    const prefix = group.notesFolder.replace(/\/+$/, '') + '/';
-    const notes = this.app.vault.getMarkdownFiles().filter(file => file.path.startsWith(prefix));
-
-    let migrated = 0;
-    for (const note of notes) {
-      await this.app.fileManager.processFrontMatter(note, (fm: Record<string, unknown>) => {
-        if (!(from in fm)) return;
-        fm[to] = fm[from];
-        delete fm[from];
-        migrated++;
-      });
-    }
-    return migrated;
   }
 }

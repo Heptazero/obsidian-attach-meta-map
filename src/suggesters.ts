@@ -39,6 +39,32 @@ export class PropertySuggest extends AbstractInputSuggest<string> {
   }
 }
 
+/** Fuzzy suggestions over vault folders, used for folder path fields. */
+export class FolderSuggest extends AbstractInputSuggest<string> {
+  constructor(
+    app: App,
+    input: HTMLInputElement,
+    private onPick: (path: string) => void,
+  ) {
+    super(app, input);
+  }
+
+  protected getSuggestions(query: string): string[] {
+    const paths = this.app.vault.getAllFolders(true).map(folder => folder.path || '/');
+    return rank(query, paths);
+  }
+
+  renderSuggestion(value: string, el: HTMLElement): void {
+    el.setText(value);
+  }
+
+  selectSuggestion(value: string): void {
+    this.setValue(value === '/' ? '' : value);
+    this.onPick(value === '/' ? '' : value);
+    this.close();
+  }
+}
+
 /** Fuzzy suggestions over markdown files, used to pick a template. */
 export class TemplateFileSuggest extends AbstractInputSuggest<string> {
   constructor(

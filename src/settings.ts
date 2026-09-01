@@ -1,8 +1,8 @@
-import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import type AttMetaMapPlugin from './main';
-import { SOURCE_DEFS, createGroup } from './sources';
+import { SOURCE_DEFS, createGroup, groupCreatesNotes } from './sources';
 import { MappingGroup, SourceKind, UiLanguage } from './types';
-import { PropertySuggest, TemplateFileSuggest } from './suggesters';
+import { FolderSuggest, PropertySuggest, TemplateFileSuggest } from './suggesters';
 import { t } from './i18n/i18n';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
@@ -192,7 +192,16 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
   // --- groups ------------------------------------------------------------
 
+  /** A collapsible, titled subsection within a group's tab. */
+  private section(body: HTMLElement, title: string, defaultOpen: boolean, render: (el: HTMLElement) => void): void {
+    const details = body.createEl('details', { cls: 'amm-accordion' });
+    if (defaultOpen) details.setAttr('open', '');
+    details.createEl('summary', { text: title, cls: 'amm-accordion-summary' });
+    render(details.createEl('div', { cls: 'amm-accordion-body' }));
+  }
+
   private renderGroup(body: HTMLElement, group: MappingGroup): void {
+    const createsNotes = groupCreatesNotes(group);
     new Setting(body)
       .setName(t('settings.group.name'))
       .addText(text => text
@@ -228,9 +237,23 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
     if (group.layout === 'folder') {
       new Setting(body)
+        .setName(t('settings.group.createNoteFile.name'))
+        .setDesc(t('settings.group.createNoteFile.desc'))
+        .addToggle(toggle => toggle
+          .setValue(group.createNoteFile)
+          .onChange(async value => {
+            group.createNoteFile = value;
+            await this.plugin.saveSettings();
+            this.redisplay();
+          }));
+    }
+
+    if (group.layout === 'folder' && group.createNoteFile) {
+      new Setting(body)
         .setName(t('settings.group.auxiliaryPrefix.name'))
         .setDesc(t('settings.group.auxiliaryPrefix.desc'))
         .addText(text => text
+          .setPlaceholder(t('settings.group.auxiliaryPrefix.placeholder'))
           .setValue(group.auxiliaryPrefix)
           .onChange(async value => {
             group.auxiliaryPrefix = value.trim();
@@ -238,89 +261,107 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           }));
     }
 
-    new Setting(body)
-      .setName(t('settings.group.attachmentsFolder.name'))
-      .setDesc(t('settings.group.attachmentsFolder.desc'))
-      .addText(text => text
-        .setPlaceholder('Attachments')
-        .setValue(group.attachmentsFolder)
-        .onChange(async value => {
-          group.attachmentsFolder = value.trim();
-          await this.plugin.saveSettings();
-        }));
+    this.section(body, t('settings.group.sections.paths'), true, el => {
+      new Setting(el)
+        .setName(t('settings.group.attachmentsFolder.name'))
+        .setDesc(t('settings.group.attachmentsFolder.desc'))
+        .addText(text => {
+          text
+            .setPlaceholder('Attachments')
+            .setValue(group.attachmentsFolder)
+            .onChange(async value => {
+              group.attachmentsFolder = value.trim();
+              await this.plugin.saveSettings();
+            });
+          new FolderSuggest(this.app, text.inputEl, async value => {
+            group.attachmentsFolder = value;
+            await this.plugin.saveSettings();
+          });
+        });
 
-    new Setting(body)
-      .setName(t('settings.group.notesFolder.name'))
-      .setDesc(t('settings.group.notesFolder.desc'))
-      .addText(text => text
-        .setPlaceholder('Library')
-        .setValue(group.notesFolder)
-        .onChange(async value => {
-          group.notesFolder = value.trim();
-          await this.plugin.saveSettings();
-        }));
+      new Setting(el)
+        .setName(t('settings.group.notesFolder.name'))
+        .setDesc(t('settings.group.notesFolder.desc'))
+        .addText(text => {
+          text
+            .setPlaceholder('Library')
+            .setValue(group.notesFolder)
+            .onChange(async value => {
+              group.notesFolder = value.trim();
+              await this.plugin.saveSettings();
+            });
+          new FolderSuggest(this.app, text.inputEl, async value => {
+            group.notesFolder = value;
+            await this.plugin.saveSettings();
+          });
+        });
 
-    new Setting(body)
-      .setName(t('settings.group.extensions.name'))
-      .setDesc(t('settings.group.extensions.desc'))
-      .addText(text => text
-        .setPlaceholder('.pdf, .epub')
-        .setValue(group.watchedExtensions.join(', '))
-        .onChange(async value => {
-          group.watchedExtensions = value
-            .split(',')
-            .map(part => part.trim().toLowerCase())
-            .filter(part => part.length > 0)
-            .map(part => (part.startsWith('.') ? part : `.${part}`));
-          await this.plugin.saveSettings();
-        }));
+      new Setting(el)
+        .setName(t('settings.group.extensions.name'))
+        .setDesc(t('settings.group.extensions.desc'))
+        .addText(text => text
+          .setPlaceholder('.pdf, .epub')
+          .setValue(group.watchedExtensions.join(', '))
+          .onChange(async value => {
+            group.watchedExtensions = value
+              .split(',')
+              .map(part => part.trim().toLowerCase())
+              .filter(part => part.length > 0)
+              .map(part => (part.startsWith('.') ? part : `.${part}`));
+            await this.plugin.saveSettings();
+          }));
 
-    this.renderTemplatePicker(body, group);
+      if (createsNotes) this.renderTemplatePicker(el, group);
 
-    new Setting(body)
-      .setName(t('settings.group.mirror.name'))
-      .setDesc(t('settings.group.mirror.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.mirrorFolderStructure)
-        .onChange(async value => {
-          group.mirrorFolderStructure = value;
-          await this.plugin.saveSettings();
-        }));
+      new Setting(el)
+        .setName(t('settings.group.mirror.name'))
+        .setDesc(t('settings.group.mirror.desc'))
+        .addToggle(toggle => toggle
+          .setValue(group.mirrorFolderStructure)
+          .onChange(async value => {
+            group.mirrorFolderStructure = value;
+            await this.plugin.saveSettings();
+          }));
+    });
 
-    new Setting(body)
-      .setName(t('settings.group.noteName.name'))
-      .setDesc(t('settings.group.noteName.desc'))
-      .addText(text => text
-        .setPlaceholder('{{basename}}')
-        .setValue(group.noteNameTemplate)
-        .onChange(async value => {
-          group.noteNameTemplate = value.trim() || '{{basename}}';
-          await this.plugin.saveSettings();
-        }));
+    this.section(body, t('settings.group.sections.naming'), false, el => {
+      new Setting(el)
+        .setName(t('settings.group.noteName.name'))
+        .setDesc(t('settings.group.noteName.desc'))
+        .addText(text => text
+          .setPlaceholder('{{basename}}')
+          .setValue(group.noteNameTemplate)
+          .onChange(async value => {
+            group.noteNameTemplate = value.trim() || '{{basename}}';
+            await this.plugin.saveSettings();
+          }));
 
-    new Setting(body)
-      .setName(t('settings.group.linkTemplate.name'))
-      .setDesc(t('settings.group.linkTemplate.desc'))
-      .addText(text => text
-        .setPlaceholder('[[{{name}}]]')
-        .setValue(group.linkTemplate)
-        .onChange(async value => {
-          group.linkTemplate = value.trim() || '[[{{name}}]]';
-          await this.plugin.saveSettings();
-        }));
+      if (createsNotes) {
+        new Setting(el)
+          .setName(t('settings.group.linkTemplate.name'))
+          .setDesc(t('settings.group.linkTemplate.desc'))
+          .addText(text => text
+            .setPlaceholder('[[{{name}}]]')
+            .setValue(group.linkTemplate)
+            .onChange(async value => {
+              group.linkTemplate = value.trim() || '[[{{name}}]]';
+              await this.plugin.saveSettings();
+            }));
 
-    new Setting(body)
-      .setName(t('settings.group.embed.name'))
-      .setDesc(t('settings.group.embed.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.embedAttachment)
-        .onChange(async value => {
-          group.embedAttachment = value;
-          await this.plugin.saveSettings();
-        }));
+        new Setting(el)
+          .setName(t('settings.group.embed.name'))
+          .setDesc(t('settings.group.embed.desc'))
+          .addToggle(toggle => toggle
+            .setValue(group.embedAttachment)
+            .onChange(async value => {
+              group.embedAttachment = value;
+              await this.plugin.saveSettings();
+            }));
+      }
+    });
 
-    this.renderBehavior(body, group);
-    this.renderActions(body, group);
+    this.section(body, t('settings.group.sections.automation'), false, el => this.renderBehavior(el, group));
+    this.section(body, t('settings.group.sections.actions'), false, el => this.renderActions(el, group));
   }
 
   private renderTemplatePicker(body: HTMLElement, group: MappingGroup): void {
@@ -385,6 +426,8 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
+    if (!groupCreatesNotes(group)) return;
+
     new Setting(body)
       .setName(t('settings.group.autoDelete.name'))
       .setDesc(t('settings.group.autoDelete.desc'))
@@ -435,34 +478,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(body)
-      .setName(t('settings.group.baseFile.name'))
-      .setDesc(t('settings.group.baseFile.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.autoCreateBaseFile)
-        .onChange(async value => {
-          group.autoCreateBaseFile = value;
-          await this.plugin.saveSettings();
-          if (value) await this.plugin.ensureBaseFile(group);
-        }));
-
-    let pendingBaseFolder = group.baseFolderPath;
-    new Setting(body)
-      .setName(t('settings.group.baseFolder.name'))
-      .setDesc(t('settings.group.baseFolder.desc'))
-      .addText(text => text
-        .setPlaceholder(group.notesFolder)
-        .setValue(group.baseFolderPath)
-        .onChange(value => { pendingBaseFolder = value.trim(); }))
-      .addButton(btn => btn
-        .setButtonText(t('settings.group.baseFolder.move'))
-        .onClick(() => { void (async () => {
-          await this.plugin.basesCreator.move(group, group.baseFolderPath, pendingBaseFolder);
-          group.baseFolderPath = pendingBaseFolder;
-          await this.plugin.saveSettings();
-          await this.plugin.ensureBaseFile(group);
-          new Notice(t('notices.baseMoved'));
-        })(); }));
   }
 
   private renderActions(body: HTMLElement, group: MappingGroup): void {
@@ -476,6 +491,8 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           void this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups);
         }));
 
+    if (!groupCreatesNotes(group)) return;
+
     new Setting(body)
       .setName(t('settings.group.upgrade.name'))
       .setDesc(t('settings.group.upgrade.desc'))
@@ -484,27 +501,5 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .onClick(() => {
           void this.plugin.upgradeManager.runForGroup(group);
         }));
-
-    let renameFrom = '';
-    let renameTo = '';
-    new Setting(body)
-      .setName(t('settings.group.renameProperty.name'))
-      .setDesc(t('settings.group.renameProperty.desc'))
-      .addText(text => text
-        .setPlaceholder(t('settings.group.renameProperty.from'))
-        .onChange(value => { renameFrom = value.trim(); }))
-      .addText(text => text
-        .setPlaceholder(t('settings.group.renameProperty.to'))
-        .onChange(value => { renameTo = value.trim(); }))
-      .addButton(btn => btn
-        .setButtonText(t('settings.group.renameProperty.run'))
-        .onClick(() => { void (async () => {
-          if (!renameFrom || !renameTo) {
-            new Notice(t('notices.renameNeedsBoth'));
-            return;
-          }
-          const count = await this.plugin.noteManager.migrateProperty(group, renameFrom, renameTo);
-          new Notice(t('notices.renamed', { count }));
-        })(); }));
   }
 }

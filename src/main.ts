@@ -5,7 +5,6 @@ import { NoteManager } from './note-manager';
 import { TemplateRegistry } from './template-registry';
 import { BackfillManager } from './backfill';
 import { UpgradeManager } from './upgrade';
-import { BasesCreator } from './bases-creator';
 import { PairOpener } from './pair-opener';
 import { RefreshModal, buildDiffRows } from './refresh-modal';
 import { AttMetaMapSettingTab } from './settings';
@@ -18,7 +17,6 @@ export default class AttMetaMapPlugin extends Plugin {
   noteManager: NoteManager;
   backfillManager: BackfillManager;
   upgradeManager: UpgradeManager;
-  basesCreator: BasesCreator;
   pairOpener: PairOpener;
 
   async onload(): Promise<void> {
@@ -29,12 +27,10 @@ export default class AttMetaMapPlugin extends Plugin {
     this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
-    this.basesCreator = new BasesCreator(this.app);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
 
     this.app.workspace.onLayoutReady(() => {
       this.registerVaultEvents();
-      void this.refreshBaseFiles();
     });
 
     this.addCommand({
@@ -90,8 +86,12 @@ export default class AttMetaMapPlugin extends Plugin {
         return;
       }
     }
-    if (!note || !pair.attachment) {
+    if (!pair.attachment) {
       new Notice(t('notices.noAttachment', { file: file.name }));
+      return;
+    }
+    if (!note) {
+      new Notice(t('notices.noNote', { group: pair.group.name }));
       return;
     }
 
@@ -123,17 +123,6 @@ export default class AttMetaMapPlugin extends Plugin {
       }
       new Notice(t('notices.applied', { count: accepted.length }));
     }).open();
-  }
-
-  async ensureBaseFile(group: MappingGroup): Promise<void> {
-    const { template } = await this.noteManager.templateFor(group);
-    await this.basesCreator.createOrUpdate(group, template.keys);
-  }
-
-  async refreshBaseFiles(): Promise<void> {
-    for (const group of this.settings.groups) {
-      await this.ensureBaseFile(group);
-    }
   }
 
   private registerVaultEvents(): void {

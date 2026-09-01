@@ -12,6 +12,7 @@
   "notices": {
     "noGroup": "「${file}」不属于任何映射组。",
     "noAttachment": "找不到「${file}」对应的附件。",
+    "noNote": "「${group}」这一组关闭了建笔记，没有可刷新的属性。",
     "noteReady": "笔记已就绪：${note}",
     "noteBlocked": "「${file}」的目标路径已被另一篇笔记占用。",
     "auxiliaryMatched": "「${file}」按附属文件规则匹配到「${note}」，已搬进它的文件夹。",
@@ -20,10 +21,7 @@
     "nothingApplied": "没有改动。",
     "applied": "更新了 ${count} 个属性。",
     "templateMissing": "找不到模板「${path}」（组：${group}），本次用内置字段。",
-    "templaterSkipped": "跳过了模板里的 ${count} 段 Templater 代码（本插件不执行它）。",
-    "baseMoved": "base 文件位置已更新。",
-    "renameNeedsBoth": "新旧属性名都要填。",
-    "renamed": "在 ${count} 篇笔记里改了这个属性名。"
+    "templaterSkipped": "跳过了模板里的 ${count} 段 Templater 代码（本插件不执行它）。"
   },
   "backfill": {
     "nothing": "${group}：没有找到受监听的附件。",
@@ -73,7 +71,7 @@
       "placeholder": "99_assets/template"
     },
     "mapping": {
-      "desc": "决定「哪个来源的值写进哪个属性名」，全库只配一次。属性名留空就是不写。真正写进笔记的字段由每组选定的模板决定——模板 frontmatter 里没有的键不会被写入。想加自定义字段，直接往模板里加一行即可。输入框支持模糊匹配已有模板里的属性名。",
+      "desc": "决定「哪个元数据来源写进哪个属性名」，全库只配一次。source 是固定的资源关系字段，不在这里改名。其他属性名留空就是不写；模板 frontmatter 里没有的键也不会写入。输入框支持模糊匹配模板属性。",
       "unmapped": "不映射"
     },
     "kinds": {
@@ -91,6 +89,12 @@
       "name": "组名",
       "remove": "删除这一组",
       "removeConfirm": "删除组「${name}」？已经建好的笔记不会动。",
+      "sections": {
+        "paths": "路径与文件",
+        "naming": "命名与链接",
+        "automation": "自动化行为",
+        "actions": "操作"
+      },
       "layout": {
         "name": "布局",
         "sidecar": "镜像 sidecar（附件原地不动，笔记单独建）",
@@ -100,9 +104,14 @@
           "folder": "新建一个和笔记同名的文件夹（在笔记文件夹下），把附件搬进去，笔记也建在里面——整体存整体删。附件一旦被搬进文件夹就离开了附件文件夹，插件不再监听它后续的改动，交给 Obsidian 自己的链接更新机制。已经存在的附件不会被这个设置追溯影响，只对新出现的附件生效。"
         }
       },
+      "createNoteFile": {
+        "name": "为新附件建笔记",
+        "desc": "关闭后，折叠进文件夹这件事照常发生（新建同名文件夹、把附件搬进去），但不再建笔记、不抽取任何元数据——适合只是想把某个资料的所有文件放进一个文件夹，不需要一篇带 frontmatter 的笔记的情况。关闭后模板、链接格式、嵌入和 PDF/DOI 抽取这些跟笔记相关的设置都不会显示。"
+      },
       "auxiliaryPrefix": {
-        "name": "附属文件前缀",
-        "desc": "文件名以这个前缀开头的新文件（比如 cn_）不会单独建笔记，而是按去掉前缀后的名字模糊匹配到已有的论文笔记，直接搬进那个文件夹。匹配不上（比如翻译比原文先到）就原地不动，不建笔记。留空关闭这个功能。"
+        "name": "附属文件前缀（可多个）",
+        "desc": "用逗号分隔，例如 cn_, zh_, slides_。文件会按去掉前缀后的主体名匹配已有笔记或 source 资源，搬进同一文件夹，并把双链追加到 source 列表。匹配不上就原地不动。留空关闭。",
+        "placeholder": "例如 cn_, zh_, slides_"
       },
       "attachmentsFolder": {
         "name": "附件文件夹",
@@ -120,7 +129,7 @@
         "name": "模板文件",
         "desc": "模板的 frontmatter 决定这一组的笔记有哪些字段；正文照抄，但模板里的 Templater 代码不会执行。留空则用内置的最小字段。",
         "placeholder": "99_assets/template/tmp_paper.md",
-        "builtin": "未选模板，使用内置字段：attachment / title / author / created / updated",
+        "builtin": "未选模板，使用内置字段：source / title / author / created / updated",
         "missing": "找不到这个文件。",
         "keys": "模板字段：${keys}（✓ 表示映射表里有来源）",
         "noKeys": "这个模板没有 frontmatter，不会写入任何属性。"
@@ -134,8 +143,8 @@
         "desc": "变量：{{basename}}（不带扩展名）、{{name}}（带扩展名）、{{ext}}。另有 {{year}}、{{title}}：当文件名符合 Zotero 常见的「作者 - 年份 - 标题」格式时，从文件名里拆出年份和标题（纯字符串解析，不读文件内容），例如想要 2023-标题 就写 {{year}}-{{title}}。不符合这个格式的文件 {{year}} 为空、{{title}} 退回完整文件名。这个名字被别的附件占了会自动加回扩展名。"
       },
       "linkTemplate": {
-        "name": "链接格式",
-        "desc": "写进链接属性的值，默认 [[{{name}}]]（带扩展名）。注意别用 [[{{basename}}]]：笔记名也是 basename 时，这个链接会指向笔记自己而不是附件——真撞上了插件会自动补回扩展名。两个附件重名时改用 [[{{path}}]]。"
+        "name": "source 链接格式",
+        "desc": "写进 source 的双链格式，默认 [[{{name}}]]（带扩展名）。注意别用 [[{{basename}}]]：笔记名也是 basename 时，这个链接会指向笔记自己——真撞上了插件会自动补回扩展名。资源重名时改用 [[{{path}}]]。"
       },
       "embed": {
         "name": "在正文嵌入附件",
@@ -171,15 +180,6 @@
         "name": "清洗列表值",
         "desc": "把关键词这类列表字段里 Obsidian 标签不接受的字符去掉。"
       },
-      "baseFile": {
-        "name": "生成 base 索引文件",
-        "desc": "列按模板字段生成。已存在的 base 文件不会被覆盖。"
-      },
-      "baseFolder": {
-        "name": "base 文件位置",
-        "desc": "留空则跟笔记夹同目录。",
-        "move": "移动"
-      },
       "backfill": {
         "name": "补齐缺失的笔记",
         "desc": "扫描这一组的附件，给还没有笔记的建上。",
@@ -189,18 +189,10 @@
         "name": "对齐所有笔记到当前模板",
         "desc": "扫描这一组已有的笔记：模板现在要求、但某篇笔记还没有的属性，按当前映射表补上。只填空的——已经有内容的属性一律不碰，也不删除笔记里模板之外的其他属性。适合模板改过、映射表改过名字之后，把旧笔记一次性补齐。",
         "run": "执行"
-      },
-      "renameProperty": {
-        "name": "批量改已有笔记里的属性名",
-        "desc": "上面的映射表只影响以后写入。这里把已经写进这一组笔记的属性名改掉。",
-        "from": "原属性名",
-        "to": "新属性名",
-        "run": "改名"
       }
     }
   },
   "sources": {
-    "link": { "name": "附件链接", "desc": "按上面的链接格式生成的双链。" },
     "path": { "name": "文件路径", "desc": "库内完整路径。也用来判定笔记属于哪个附件。" },
     "fileName": { "name": "文件名", "desc": "带扩展名的文件名。" },
     "fileType": { "name": "文件类型", "desc": "不带点的扩展名。" },
@@ -223,11 +215,5 @@
     "lookupTitle": { "name": "标题（联网）", "desc": "CrossRef / Open Library 的标题。可以和 PDF 标题共用一个属性名，PDF 有值时不会被覆盖。" },
     "lookupAuthor": { "name": "作者（联网）", "desc": "CrossRef / Open Library 的作者。" },
     "lookupYear": { "name": "年份（联网）", "desc": "联网查询得到的出版年份，作为 fileNameYear 解析失败时的兜底。" }
-  },
-  "bases": {
-    "views": {
-      "all": "全部",
-      "unread": "未读"
-    }
   }
 }

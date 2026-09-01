@@ -1,7 +1,7 @@
 {
   "name": "att-meta-map",
   "version": "0.3.0",
-  "description": "Attachment -> note mapping with an opt-in metadata field table and multiple mapping groups",
+  "description": "Resource collections mapped to index notes through the source property",
   "author": "Hzero",
   "main": "main.js",
   "scripts": {

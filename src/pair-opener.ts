@@ -25,15 +25,6 @@ export class PairOpener {
   constructor(private app: App, private noteManager: NoteManager) {}
 
   resolvePair(file: TFile, groups: MappingGroup[]): Pair | null {
-    const asAttachment = groupForAttachment(groups, file.path, file.extension);
-    if (asAttachment) {
-      return {
-        group: asAttachment,
-        attachment: file,
-        note: this.noteManager.findNote(asAttachment, file.path),
-      };
-    }
-
     if (file.extension === 'md') {
       const asNote = groupForNote(groups, file.path);
       if (asNote) {
@@ -46,14 +37,25 @@ export class PairOpener {
       return null;
     }
 
+    const linked = this.noteManager.findNoteBySource(groups, file.path);
+    if (linked) return { group: linked.group, attachment: file, note: linked.note };
+
+    const asAttachment = groupForAttachment(groups, file.path, file.extension);
+    if (asAttachment) {
+      return {
+        group: asAttachment,
+        attachment: file,
+        note: this.noteManager.findNote(asAttachment, file.path),
+      };
+    }
+
     // Not markdown, not under any attachmentsFolder: might already be a
-    // folded attachment, sitting beside its note inside a folder-layout
+    // folded attachment, sitting beside its note (if the group even creates
+    // one — createNoteFile: false groups never do) inside a folder-layout
     // group's notesFolder.
     const asFolded = groupForFoldedAttachment(groups, file.path);
     if (!asFolded) return null;
-    const note = this.noteManager.findNote(asFolded, file.path);
-    if (!note) return null;
-    return { group: asFolded, attachment: file, note };
+    return { group: asFolded, attachment: file, note: this.noteManager.findNote(asFolded, file.path) };
   }
 
   async openPair(file: TFile, groups: MappingGroup[], createIfMissing = true): Promise<void> {

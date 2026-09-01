@@ -3,7 +3,7 @@
   "name": "Att Meta Map",
   "version": "0.3.0",
   "minAppVersion": "1.7.2",
-  "description": "Maps attachments to notes: a template decides the fields, one global table decides where each value comes from. Multiple mapping groups, and a pair view that pins the note beside the source.",
+  "description": "Maps resource collections to index notes through the source property, with sidecar/folder layouts and a paired source view.",
   "author": "Hzero (fork of Attachments Library by José Compadre Junior)",
   "isDesktopOnly": false
 }

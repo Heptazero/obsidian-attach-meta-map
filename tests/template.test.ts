@@ -54,7 +54,7 @@ describe('parseTemplate', () => {
 
 describe('serializeValue', () => {
   it('quotes what YAML would otherwise misread', () => {
-    expect(serializeValue('attachment', '[[a]]')).toEqual(['attachment: "[[a]]"']);
+    expect(serializeValue('source', '[[a]]')).toEqual(['source: "[[a]]"']);
     expect(serializeValue('title', 'Plain title')).toEqual(['title: Plain title']);
     expect(serializeValue('title', 'A: B')).toEqual(['title: "A: B"']);
     expect(serializeValue('pages', 12)).toEqual(['pages: 12']);
@@ -97,7 +97,7 @@ describe('renderNote', () => {
   });
 
   it('drops unfilled keys only for the built-in template', () => {
-    const builtin = builtinTemplate(['attachment', 'title', 'author']);
+    const builtin = builtinTemplate(['source', 'title', 'author']);
     const rendered = renderNote(builtin, [row('title', 'T')], '', { dropUnfilledKeys: true });
     expect(rendered.content).toContain('title: T');
     expect(rendered.content).not.toContain('author');

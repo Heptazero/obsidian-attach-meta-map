@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUILTIN_TEMPLATE_KEYS, SOURCE_DEFS, defaultMapping, normalizeSettings, resolveFields,
-  sanitizeListValue,
+  BUILTIN_TEMPLATE_KEYS, SOURCE_DEFS, createGroup, defaultMapping, groupCreatesNotes,
+  normalizeSettings, resolveFields, sanitizeListValue,
 } from '../src/sources';
 import { SourceValues } from '../src/types';
 
 const values: SourceValues = {
-  link: '[[a]]',
   path: 'PDF/a.pdf',
   fileName: 'a.pdf',
   basename: 'a',
@@ -100,11 +99,11 @@ describe('resolveFields', () => {
     expect(rows).toEqual([{ id: 'lookupYear', property: 'year', kind: 'lookup', value: '1982' }]);
   });
 
-  it('covers the built-in key set with default mapping', () => {
+  it('covers the mapped built-in metadata keys; source is maintained separately', () => {
     const rows = resolveFields(defaultMapping(), { ...values, pdfTitle: 'T' },
       allow(...BUILTIN_TEMPLATE_KEYS));
     expect(rows.map(r => r.property).sort())
-      .toEqual(['attachment', 'author', 'created', 'title', 'updated']);
+      .toEqual(['author', 'created', 'title', 'updated']);
   });
 
   it('can read every source when each gets its own property', () => {
@@ -133,6 +132,11 @@ describe('resolveFields', () => {
 });
 
 describe('settings migration', () => {
+  it('treats sidecar as note-backed even after folder-only mode was selected', () => {
+    expect(groupCreatesNotes(createGroup({ layout: 'sidecar', createNoteFile: false }))).toBe(true);
+    expect(groupCreatesNotes(createGroup({ layout: 'folder', createNoteFile: false }))).toBe(false);
+  });
+
   it('turns an Attachments Library config into one group', () => {
     const settings = normalizeSettings({
       attachmentsFolder: '70_research/PDF',
@@ -197,6 +201,18 @@ describe('settings migration', () => {
     expect(settings.mapping.pdfAuthor).toBe('author');
     expect(settings.extraTemplateFolders).toEqual(['99_assets/template']);
     expect(settings.groups[0].templatePath).toBe('T.md');
+  });
+
+  it('drops retired base settings while normalizing groups', () => {
+    const settings = normalizeSettings({
+      version: 3,
+      groups: [{
+        id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B',
+        autoCreateBaseFile: true, baseFolderPath: 'Bases',
+      }],
+    });
+    expect(settings.groups[0]).not.toHaveProperty('autoCreateBaseFile');
+    expect(settings.groups[0]).not.toHaveProperty('baseFolderPath');
   });
 
   it('falls back to defaults for empty or unusable data', () => {

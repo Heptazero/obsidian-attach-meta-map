@@ -12,6 +12,7 @@
   "notices": {
     "noGroup": "\"${file}\" does not belong to any mapping group.",
     "noAttachment": "No attachment found for \"${file}\".",
+    "noNote": "Group \"${group}\" has note creation turned off — nothing to refresh.",
     "noteReady": "Note ready: ${note}",
     "noteBlocked": "A different note already occupies that path for \"${file}\".",
     "auxiliaryMatched": "\"${file}\" matched \"${note}\" as an auxiliary file and was moved into its folder.",
@@ -20,10 +21,7 @@
     "nothingApplied": "Nothing changed.",
     "applied": "Updated ${count} property/properties.",
     "templateMissing": "Template \"${path}\" not found (group ${group}); used the built-in fields.",
-    "templaterSkipped": "Skipped ${count} Templater block(s) in the template — this plugin does not run them.",
-    "baseMoved": "Base file location updated.",
-    "renameNeedsBoth": "Enter both the old and the new property name.",
-    "renamed": "Renamed the property in ${count} note(s)."
+    "templaterSkipped": "Skipped ${count} Templater block(s) in the template — this plugin does not run them."
   },
   "backfill": {
     "nothing": "${group}: no watched attachments found.",
@@ -73,7 +71,7 @@
       "placeholder": "Templates"
     },
     "mapping": {
-      "desc": "Decides which source fills which property name — configured once for the whole vault. Leave a name empty to skip that source. What actually reaches a note is decided by the group's template: keys absent from the template's frontmatter are never written. To add a custom field, add a line to the template. The inputs fuzzy-match property names found in your templates.",
+      "desc": "Decides which metadata source fills which property name — configured once for the whole vault. source is the fixed resource-relation property and cannot be renamed here. Leave another name empty to skip it; keys absent from the template are not written. Inputs fuzzy-match template properties.",
       "unmapped": "not mapped"
     },
     "kinds": {
@@ -91,6 +89,12 @@
       "name": "Group name",
       "remove": "Delete this group",
       "removeConfirm": "Delete the group \"${name}\"? Notes already created stay where they are.",
+      "sections": {
+        "paths": "Paths & files",
+        "naming": "Naming & links",
+        "automation": "Automation",
+        "actions": "Actions"
+      },
       "layout": {
         "name": "Layout",
         "sidecar": "Sidecar (attachment stays put, note is separate)",
@@ -100,9 +104,14 @@
           "folder": "A new folder, named like the note, is created under the notes folder; the attachment is moved into it and the note lives beside it — store as one, delete as one. Once moved, the attachment leaves the attachments folder and the plugin stops watching it; Obsidian's own link-updating takes over from there. Existing attachments are never retroactively affected by this setting — only ones that show up afterward."
         }
       },
+      "createNoteFile": {
+        "name": "Create a note for new attachments",
+        "desc": "Off: folding into a folder still happens (a same-named folder is created and the attachment moved in), but no note is created and no metadata is extracted — for material that just needs a folder of its own, not a note with frontmatter. Template, link format, embedding and PDF/DOI extraction are hidden while this is off."
+      },
       "auxiliaryPrefix": {
-        "name": "Auxiliary file prefix",
-        "desc": "A new file whose name starts with this prefix (e.g. cn_) never gets its own note — it's matched by normalized name (prefix stripped) against existing paper notes and moved straight into that folder. No match (e.g. the translation arrived before the original) leaves it exactly where it is. Empty disables this."
+        "name": "Auxiliary file prefixes",
+        "desc": "Comma separated, e.g. cn_, zh_, slides_. A file is matched by its name after the prefix against an existing note or source resource, moved into the same folder, and appended to the source list. No match leaves it in place. Empty disables this.",
+        "placeholder": "For example: cn_, zh_, slides_"
       },
       "attachmentsFolder": {
         "name": "Attachments folder",
@@ -120,7 +129,7 @@
         "name": "Template file",
         "desc": "The template's frontmatter decides which properties this group's notes get. The body is copied as-is, but Templater code in it is not executed. Empty means the built-in minimal field set.",
         "placeholder": "Templates/paper.md",
-        "builtin": "No template — built-in fields: attachment / title / author / created / updated",
+        "builtin": "No template — built-in fields: source / title / author / created / updated",
         "missing": "File not found.",
         "keys": "Template keys: ${keys} (✓ = a source is mapped to it)",
         "noKeys": "This template has no frontmatter, so no properties would be written."
@@ -134,8 +143,8 @@
         "desc": "Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. Also {{year}} and {{title}}: when the file name follows Zotero's common \"Author - Year - Title\" pattern, these are parsed back out of it (pure string matching, no file read) — e.g. {{year}}-{{title}} for \"2023-Title\". Files that do not match get an empty {{year}}; {{title}} falls back to the full file name. If the resulting name is taken by another attachment, the extension is added back."
       },
       "linkTemplate": {
-        "name": "Link format",
-        "desc": "Value written into the link property; defaults to [[{{name}}]] (with extension). Avoid [[{{basename}}]]: when the note is named after the basename too, that link resolves to the note itself rather than the attachment — the plugin adds the extension back if it detects this. Use [[{{path}}]] when two attachments share a name."
+        "name": "source link format",
+        "desc": "Wikilink format written to source; defaults to [[{{name}}]] (with extension). Avoid [[{{basename}}]]: when the note has the same basename, that link resolves to the note itself — the plugin adds the extension back if detected. Use [[{{path}}]] for duplicate resource names."
       },
       "embed": {
         "name": "Embed the attachment",
@@ -171,15 +180,6 @@
         "name": "Sanitize list values",
         "desc": "Strip characters Obsidian rejects in tags from list fields such as keywords."
       },
-      "baseFile": {
-        "name": "Generate a base file",
-        "desc": "Columns follow the template keys. Existing base files are never overwritten."
-      },
-      "baseFolder": {
-        "name": "Base file folder",
-        "desc": "Leave empty to keep it in the notes folder.",
-        "move": "Move"
-      },
       "backfill": {
         "name": "Create missing notes",
         "desc": "Scan this group's attachments and create the notes that do not exist yet.",
@@ -189,18 +189,10 @@
         "name": "Align all notes to the current template",
         "desc": "Scans this group's existing notes: properties the template now calls for that a note is missing get filled from the current mapping. Fills only what is empty — never touches a property that already has a value, never removes anything the template does not know about. Good for after the template or a mapping name changes and old notes need to catch up.",
         "run": "Run"
-      },
-      "renameProperty": {
-        "name": "Rename a property in existing notes",
-        "desc": "The mapping above only affects new writes. This rewrites notes already in this group.",
-        "from": "old name",
-        "to": "new name",
-        "run": "Rename"
       }
     }
   },
   "sources": {
-    "link": { "name": "Attachment link", "desc": "Link built from the link format above." },
     "path": { "name": "File path", "desc": "Full vault path. Also used to prove which attachment a note belongs to." },
     "fileName": { "name": "File name", "desc": "File name with extension." },
     "fileType": { "name": "File type", "desc": "Extension without the dot." },
@@ -223,11 +215,5 @@
     "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. May share a property with the PDF title; a value found in the PDF is not overwritten." },
     "lookupAuthor": { "name": "Author (online)", "desc": "Authors from CrossRef or Open Library." },
     "lookupYear": { "name": "Year (online)", "desc": "Publication year from the online lookup — a fallback for when fileNameYear cannot be parsed." }
-  },
-  "bases": {
-    "views": {
-      "all": "All",
-      "unread": "Unread"
-    }
   }
 }
