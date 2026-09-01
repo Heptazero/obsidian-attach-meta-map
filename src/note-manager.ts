@@ -651,9 +651,4 @@ export class NoteManager {
     await this.app.fileManager.renameFile(note, target);
   }
 
-  async deleteNote(group: MappingGroup, attachmentPath: string): Promise<void> {
-    const note = this.findNote(group, attachmentPath);
-    if (!note) return;
-    await this.app.fileManager.trashFile(note);
-  }
 }

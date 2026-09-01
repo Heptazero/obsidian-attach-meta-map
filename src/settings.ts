@@ -429,16 +429,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     if (!groupCreatesNotes(group)) return;
 
     new Setting(body)
-      .setName(t('settings.group.autoDelete.name'))
-      .setDesc(t('settings.group.autoDelete.desc'))
-      .addToggle(toggle => toggle
-        .setValue(group.autoDeleteOnRemove)
-        .onChange(async value => {
-          group.autoDeleteOnRemove = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(body)
       .setName(t('settings.group.syncUpdated.name'))
       .setDesc(t('settings.group.syncUpdated.desc'))
       .addToggle(toggle => toggle

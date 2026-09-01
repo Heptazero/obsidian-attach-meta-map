@@ -67,7 +67,6 @@ export interface MappingGroup {
   embedAttachment: boolean;
 
   autoCreateOnNew: boolean;
-  autoDeleteOnRemove: boolean;
   syncUpdatedOnModify: boolean;
 
   enablePdfMetadataExtraction: boolean;

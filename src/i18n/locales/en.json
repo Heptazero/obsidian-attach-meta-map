@@ -170,10 +170,6 @@
           "folder": "Off: fold into a folder only via commands such as \"open pair\". On: a new attachment is moved into its own folder and its note created as soon as it lands."
         }
       },
-      "autoDelete": {
-        "name": "Delete the note when the attachment is deleted",
-        "desc": "The note goes to the same trash as the attachment."
-      },
       "syncUpdated": {
         "name": "Keep the updated property in sync",
         "desc": "Refreshes it when the attachment changes on disk. Never adds the property to a note that lacks it."

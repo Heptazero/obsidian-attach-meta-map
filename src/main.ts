@@ -134,13 +134,6 @@ export default class AttMetaMapPlugin extends Plugin {
       window.setTimeout(() => { void this.noteManager.createNote(file, group); }, 500);
     }));
 
-    this.registerEvent(this.app.vault.on('delete', (file: TAbstractFile) => {
-      if (!(file instanceof TFile)) return;
-      const group = this.groupFor(file);
-      if (!group?.autoDeleteOnRemove) return;
-      void this.noteManager.deleteNote(group, file.path);
-    }));
-
     this.registerEvent(this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
       if (!(file instanceof TFile)) return;
       // Folder-layout createNote moves the attachment itself, which fires
@@ -155,7 +148,6 @@ export default class AttMetaMapPlugin extends Plugin {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
         } else {
-          if (before?.autoDeleteOnRemove) await this.noteManager.deleteNote(before, oldPath);
           if (after?.autoCreateOnNew) await this.noteManager.createNote(file, after);
         }
       })();

@@ -79,7 +79,6 @@ export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
     linkTemplate: '[[{{name}}]]',
     embedAttachment: false,
     autoCreateOnNew: true,
-    autoDeleteOnRemove: true,
     syncUpdatedOnModify: true,
     enablePdfMetadataExtraction: true,
     enableDoiIsbnLookup: false,
@@ -119,6 +118,7 @@ interface LegacyV2Group extends Partial<MappingGroup> {
   fields?: Record<string, { enabled?: boolean; property?: string }>;
   autoCreateBaseFile?: boolean;
   baseFolderPath?: string;
+  autoDeleteOnRemove?: boolean;
 }
 
 /**
@@ -159,6 +159,7 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       delete (clean as LegacyV2Group).fields;
       delete (clean as LegacyV2Group).autoCreateBaseFile;
       delete (clean as LegacyV2Group).baseFolderPath;
+      delete (clean as LegacyV2Group).autoDeleteOnRemove;
       clean.linkTemplate = unambiguousLinkTemplate(clean);
       return clean;
     });
@@ -189,7 +190,6 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       watchedExtensions: candidate.watchedExtensions ?? ['.pdf'],
       mirrorFolderStructure: candidate.mirrorFolderStructure ?? true,
       autoCreateOnNew: candidate.autoCreateOnNew ?? true,
-      autoDeleteOnRemove: candidate.autoDeleteOnRemove ?? true,
       enablePdfMetadataExtraction: candidate.enablePdfMetadataExtraction ?? true,
       enableDoiIsbnLookup: candidate.enableDoiIsbnLookup ?? false,
     })],

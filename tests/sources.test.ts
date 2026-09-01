@@ -135,6 +135,7 @@ describe('settings migration', () => {
   it('treats sidecar as note-backed even after folder-only mode was selected', () => {
     expect(groupCreatesNotes(createGroup({ layout: 'sidecar', createNoteFile: false }))).toBe(true);
     expect(groupCreatesNotes(createGroup({ layout: 'folder', createNoteFile: false }))).toBe(false);
+    expect(createGroup()).not.toHaveProperty('autoDeleteOnRemove');
   });
 
   it('turns an Attachments Library config into one group', () => {
@@ -203,16 +204,17 @@ describe('settings migration', () => {
     expect(settings.groups[0].templatePath).toBe('T.md');
   });
 
-  it('drops retired base settings while normalizing groups', () => {
+  it('drops retired and destructive settings while normalizing groups', () => {
     const settings = normalizeSettings({
       version: 3,
       groups: [{
         id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B',
-        autoCreateBaseFile: true, baseFolderPath: 'Bases',
+        autoCreateBaseFile: true, baseFolderPath: 'Bases', autoDeleteOnRemove: true,
       }],
     });
     expect(settings.groups[0]).not.toHaveProperty('autoCreateBaseFile');
     expect(settings.groups[0]).not.toHaveProperty('baseFolderPath');
+    expect(settings.groups[0]).not.toHaveProperty('autoDeleteOnRemove');
   });
 
   it('falls back to defaults for empty or unusable data', () => {
