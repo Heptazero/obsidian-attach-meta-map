@@ -25,9 +25,19 @@
   },
   "backfill": {
     "nothing": "${group}：没有找到受监听的附件。",
-    "starting": "${group}：开始扫描 ${total} 个附件…",
-    "progress": "${processed}/${total} —— 新建 ${created}，跳过 ${skipped}",
-    "complete": "${group}：新建 ${created}，跳过 ${skipped}。"
+    "nothingToChange": "没有待执行的改动。已有 source 关系或已整理的文件都会跳过。",
+    "previewTitle": "确认批量改动",
+    "previewSubtitle": "将处理 ${items} 个资源，共 ${changes} 处改动。确认前不会移动或写入任何文件。",
+    "confirm": "确认并执行",
+    "columns": { "resource": "资源", "changes": "将执行的改动" },
+    "actions": {
+      "move": "移动：${from} → ${to}",
+      "createNote": "新建笔记：${path}",
+      "updateSource": "更新 source：${notePath} ← ${link}"
+    },
+    "starting": "正在执行 ${total} 个已确认的资源改动…",
+    "progress": "${processed}/${total} —— 已处理 ${created}，失败或状态变化 ${skipped}",
+    "complete": "批量操作完成：已处理 ${created} 个，失败或状态已变化 ${skipped} 个。"
   },
   "upgrade": {
     "nothing": "${group}：这一组还没有笔记。",

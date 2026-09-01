@@ -25,9 +25,19 @@
   },
   "backfill": {
     "nothing": "${group}: no watched attachments found.",
-    "starting": "${group}: scanning ${total} attachment(s)…",
-    "progress": "${processed}/${total} — ${created} created, ${skipped} skipped",
-    "complete": "${group}: ${created} created, ${skipped} skipped."
+    "nothingToChange": "There are no pending changes. Resources with a source relation or an existing item folder are skipped.",
+    "previewTitle": "Confirm batch changes",
+    "previewSubtitle": "${items} resource(s), ${changes} filesystem or property change(s). Nothing is moved or written before confirmation.",
+    "confirm": "Confirm and apply",
+    "columns": { "resource": "Resource", "changes": "Pending changes" },
+    "actions": {
+      "move": "Move: ${from} → ${to}",
+      "createNote": "Create note: ${path}",
+      "updateSource": "Update source: ${notePath} ← ${link}"
+    },
+    "starting": "Applying ${total} confirmed resource change(s)…",
+    "progress": "${processed}/${total} — ${created} processed, ${skipped} failed or changed",
+    "complete": "Batch complete: ${created} processed, ${skipped} failed or changed since preview."
   },
   "upgrade": {
     "nothing": "${group}: no notes yet.",

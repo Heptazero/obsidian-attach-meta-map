@@ -105,4 +105,60 @@ describe('source-based resource relation', () => {
       '[[paper.pdf]]', '[[cn_paper.pdf]]', '[[slides_paper.pdf]]',
     ]);
   });
+
+  it('plans no change for a source-linked resource', () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const attachment = makeFile('Library/Paper/paper.pdf');
+    const fm = { [note.path]: { source: '[[paper.pdf]]' } };
+    const { manager } = harness([note, attachment], fm);
+    const group = createGroup({
+      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+    });
+
+    expect(manager.planCreate(attachment, group)).toBeNull();
+  });
+
+  it('repairs source instead of nesting an already folded resource again', () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const attachment = makeFile('Library/Paper/Paper.pdf');
+    const folder = { path: 'Library/Paper', name: 'Paper', children: [note, attachment] };
+    Object.assign(note, { parent: folder });
+    Object.assign(attachment, { parent: folder });
+    const { manager } = harness([note, attachment], { [note.path]: {} });
+    const group = createGroup({
+      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      noteNameTemplate: '{{basename}}',
+    });
+
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'update-source', notePath: note.path, link: '[[Paper.pdf]]' },
+    ]);
+  });
+
+  it('skips an already folded resource when note creation is disabled', () => {
+    const attachment = makeFile('Library/Paper/Paper.pdf');
+    const folder = { path: 'Library/Paper', name: 'Paper', children: [attachment] };
+    Object.assign(attachment, { parent: folder });
+    const { manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      createNoteFile: false,
+    });
+
+    expect(manager.planCreate(attachment, group)).toBeNull();
+  });
+
+  it('does not nest an already folded resource through the direct create path', async () => {
+    const attachment = makeFile('Library/Paper/Paper.pdf');
+    const folder = { path: 'Library/Paper', name: 'Paper', children: [attachment] };
+    Object.assign(attachment, { parent: folder });
+    const { manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      createNoteFile: false,
+    });
+
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Paper/Paper.pdf');
+  });
 });

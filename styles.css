@@ -147,6 +147,51 @@
   overflow-y: auto;
 }
 
+.amm-backfill-modal {
+  width: min(90vw, 70em);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.amm-backfill-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0 1em;
+}
+
+.amm-backfill-table th,
+.amm-backfill-table td {
+  padding: 0.45em 0.6em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.amm-backfill-table th {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-normal);
+}
+
+.amm-backfill-resource {
+  font-weight: var(--font-semibold);
+  overflow-wrap: anywhere;
+}
+
+.amm-backfill-group {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.amm-backfill-table ul {
+  margin: 0;
+  padding-inline-start: 1.2em;
+}
+
+.amm-backfill-table li {
+  overflow-wrap: anywhere;
+}
+
 .amm-template-preview {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);

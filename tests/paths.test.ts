@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
-  linkFor, normalizeForMatch, notePathCandidates, relativeTo, renderTemplate, stripPrefix, templateVars,
+  isFolderItemPath, linkFor, normalizeForMatch, notePathCandidates, relativeTo, renderTemplate,
+  stripPrefix, templateVars,
 } from '../src/paths';
 
 const papers = createGroup({
@@ -163,6 +164,24 @@ describe('folderItemCandidates', () => {
     expect(primary.attachmentPath).toBe(
       '70_research/nn/2021-Hopfield Networks is All You Need/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
     );
+  });
+
+  it('recognizes an already folded item when input and output roots overlap', () => {
+    const overlapping = createGroup({
+      ...folderPapers, attachmentsFolder: '70_research', notesFolder: '70_research',
+    });
+    expect(isFolderItemPath(
+      overlapping,
+      '70_research/hopfield/2023-Energy Transformer/2023-Energy Transformer.pdf',
+    )).toBe(true);
+    expect(isFolderItemPath(
+      overlapping,
+      '70_research/hopfield/2023-Energy Transformer 1/2023-Energy Transformer.pdf',
+    )).toBe(true);
+    expect(isFolderItemPath(
+      overlapping,
+      '70_research/hopfield/2023-Energy Transformer.pdf',
+    )).toBe(false);
   });
 
   it('falls back to the attachment file name for the folder when the template name collides', () => {

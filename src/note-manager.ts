@@ -2,8 +2,8 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  attachmentCandidates, cleanFolder, folderItemCandidates, isInFolder, linkFor, normalizeForMatch,
-  notePathCandidates, templateVars,
+  attachmentCandidates, cleanFolder, folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
+  normalizeForMatch, notePathCandidates, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
@@ -18,6 +18,19 @@ import {
 } from './resource-links';
 
 const toDate = (ms: number): string => new Date(ms).toISOString().split('T')[0];
+
+export type CreateChange =
+  | { kind: 'move'; from: string; to: string }
+  | { kind: 'create-note'; path: string }
+  | { kind: 'update-source'; notePath: string; link: string };
+
+export interface CreatePlan {
+  attachment: TFile;
+  group: MappingGroup;
+  mode: 'create' | 'auxiliary' | 'repair-source';
+  changes: CreateChange[];
+  note?: TFile;
+}
 
 export class NoteManager {
   private pdfExtractor: PdfMetadataExtractor;
@@ -87,6 +100,12 @@ export class NoteManager {
     const canonical = sourceLinkTargets(frontmatter?.[SOURCE_PROPERTY]);
     const files = canonical.length > 0 ? this.sourceFiles(note) : this.linkedResourceFiles(note);
     return files.some(file => normalizePath(file.path) === normalized);
+  }
+
+  private noteHasSourceLink(note: TFile, link: string): boolean {
+    const frontmatter = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    const target = sourceLinkTargets(link)[0];
+    return Boolean(target && sourceLinkTargets(frontmatter?.[SOURCE_PROPERTY]).includes(target));
   }
 
   private findNoteBySourceInGroup(group: MappingGroup, attachmentPath: string): TFile | null {
@@ -328,6 +347,16 @@ export class NoteManager {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
+    // The output root may overlap the watched input root. Once a resource is
+    // already in the standard item folder, never fold it one level deeper.
+    if (group.layout === 'folder' && isFolderItemPath(group, attachment.path)) {
+      const note = this.folderIndexNote(attachment);
+      if (note && group.createNoteFile && !this.noteReferences(note, attachment.path)) {
+        await this.appendSource(note, group, attachment);
+      }
+      return note;
+    }
+
     if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) {
       // Already moved into its own folder (createNoteFile groups never get a
       // note to find above) — nothing left to fold.
@@ -337,6 +366,76 @@ export class NoteManager {
     return group.layout === 'folder'
       ? this.createFolderItem(attachment, group)
       : this.createSidecarNote(attachment, group);
+  }
+
+  /** Read-only half of creation, used to preview every batch mutation. */
+  planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
+    if (this.isAuxiliaryFile(attachment, group)) {
+      const note = this.findAuxiliaryNote(attachment, group);
+      if (!note?.parent) return null;
+      const target = normalizePath(`${note.parent.path}/${attachment.name}`);
+      const changes: CreateChange[] = [];
+      if (normalizePath(attachment.path) !== target) {
+        if (this.app.vault.getFileByPath(target)) return null;
+        changes.push({ kind: 'move', from: normalizePath(attachment.path), to: target });
+      }
+      const link = this.linkFor(group, target);
+      if (!this.noteHasSourceLink(note, link)) {
+        changes.push({ kind: 'update-source', notePath: note.path, link });
+      }
+      return changes.length > 0
+        ? { attachment, group, mode: 'auxiliary', changes, note }
+        : null;
+    }
+
+    // A source hit is authoritative. Structural fallbacks below are only a
+    // guard/repair path; they must not silently pretend the relation exists.
+    if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
+
+    if (group.layout === 'folder' && isFolderItemPath(group, attachment.path)) {
+      const note = this.folderIndexNote(attachment);
+      if (!group.createNoteFile || !note || this.noteReferences(note, attachment.path)) return null;
+      return {
+        attachment, group, mode: 'repair-source', note,
+        changes: [{
+          kind: 'update-source', notePath: note.path,
+          link: this.linkFor(group, attachment.path),
+        }],
+      };
+    }
+    if (this.findNote(group, attachment.path)) return null;
+
+    if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) return null;
+
+    if (group.layout === 'sidecar') {
+      const notePath = this.targetNotePath(group, attachment.path);
+      if (this.app.vault.getFileByPath(notePath)) return null;
+      return {
+        attachment, group, mode: 'create',
+        changes: [{ kind: 'create-note', path: notePath }],
+      };
+    }
+
+    const item = this.folderItemFor(attachment, group);
+    if (!item) return null;
+    const changes: CreateChange[] = [{
+      kind: 'move', from: normalizePath(attachment.path), to: normalizePath(item.attachmentPath),
+    }];
+    if (group.createNoteFile) changes.push({ kind: 'create-note', path: normalizePath(item.notePath) });
+    return { attachment, group, mode: 'create', changes };
+  }
+
+  /** Apply one previously previewed item; the mutating path rechecks safety. */
+  async applyCreatePlan(plan: CreatePlan): Promise<void> {
+    const fresh = this.planCreate(plan.attachment, plan.group);
+    if (!fresh || JSON.stringify(fresh.changes) !== JSON.stringify(plan.changes)) {
+      throw new Error('Batch plan changed before apply');
+    }
+    if (fresh.mode === 'repair-source' && fresh.note) {
+      await this.appendSource(fresh.note, fresh.group, fresh.attachment);
+      return;
+    }
+    await this.createNote(fresh.attachment, fresh.group);
   }
 
   private async createSidecarNote(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
@@ -366,20 +465,8 @@ export class NoteManager {
    * stranded mid-operation.
    */
   private async createFolderItem(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
-    const { primary, fallback } = folderItemCandidates(group, attachment.path);
-
-    // Only fall back to the differently-named folder when the *specific*
-    // note/attachment file names are already taken — a real collision with
-    // a different item. An existing folder that merely happens to share the
-    // name (created by hand ahead of time, e.g. to drop a translation in)
-    // is not a collision: reuse it and land the note/attachment inside it,
-    // rather than spinning up a second, differently-named folder next to it.
-    const primaryTaken = Boolean(this.app.vault.getFileByPath(normalizePath(primary.notePath))) ||
-      Boolean(this.app.vault.getFileByPath(normalizePath(primary.attachmentPath)));
-    const item = primaryTaken ? fallback : primary;
-
-    if (this.app.vault.getFileByPath(normalizePath(item.notePath))) return null;
-    if (this.app.vault.getFileByPath(normalizePath(item.attachmentPath))) return null;
+    const item = this.folderItemFor(attachment, group);
+    if (!item) return null;
 
     await this.app.vault.createFolder(item.folder).catch(() => { /* exists */ });
 
@@ -411,6 +498,43 @@ export class NoteManager {
       stripAuxiliaryPrefix(file.name, group.auxiliaryPrefix) !== null;
   }
 
+  private folderItemFor(attachment: TFile, group: MappingGroup) {
+    const { primary, fallback } = folderItemCandidates(group, attachment.path);
+
+    // An existing folder alone is reusable. Only a concrete note/resource
+    // target being occupied is a collision that selects the fallback name.
+    const primaryTaken = Boolean(this.app.vault.getFileByPath(normalizePath(primary.notePath))) ||
+      Boolean(this.app.vault.getFileByPath(normalizePath(primary.attachmentPath)));
+    const item = primaryTaken ? fallback : primary;
+    if (this.app.vault.getFileByPath(normalizePath(item.notePath))) return null;
+    if (this.app.vault.getFileByPath(normalizePath(item.attachmentPath))) return null;
+    return item;
+  }
+
+  private folderIndexNote(file: TFile): TFile | null {
+    const parent = file.parent;
+    if (!parent) return null;
+    const note = parent.children.find(child =>
+      child instanceof TFile && child.extension === 'md' && child.basename === parent.name,
+    );
+    return note instanceof TFile ? note : null;
+  }
+
+  private findAuxiliaryNote(file: TFile, group: MappingGroup): TFile | null {
+    const stripped = stripAuxiliaryPrefix(file.basename, group.auxiliaryPrefix);
+    if (stripped === null) return null;
+    const key = normalizeForMatch(stripped);
+    const notesFolder = cleanFolder(group.notesFolder);
+
+    return this.app.vault.getMarkdownFiles().find(note => {
+      if (!isInFolder(note.path, notesFolder)) return false;
+      const names = [note.basename, ...this.linkedResourceFiles(note).map(resource => {
+        return stripAuxiliaryPrefix(resource.basename, group.auxiliaryPrefix) ?? resource.basename;
+      })];
+      return names.some(name => normalizeForMatch(name) === key);
+    }) ?? null;
+  }
+
   /**
    * A companion file (translation, etc.) never gets a note of its own: find
    * the item it belongs to by normalized-name match against every note under
@@ -419,18 +543,7 @@ export class NoteManager {
    * leaves it exactly where it is rather than guessing.
    */
   private async foldAuxiliaryFile(file: TFile, group: MappingGroup): Promise<TFile | null> {
-    const stripped = stripAuxiliaryPrefix(file.basename, group.auxiliaryPrefix);
-    if (stripped === null) return null;
-    const key = normalizeForMatch(stripped);
-    const notesFolder = cleanFolder(group.notesFolder);
-
-    const match = this.app.vault.getMarkdownFiles().find(note => {
-      if (!isInFolder(note.path, notesFolder)) return false;
-      const names = [note.basename, ...this.linkedResourceFiles(note).map(resource => {
-        return stripAuxiliaryPrefix(resource.basename, group.auxiliaryPrefix) ?? resource.basename;
-      })];
-      return names.some(name => normalizeForMatch(name) === key);
-    });
+    const match = this.findAuxiliaryNote(file, group);
 
     if (!match?.parent) {
       new Notice(t('notices.auxiliaryUnmatched', { file: file.name }));

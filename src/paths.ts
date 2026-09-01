@@ -137,6 +137,29 @@ function safeItemName(group: MappingGroup, attachmentPath: string): string {
   return (rendered || vars.basename).replace(/[\\/:*?"<>|]/g, '-');
 }
 
+/** Names that may legitimately identify one folder-layout item. */
+export function folderItemNames(group: MappingGroup, attachmentPath: string): string[] {
+  const fileName = attachmentPath.split('/').pop() ?? attachmentPath;
+  return Array.from(new Set([safeItemName(group, attachmentPath), fileName]));
+}
+
+/**
+ * Conservative structural guard for overlapping input/output roots.
+ * A repeated batch pass must recognize `Item/Item.ext` and stop instead of
+ * producing `Item/Item/Item.ext`.
+ */
+export function isFolderItemPath(group: MappingGroup, attachmentPath: string): boolean {
+  if (!isInFolder(attachmentPath, group.notesFolder)) return false;
+  const parts = cleanFolder(attachmentPath).split('/');
+  if (parts.length < 2) return false;
+  const parentName = parts[parts.length - 2];
+  return folderItemNames(group, attachmentPath).some(name => {
+    if (parentName === name) return true;
+    const suffix = parentName.startsWith(`${name} `) ? parentName.slice(name.length + 1) : '';
+    return /^\d+$/.test(suffix);
+  });
+}
+
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
   const relative = relativeTo(attachmentPath, group.attachmentsFolder);
   const fileName = relative.split('/').pop() ?? relative;
@@ -144,7 +167,7 @@ export function notePathCandidates(group: MappingGroup, attachmentPath: string):
     ? relative.split('/').slice(0, -1).join('/')
     : '';
 
-  const safe = safeItemName(group, attachmentPath);
+  const [safe] = folderItemNames(group, attachmentPath);
   const notes = cleanFolder(group.notesFolder);
   const dir = [notes, subfolder].filter(Boolean).join('/');
 
