@@ -52,6 +52,10 @@
     }
   },
   "settings": {
+    "tabs": {
+      "general": "General",
+      "mapping": "Field mapping"
+    },
     "sections": {
       "general": "General",
       "mapping": "Field mapping (one table for the whole vault)",

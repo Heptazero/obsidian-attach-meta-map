@@ -1,31 +1,52 @@
 /* Att Meta Map */
 
-.amm-group {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  margin: 0.75em 0;
-  padding: 0 0.75em;
-}
-
-.amm-group-summary {
-  cursor: pointer;
+.amm-tab-bar {
   display: flex;
-  align-items: baseline;
-  gap: 0.6em;
-  padding: 0.6em 0;
-}
-
-.amm-group-title {
-  font-weight: var(--font-semibold);
-}
-
-.amm-group-path {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.amm-group-body {
+  flex-wrap: wrap;
+  gap: 0.25em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 1em;
   padding-bottom: 0.5em;
+}
+
+.amm-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  padding: 0.3em 0.8em;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.amm-tab-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.amm-tab-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.amm-tab-add {
+  background: transparent;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 0.3em 0.7em;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.amm-tab-add:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+}
+
+.amm-tab-content {
+  min-height: 2em;
 }
 
 .amm-field-source {

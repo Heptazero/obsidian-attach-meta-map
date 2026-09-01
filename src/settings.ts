@@ -28,8 +28,12 @@ function confirmModal(app: App, message: string): Promise<boolean> {
 
 const KIND_ORDER: SourceKind[] = ['vault', 'pdf', 'lookup'];
 
+/** 'general' | 'mapping' | a group's id. */
+type TabId = string;
+
 export class AttMetaMapSettingTab extends PluginSettingTab {
-  private expanded = new Set<string>();
+  private activeTab: TabId = 'general';
+  private tabButtons = new Map<TabId, HTMLButtonElement>();
 
   constructor(app: App, private plugin: AttMetaMapPlugin) {
     super(app, plugin);
@@ -41,9 +45,70 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     containerEl.addClass('amm-settings');
     this.plugin.registry.invalidate();
 
-    this.renderGeneral(containerEl);
-    this.renderMapping(containerEl);
-    this.renderGroups(containerEl);
+    this.renderTabBar(containerEl);
+    const content = containerEl.createEl('div', { cls: 'amm-tab-content' });
+
+    if (this.activeTab === 'general') {
+      this.renderGeneral(content);
+    } else if (this.activeTab === 'mapping') {
+      this.renderMapping(content);
+    } else {
+      const group = this.plugin.settings.groups.find(g => g.id === this.activeTab);
+      if (group) this.renderGroup(content, group);
+      else { this.activeTab = 'general'; this.renderGeneral(content); }
+    }
+  }
+
+  /** A settings change on the active tab: rebuild but keep the scroll spot. */
+  private redisplay(): void {
+    const top = this.containerEl.scrollTop;
+    this.display();
+    window.requestAnimationFrame(() => { this.containerEl.scrollTop = top; });
+  }
+
+  private switchTab(id: TabId): void {
+    this.activeTab = id;
+    this.display();
+  }
+
+  /** Renaming a group shouldn't rebuild the whole page and drop focus mid-keystroke. */
+  private updateTabLabel(id: TabId, label: string): void {
+    const btn = this.tabButtons.get(id);
+    if (btn) btn.textContent = label;
+  }
+
+  // --- tab bar -------------------------------------------------------------
+
+  private renderTabBar(containerEl: HTMLElement): void {
+    const bar = containerEl.createEl('div', { cls: 'amm-tab-bar' });
+    this.tabButtons.clear();
+
+    const addTab = (id: TabId, label: string): void => {
+      const btn = bar.createEl('button', {
+        text: label,
+        cls: 'amm-tab-btn' + (this.activeTab === id ? ' is-active' : ''),
+      });
+      btn.addEventListener('click', () => this.switchTab(id));
+      this.tabButtons.set(id, btn);
+    };
+
+    addTab('general', t('settings.tabs.general'));
+    addTab('mapping', t('settings.tabs.mapping'));
+    for (const group of this.plugin.settings.groups) {
+      addTab(group.id, group.name || t('settings.groups.newName'));
+    }
+
+    const addBtn = bar.createEl('button', {
+      text: '+',
+      cls: 'amm-tab-add',
+      attr: { 'aria-label': t('settings.groups.add') },
+    });
+    addBtn.addEventListener('click', () => { void (async () => {
+      const group = createGroup({ name: t('settings.groups.newName') });
+      this.plugin.settings.groups.push(group);
+      await this.plugin.saveSettings();
+      this.switchTab(group.id);
+    })(); });
   }
 
   // --- general -----------------------------------------------------------
@@ -63,7 +128,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           this.plugin.settings.language = value as UiLanguage;
           await this.plugin.saveSettings();
           await this.plugin.applyLanguage();
-          this.display();
+          this.redisplay();
         }));
 
     const detected = this.plugin.registry.detectedFolders();
@@ -127,49 +192,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
   // --- groups ------------------------------------------------------------
 
-  private renderGroups(containerEl: HTMLElement): void {
-    new Setting(containerEl)
-      .setName(t('settings.sections.groups'))
-      .setDesc(t('settings.groups.desc'))
-      .setHeading()
-      .addButton(btn => btn
-        .setButtonText(t('settings.groups.add'))
-        .setCta()
-        .onClick(() => { void (async () => {
-          const group = createGroup({ name: t('settings.groups.newName') });
-          this.plugin.settings.groups.push(group);
-          this.expanded.add(group.id);
-          await this.plugin.saveSettings();
-          this.display();
-        })(); }));
-
-    if (this.plugin.settings.groups.length === 0) {
-      containerEl.createEl('p', { text: t('settings.groups.empty') });
-      return;
-    }
-
-    for (const group of this.plugin.settings.groups) {
-      this.renderGroup(containerEl, group);
-    }
-  }
-
-  private renderGroup(containerEl: HTMLElement, group: MappingGroup): void {
-    const card = containerEl.createEl('details', { cls: 'amm-group' });
-    card.open = this.expanded.has(group.id);
-    card.addEventListener('toggle', () => {
-      if (card.open) this.expanded.add(group.id);
-      else this.expanded.delete(group.id);
-    });
-
-    const summary = card.createEl('summary', { cls: 'amm-group-summary' });
-    summary.createEl('span', { text: group.name || t('settings.groups.newName'), cls: 'amm-group-title' });
-    summary.createEl('span', {
-      text: `${group.attachmentsFolder || '?'} → ${group.notesFolder || '?'}`,
-      cls: 'amm-group-path',
-    });
-
-    const body = card.createEl('div', { cls: 'amm-group-body' });
-
+  private renderGroup(body: HTMLElement, group: MappingGroup): void {
     new Setting(body)
       .setName(t('settings.group.name'))
       .addText(text => text
@@ -177,6 +200,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .onChange(async value => {
           group.name = value;
           await this.plugin.saveSettings();
+          this.updateTabLabel(group.id, value || t('settings.groups.newName'));
         }))
       .addExtraButton(btn => btn
         .setIcon('trash')
@@ -186,7 +210,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           if (!ok) return;
           this.plugin.settings.groups = this.plugin.settings.groups.filter(g => g.id !== group.id);
           await this.plugin.saveSettings();
-          this.display();
+          this.switchTab('general');
         })(); }));
 
     new Setting(body)
@@ -199,7 +223,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .onChange(async value => {
           group.layout = value as MappingGroup['layout'];
           await this.plugin.saveSettings();
-          this.display();
+          this.redisplay();
         }));
 
     if (group.layout === 'folder') {

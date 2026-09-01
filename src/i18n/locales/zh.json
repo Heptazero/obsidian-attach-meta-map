@@ -52,6 +52,10 @@
     }
   },
   "settings": {
+    "tabs": {
+      "general": "通用",
+      "mapping": "字段映射"
+    },
     "sections": {
       "general": "通用",
       "mapping": "字段映射（全局只有这一份）",
