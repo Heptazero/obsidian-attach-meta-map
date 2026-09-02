@@ -31,6 +31,25 @@ export function appendSourceLink(value: unknown, link: string): string | string[
   return [...existing, link];
 }
 
+/** Remove selected relation targets while preserving every unselected source entry. */
+export function removeSourceLinks(value: unknown, targets: string[]): string | string[] | undefined {
+  const selected = new Set(targets.map(target => target.trim()).filter(Boolean));
+  if (selected.size === 0) {
+    return Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === 'string')
+      : typeof value === 'string' ? value : undefined;
+  }
+
+  const entries = (Array.isArray(value) ? value : [value])
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+  const remaining = entries.filter(entry =>
+    !sourceLinkTargets(entry).some(target => selected.has(target)),
+  );
+
+  if (remaining.length === 0) return undefined;
+  return remaining.length === 1 ? remaining[0] : remaining;
+}
+
 /** Comma/semicolon/newline separated prefixes; longest wins when they overlap. */
 export function auxiliaryPrefixes(value: string): string[] {
   return [...new Set(value.split(/[,，;；\n]+/).map(part => part.trim()).filter(Boolean))]

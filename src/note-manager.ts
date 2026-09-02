@@ -2,7 +2,7 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  attachmentCandidates, cleanFolder, folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
+  cleanFolder, folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
   normalizeForMatch, notePathCandidates, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
@@ -14,7 +14,7 @@ import {
 } from './pdf-extractor';
 import { t } from './i18n/i18n';
 import {
-  appendSourceLink, SOURCE_PROPERTY, sourceLinkTargets, stripAuxiliaryPrefix,
+  appendSourceLink, removeSourceLinks, SOURCE_PROPERTY, sourceLinkTargets, stripAuxiliaryPrefix,
 } from './resource-links';
 
 const toDate = (ms: number): string => new Date(ms).toISOString().split('T')[0];
@@ -30,6 +30,12 @@ export interface CreatePlan {
   mode: 'create' | 'auxiliary' | 'repair-source';
   changes: CreateChange[];
   note?: TFile;
+}
+
+export interface UnbindContext {
+  note: TFile;
+  targets: string[];
+  preselected: string[];
 }
 
 export class NoteManager {
@@ -81,6 +87,19 @@ export class NoteManager {
     return this.filesFromProperty(note, SOURCE_PROPERTY);
   }
 
+  sourceTargets(note: TFile): string[] {
+    const frontmatter = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    return sourceLinkTargets(frontmatter?.[SOURCE_PROPERTY]);
+  }
+
+  private sourceTargetsForAttachment(note: TFile, attachmentPath: string): string[] {
+    const normalized = normalizePath(attachmentPath);
+    return this.sourceTargets(note).filter(target => {
+      const file = this.app.metadataCache.getFirstLinkpathDest(target, note.path);
+      return Boolean(file && normalizePath(file.path) === normalized);
+    });
+  }
+
   /** Canonical source first, followed by old configurable/attachment fields. */
   private linkedResourceFiles(note: TFile): TFile[] {
     const properties = [SOURCE_PROPERTY, this.propertyOf('link'), 'attachment']
@@ -128,47 +147,9 @@ export class NoteManager {
     return null;
   }
 
-  /**
-   * Tries the group's current layout first, then the other layout as a
-   * fallback — so an item folded in the past (or left as a sidecar) is still
-   * recognized after the group's layout setting changes, and existing items
-   * are never mistaken for "not yet handled".
-   */
+  /** An existing relation is valid only when the note's source resolves to the resource. */
   findNote(group: MappingGroup, attachmentPath: string): TFile | null {
-    const linked = this.findNoteBySourceInGroup(group, attachmentPath);
-    if (linked) return linked;
-
-    // Already folded: the attachment no longer sits under attachmentsFolder,
-    // so recomputing candidates from it would use a stale relative path. The
-    // note is simply the markdown sibling in the same folder.
-    if (group.layout === 'folder' && !isInFolder(attachmentPath, group.attachmentsFolder) &&
-        isInFolder(attachmentPath, group.notesFolder)) {
-      const attachment = this.app.vault.getFileByPath(normalizePath(attachmentPath));
-      for (const sibling of attachment?.parent?.children ?? []) {
-        if (sibling instanceof TFile && sibling.extension === 'md') return sibling;
-      }
-      return null;
-    }
-
-    const tryPaths = (paths: string[]): TFile | null => {
-      for (const candidate of paths) {
-        const file = this.app.vault.getFileByPath(normalizePath(candidate));
-        if (!file) continue;
-        if (this.notePointsAt(file, group, attachmentPath) !== 'no') return file;
-      }
-      return null;
-    };
-
-    const sidecar = notePathCandidates(group, attachmentPath);
-    const folder = folderItemCandidates(group, attachmentPath);
-    const sidecarPaths = [sidecar.primary, sidecar.fallback];
-    const folderPaths = [folder.primary.notePath, folder.fallback.notePath];
-
-    const [firstPaths, secondPaths] = group.layout === 'folder'
-      ? [folderPaths, sidecarPaths]
-      : [sidecarPaths, folderPaths];
-
-    return tryPaths(firstPaths) ?? tryPaths(secondPaths);
+    return this.findNoteBySourceInGroup(group, attachmentPath);
   }
 
   targetNotePath(group: MappingGroup, attachmentPath: string): string {
@@ -180,40 +161,37 @@ export class NoteManager {
   }
 
   findAttachment(group: MappingGroup, note: TFile): TFile | null {
-    const fm = this.app.metadataCache.getFileCache(note)?.frontmatter;
+    void group;
+    return this.sourceFiles(note)[0] ?? null;
+  }
 
-    const source = this.sourceFiles(note)[0];
-    if (source) return source;
-
-    const pathProp = this.propertyOf('path');
-    const recorded: unknown = pathProp ? fm?.[pathProp] : undefined;
-    if (typeof recorded === 'string' && recorded.trim()) {
-      const direct = this.app.vault.getFileByPath(normalizePath(recorded.trim()));
-      if (direct) return direct;
+  resolveUnbindContext(file: TFile, groups: MappingGroup[]): UnbindContext | null {
+    if (file.extension === 'md') {
+      const targets = this.sourceTargets(file);
+      if (targets.length === 0) return null;
+      return { note: file, targets, preselected: targets.length === 1 ? targets : [] };
     }
 
-    const linkProp = this.propertyOf('link');
-    const legacyLink = linkProp && linkProp !== SOURCE_PROPERTY
-      ? this.filesFromProperty(note, linkProp)[0]
-      : this.filesFromProperty(note, 'attachment')[0];
-    if (legacyLink) return legacyLink;
+    const linked = this.findNoteBySource(groups, file.path);
+    if (!linked) return null;
+    const targets = this.sourceTargets(linked.note);
+    const preselected = this.sourceTargetsForAttachment(linked.note, file.path);
+    if (preselected.length === 0) return null;
+    return { note: linked.note, targets, preselected };
+  }
 
-    for (const candidate of attachmentCandidates(group, note.path)) {
-      const file = this.app.vault.getFileByPath(normalizePath(candidate));
-      if (file) return file;
-    }
+  async unbindSources(note: TFile, targets: string[]): Promise<number> {
+    const selected = new Set(targets);
+    const before = this.sourceTargets(note);
+    const removed = before.filter(target => selected.has(target)).length;
+    if (removed === 0) return 0;
 
-    // Folder layout: the attachment is a sibling with no fixed name relation
-    // to the note, so the only way to find it is to look at what's actually
-    // sitting next to the note.
-    const extensions = group.watchedExtensions.map(ext => ext.slice(1).toLowerCase());
-    for (const sibling of note.parent?.children ?? []) {
-      if (sibling instanceof TFile && sibling.path !== note.path &&
-          extensions.includes(sibling.extension.toLowerCase())) {
-        return sibling;
-      }
-    }
-    return null;
+    await this.app.fileManager.processFrontMatter(note, (frontmatter: Record<string, unknown>) => {
+      const remaining = removeSourceLinks(frontmatter[SOURCE_PROPERTY], targets);
+      if (remaining === undefined) delete frontmatter[SOURCE_PROPERTY];
+      else frontmatter[SOURCE_PROPERTY] = remaining;
+    });
+    return removed;
   }
 
   private notePointsAt(
@@ -352,9 +330,9 @@ export class NoteManager {
     if (group.layout === 'folder' && isFolderItemPath(group, attachment.path)) {
       const note = this.folderIndexNote(attachment);
       if (note && group.createNoteFile && !this.noteReferences(note, attachment.path)) {
-        await this.appendSource(note, group, attachment);
+        new Notice(t('notices.sourceRepairRequired', { note: note.basename }));
       }
-      return note;
+      return note && this.noteReferences(note, attachment.path) ? note : null;
     }
 
     if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) {

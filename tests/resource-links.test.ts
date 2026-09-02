@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  appendSourceLink, auxiliaryPrefixes, sourceLinkTargets, stripAuxiliaryPrefix,
+  appendSourceLink, auxiliaryPrefixes, removeSourceLinks, sourceLinkTargets, stripAuxiliaryPrefix,
 } from '../src/resource-links';
 
 describe('source relation', () => {
@@ -15,6 +15,14 @@ describe('source relation', () => {
       .toEqual(['[[paper-en.pdf]]', '[[paper-zh.pdf]]']);
     expect(appendSourceLink(['[[paper-en.pdf]]'], '[[paper-en.pdf]]'))
       .toEqual(['[[paper-en.pdf]]']);
+  });
+
+  it('removes only selected relations and collapses one remaining source', () => {
+    expect(removeSourceLinks(
+      ['[[paper-en.pdf]]', '[[paper-zh.pdf]]'], ['paper-en.pdf'],
+    )).toBe('[[paper-zh.pdf]]');
+    expect(removeSourceLinks('[[paper-en.pdf]]', ['paper-en.pdf'])).toBeUndefined();
+    expect(removeSourceLinks('[[paper-en.pdf]]', ['other.pdf'])).toBe('[[paper-en.pdf]]');
   });
 });
 

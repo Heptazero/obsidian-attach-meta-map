@@ -7,6 +7,7 @@
   "commands": {
     "openPair": "成对打开：分屏左右显示，附件在左、笔记在右（没有就创建）",
     "refreshMetadata": "重新抽取元数据（逐行对比选择）",
+    "unbindSource": "解绑当前资源",
     "backfill": "给所有组补齐缺失的笔记"
   },
   "notices": {
@@ -20,8 +21,15 @@
     "noProperties": "「${note}」没有 frontmatter 属性，模板也没有字段，没有可对比的东西。",
     "nothingApplied": "没有改动。",
     "applied": "更新了 ${count} 个属性。",
+    "unbound": "已解除 ${count} 个 source 关系。",
+    "sourceRepairRequired": "找到候选笔记「${note}」，但它没有对应的 source。请通过批量补齐预览并确认绑定。",
     "templateMissing": "找不到模板「${path}」（组：${group}），本次用内置字段。",
     "templaterSkipped": "跳过了模板里的 ${count} 段 Templater 代码（本插件不执行它）。"
+  },
+  "unbind": {
+    "title": "解绑资源",
+    "subtitle": "选择要从「${note}」的 source 中移除的资源。只修改 source，不改标题、正文或文件。",
+    "confirm": "确认解绑"
   },
   "backfill": {
     "nothing": "${group}：没有找到受监听的附件。",
@@ -111,7 +119,7 @@
         "folder": "文件夹（新建文件夹，把附件搬进去和笔记放一起）",
         "desc": {
           "sidecar": "附件留在附件文件夹里，笔记建在笔记文件夹的镜像路径下，两者靠 frontmatter 链接互相认识。",
-          "folder": "新建一个和笔记同名的文件夹（在笔记文件夹下），把附件搬进去，笔记也建在里面——整体存整体删。附件一旦被搬进文件夹就离开了附件文件夹，插件不再监听它后续的改动，交给 Obsidian 自己的链接更新机制。已经存在的附件不会被这个设置追溯影响，只对新出现的附件生效。"
+          "folder": "新建一个和笔记同名的文件夹（在笔记文件夹下），把附件搬进去，笔记也建在里面。已有配对只认 source；删除资源不会删除笔记。"
         }
       },
       "createNoteFile": {

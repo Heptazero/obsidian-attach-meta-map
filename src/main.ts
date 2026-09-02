@@ -7,6 +7,7 @@ import { BackfillManager } from './backfill';
 import { UpgradeManager } from './upgrade';
 import { PairOpener } from './pair-opener';
 import { RefreshModal, buildDiffRows } from './refresh-modal';
+import { UnbindModal } from './unbind-modal';
 import { AttMetaMapSettingTab } from './settings';
 import { groupForAttachment } from './paths';
 import { initI18n, t } from './i18n/i18n';
@@ -53,6 +54,27 @@ export default class AttMetaMapPlugin extends Plugin {
         if (!file) return false;
         if (checking) return this.pairOpener.resolvePair(file, this.settings.groups) !== null;
         void this.refreshMetadata(file);
+        return true;
+      },
+    });
+
+    this.addCommand({
+      id: 'unbind-source',
+      name: t('commands.unbindSource'),
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
+        const context = this.noteManager.resolveUnbindContext(file, this.settings.groups);
+        if (!context) return false;
+        if (checking) return true;
+
+        new UnbindModal(
+          this.app, context.note, context.targets, context.preselected,
+          async targets => {
+            const count = await this.noteManager.unbindSources(context.note, targets);
+            new Notice(t('notices.unbound', { count }));
+          },
+        ).open();
         return true;
       },
     });

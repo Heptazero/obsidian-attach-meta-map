@@ -78,6 +78,39 @@ describe('source-based resource relation', () => {
     expect(manager.findAttachment(group, note)).toBe(original);
   });
 
+  it('never infers a relation merely because a note and resource share a folder', () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const attachment = makeFile('Library/Paper/unrelated.pdf');
+    const folder = { path: 'Library/Paper', name: 'Paper', children: [note, attachment] };
+    Object.assign(note, { parent: folder });
+    Object.assign(attachment, { parent: folder });
+    const { manager } = harness([note, attachment], { [note.path]: { title: 'Original' } });
+    const group = createGroup({ layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Inbox' });
+
+    expect(manager.findNote(group, attachment.path)).toBeNull();
+    expect(manager.findAttachment(group, note)).toBeNull();
+  });
+
+  it('unbinds selected source entries without touching other properties', async () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const original = makeFile('Library/Paper/paper-en.pdf');
+    const translation = makeFile('Library/Paper/paper-zh.pdf');
+    const fm = { [note.path]: {
+      source: ['[[paper-en.pdf]]', '[[paper-zh.pdf]]'], title: 'Original title',
+    } };
+    const { manager } = harness([note, original, translation], fm);
+    const group = createGroup({ notesFolder: 'Library', attachmentsFolder: 'Files' });
+
+    expect(manager.resolveUnbindContext(translation, [group])).toMatchObject({
+      note,
+      targets: ['paper-en.pdf', 'paper-zh.pdf'],
+      preselected: ['paper-zh.pdf'],
+    });
+
+    expect(await manager.unbindSources(note, ['paper-zh.pdf'])).toBe(1);
+    expect(fm[note.path]).toEqual({ source: '[[paper-en.pdf]]', title: 'Original title' });
+  });
+
   it('folds several prefixed files into one folder and appends each to source', async () => {
     const note = makeFile('Library/Paper/Paper.md');
     const folder = { path: 'Library/Paper', children: [note] };
