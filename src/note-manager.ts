@@ -38,6 +38,16 @@ export interface UnbindContext {
   preselected: string[];
 }
 
+export interface SourceRelation {
+  target: string;
+  file: TFile | null;
+}
+
+export interface RelationContext {
+  note: TFile;
+  relations: SourceRelation[];
+}
+
 export class NoteManager {
   private pdfExtractor: PdfMetadataExtractor;
 
@@ -90,6 +100,13 @@ export class NoteManager {
   sourceTargets(note: TFile): string[] {
     const frontmatter = this.app.metadataCache.getFileCache(note)?.frontmatter;
     return sourceLinkTargets(frontmatter?.[SOURCE_PROPERTY]);
+  }
+
+  sourceRelations(note: TFile): SourceRelation[] {
+    return this.sourceTargets(note).map(target => ({
+      target,
+      file: this.app.metadataCache.getFirstLinkpathDest(target, note.path),
+    }));
   }
 
   private sourceTargetsForAttachment(note: TFile, attachmentPath: string): string[] {
@@ -178,6 +195,15 @@ export class NoteManager {
     const preselected = this.sourceTargetsForAttachment(linked.note, file.path);
     if (preselected.length === 0) return null;
     return { note: linked.note, targets, preselected };
+  }
+
+  resolveRelationContext(file: TFile, groups: MappingGroup[]): RelationContext | null {
+    const note = file.extension === 'md'
+      ? file
+      : this.findNoteBySource(groups, file.path)?.note;
+    if (!note) return null;
+    const relations = this.sourceRelations(note);
+    return relations.length > 0 ? { note, relations } : null;
   }
 
   async unbindSources(note: TFile, targets: string[]): Promise<number> {

@@ -111,6 +111,25 @@ describe('source-based resource relation', () => {
     expect(fm[note.path]).toEqual({ source: '[[paper-en.pdf]]', title: 'Original title' });
   });
 
+  it('lists resolved and missing source relations for the active note panel', () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const original = makeFile('Library/Paper/paper-en.pdf');
+    const fm = { [note.path]: {
+      source: ['[[paper-en.pdf]]', '[[missing-translation.pdf]]'],
+    } };
+    const { manager } = harness([note, original], fm);
+    const group = createGroup({ notesFolder: 'Library', attachmentsFolder: 'Files' });
+
+    expect(manager.resolveRelationContext(note, [group])).toEqual({
+      note,
+      relations: [
+        { target: 'paper-en.pdf', file: original },
+        { target: 'missing-translation.pdf', file: null },
+      ],
+    });
+    expect(manager.resolveRelationContext(original, [group])?.note).toBe(note);
+  });
+
   it('folds several prefixed files into one folder and appends each to source', async () => {
     const note = makeFile('Library/Paper/Paper.md');
     const folder = { path: 'Library/Paper', children: [note] };

@@ -8,6 +8,7 @@
     "openPair": "Open pair: side by side, attachment left, note right (created if missing)",
     "refreshMetadata": "Refresh metadata (compare and choose)",
     "unbindSource": "Unbind current resource",
+    "openRelationsPanel": "Open resource relations panel",
     "backfill": "Create missing notes for all groups"
   },
   "notices": {
@@ -30,6 +31,14 @@
     "title": "Unbind resource",
     "subtitle": "Select the resources to remove from the source of \"${note}\". This changes only source, never the title, body, or files.",
     "confirm": "Confirm unbind"
+  },
+  "relations": {
+    "title": "Resource relations",
+    "currentNote": "Current note",
+    "empty": "Open a note with source links or one of its bound resources to see relations here.",
+    "missing": "File is missing or the link cannot be resolved",
+    "unbind": "Unbind this resource",
+    "openFailed": "Could not open this resource."
   },
   "backfill": {
     "nothing": "${group}: no watched attachments found.",

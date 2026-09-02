@@ -11,6 +11,7 @@ import { UnbindModal } from './unbind-modal';
 import { AttMetaMapSettingTab } from './settings';
 import { groupForAttachment } from './paths';
 import { initI18n, t } from './i18n/i18n';
+import { RESOURCE_RELATIONS_VIEW, ResourceRelationsView } from './relations-view';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -29,6 +30,17 @@ export default class AttMetaMapPlugin extends Plugin {
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
+
+    this.registerView(RESOURCE_RELATIONS_VIEW, leaf => new ResourceRelationsView(
+      leaf,
+      this.noteManager,
+      () => this.settings.groups,
+      (context, target) => this.openUnbind(
+        context.note,
+        context.relations.map(relation => relation.target),
+        [target],
+      ),
+    ));
 
     this.app.workspace.onLayoutReady(() => {
       this.registerVaultEvents();
@@ -68,15 +80,18 @@ export default class AttMetaMapPlugin extends Plugin {
         if (!context) return false;
         if (checking) return true;
 
-        new UnbindModal(
-          this.app, context.note, context.targets, context.preselected,
-          async targets => {
-            const count = await this.noteManager.unbindSources(context.note, targets);
-            new Notice(t('notices.unbound', { count }));
-          },
-        ).open();
+        this.openUnbind(context.note, context.targets, context.preselected);
         return true;
       },
+    });
+
+    this.addCommand({
+      id: 'open-relations-panel',
+      name: t('commands.openRelationsPanel'),
+      callback: () => { void this.openRelationsPanel(); },
+    });
+    this.addRibbonIcon('links', t('commands.openRelationsPanel'), () => {
+      void this.openRelationsPanel();
     });
 
     this.addCommand({
@@ -90,6 +105,26 @@ export default class AttMetaMapPlugin extends Plugin {
 
   async applyLanguage(): Promise<void> {
     await initI18n(this.settings.language);
+  }
+
+  private openUnbind(note: TFile, targets: string[], preselected: string[]): void {
+    new UnbindModal(
+      this.app, note, targets, preselected,
+      async selected => {
+        const count = await this.noteManager.unbindSources(note, selected);
+        new Notice(t('notices.unbound', { count }));
+      },
+    ).open();
+  }
+
+  private async openRelationsPanel(): Promise<void> {
+    const existing = this.app.workspace.getLeavesOfType(RESOURCE_RELATIONS_VIEW);
+    const leaf = existing[0] ?? this.app.workspace.getRightLeaf(false);
+    if (!leaf) return;
+    if (existing.length === 0) {
+      await leaf.setViewState({ type: RESOURCE_RELATIONS_VIEW, active: true });
+    }
+    await this.app.workspace.revealLeaf(leaf);
   }
 
   /** Re-extract, then let the user pick a side per property. */

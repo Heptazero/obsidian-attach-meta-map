@@ -198,3 +198,86 @@
   margin: -0.4em 0 0.8em;
   word-break: break-word;
 }
+
+.amm-relations-view {
+  padding: 0.75em;
+}
+
+.amm-relations-empty {
+  color: var(--text-muted);
+  padding: 0.75em 0;
+}
+
+.amm-relations-heading {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0.75em;
+}
+
+.amm-relations-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-bottom: 0.2em;
+}
+
+.amm-relations-note,
+.amm-relation-resource {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--text-accent);
+  cursor: pointer;
+  height: auto;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.amm-relations-note {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+}
+
+.amm-relations-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.amm-relation-row {
+  align-items: center;
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex;
+  gap: 0.5em;
+  min-width: 0;
+  padding: 0.65em 0;
+}
+
+.amm-relation-identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.amm-relation-resource {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.amm-relation-resource:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.amm-relation-path {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  margin-top: 0.15em;
+  overflow-wrap: anywhere;
+}
+
+.amm-relation-path.is-missing {
+  color: var(--text-error);
+}
+
+.amm-relation-unlink {
+  flex: 0 0 auto;
+}

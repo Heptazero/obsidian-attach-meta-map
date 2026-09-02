@@ -8,6 +8,7 @@
     "openPair": "成对打开：分屏左右显示，附件在左、笔记在右（没有就创建）",
     "refreshMetadata": "重新抽取元数据（逐行对比选择）",
     "unbindSource": "解绑当前资源",
+    "openRelationsPanel": "打开资源关系面板",
     "backfill": "给所有组补齐缺失的笔记"
   },
   "notices": {
@@ -30,6 +31,14 @@
     "title": "解绑资源",
     "subtitle": "选择要从「${note}」的 source 中移除的资源。只修改 source，不改标题、正文或文件。",
     "confirm": "确认解绑"
+  },
+  "relations": {
+    "title": "资源关系",
+    "currentNote": "当前笔记",
+    "empty": "打开带 source 的笔记或已绑定资源后，这里会列出关系。",
+    "missing": "文件不存在或链接无法解析",
+    "unbind": "解绑这个资源",
+    "openFailed": "无法打开这个资源。"
   },
   "backfill": {
     "nothing": "${group}：没有找到受监听的附件。",
