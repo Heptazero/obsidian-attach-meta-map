@@ -3,6 +3,7 @@ import {
   SourceValues,
 } from './types';
 import { renderTemplate, templateVars } from './paths';
+import { createAttachmentRule } from './attachment-rules';
 
 /**
  * `[[{{basename}}]]` next to a note named `{{basename}}` points the link at
@@ -99,6 +100,7 @@ export function defaultSettings(): AttMetaMapSettings {
     mapping: defaultMapping(),
     extraTemplateFolders: [],
     groups: [createGroup({ name: 'Attachments' })],
+    attachmentRules: [],
   };
 }
 
@@ -131,6 +133,9 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       mapping,
       extraTemplateFolders: candidate.extraTemplateFolders ?? [],
       groups: groups.length ? groups : defaultSettings().groups,
+      attachmentRules: Array.isArray(candidate.attachmentRules)
+        ? candidate.attachmentRules.map(rule => createAttachmentRule(rule))
+        : [],
     };
   }
 

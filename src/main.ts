@@ -1,4 +1,4 @@
-import { Notice, Plugin, TAbstractFile, TFile } from 'obsidian';
+import { Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup } from './types';
 import { normalizeSettings } from './sources';
 import { NoteManager } from './note-manager';
@@ -12,6 +12,7 @@ import { AttMetaMapSettingTab } from './settings';
 import { groupForAttachment } from './paths';
 import { initI18n, t } from './i18n/i18n';
 import { RESOURCE_RELATIONS_VIEW, ResourceRelationsView } from './relations-view';
+import { AttachmentOrganizer } from './attachment-organizer';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -20,6 +21,7 @@ export default class AttMetaMapPlugin extends Plugin {
   backfillManager: BackfillManager;
   upgradeManager: UpgradeManager;
   pairOpener: PairOpener;
+  attachmentOrganizer: AttachmentOrganizer;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -30,6 +32,7 @@ export default class AttMetaMapPlugin extends Plugin {
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
+    this.attachmentOrganizer = new AttachmentOrganizer(this.app, () => this.settings);
 
     this.registerView(RESOURCE_RELATIONS_VIEW, leaf => new ResourceRelationsView(
       leaf,
@@ -100,6 +103,19 @@ export default class AttMetaMapPlugin extends Plugin {
       callback: () => { void this.backfillManager.runForAll(this.settings.groups); },
     });
 
+    this.addCommand({
+      id: 'organize-active-note-attachments',
+      name: t('commands.organizeActiveNoteAttachments'),
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) this.attachmentOrganizer.organizeNote(file);
+        return true;
+      },
+    });
+
+    this.registerOrganizerMenus();
+
     this.addSettingTab(new AttMetaMapSettingTab(this.app, this));
   }
 
@@ -125,6 +141,33 @@ export default class AttMetaMapPlugin extends Plugin {
       await leaf.setViewState({ type: RESOURCE_RELATIONS_VIEW, active: true });
     }
     await this.app.workspace.revealLeaf(leaf);
+  }
+
+  private registerOrganizerMenus(): void {
+    this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+      if (file instanceof TFile) {
+        if (file.extension === 'md') {
+          menu.addItem(item => item
+            .setTitle(t('commands.organizeNoteAttachments'))
+            .setIcon('folder-input')
+            .onClick(() => this.attachmentOrganizer.organizeNote(file)));
+        } else if (file.extension !== 'canvas') {
+          menu.addItem(item => item
+            .setTitle(t('commands.organizeAttachment'))
+            .setIcon('folder-input')
+            .onClick(() => this.attachmentOrganizer.organizeAttachment(file)));
+        }
+      } else if (file instanceof TFolder) {
+        menu.addItem(item => item
+          .setTitle(t('commands.organizeFolder'))
+          .setIcon('folder-input')
+          .onClick(() => this.attachmentOrganizer.organizeFolder(file, false)));
+        menu.addItem(item => item
+          .setTitle(t('commands.organizeFolderRecursive'))
+          .setIcon('folders')
+          .onClick(() => this.attachmentOrganizer.organizeFolder(file, true)));
+      }
+    }));
   }
 
   /** Re-extract, then let the user pick a side per property. */
@@ -196,7 +239,7 @@ export default class AttMetaMapPlugin extends Plugin {
       // Folder-layout createNote moves the attachment itself, which fires
       // this same event — ignore it, or the handler below would see the
       // resource moving within its collection and disturb the note just created.
-      if (this.noteManager.isPendingMove(oldPath)) return;
+      if (this.noteManager.isPendingMove(oldPath) || this.attachmentOrganizer.isPendingMove(oldPath)) return;
       const oldExt = (oldPath.split('/').pop() ?? '').split('.').pop() ?? '';
       const before = groupForAttachment(this.settings.groups, oldPath, oldExt);
       const after = this.groupFor(file);

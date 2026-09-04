@@ -88,6 +88,26 @@ export type MappingGroupInput = Partial<MappingGroupCommon> & {
 
 export type UiLanguage = 'auto' | 'zh' | 'en';
 
+export interface AttachmentRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  /** Empty means any unmanaged source folder. */
+  sourceFolders: string[];
+  /** Source-folder matches include descendants when true. */
+  includeSubfolders: boolean;
+  excludedFolders: string[];
+  /** Lowercase extensions with a leading dot. Empty means any extension. */
+  extensions: string[];
+  excludedExtensions: string[];
+  /** Empty keeps the attachment in its current folder. */
+  destinationFolder: string;
+  /** Extension is preserved. Supports {{basename}}, {{parent}}, {{note}}, {{index}}. */
+  nameTemplate: string;
+}
+
+export type AttachmentRuleInput = Partial<AttachmentRule>;
+
 export interface AttMetaMapSettings {
   version: number;
   language: UiLanguage;
@@ -96,9 +116,11 @@ export interface AttMetaMapSettings {
   /** Extra folders to scan for templates, beyond the ones auto-detected. */
   extraTemplateFolders: string[];
   groups: MappingGroup[];
+  /** Ordered fallback rules for attachments outside every mapping-group root. */
+  attachmentRules: AttachmentRule[];
 }
 
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 /** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {

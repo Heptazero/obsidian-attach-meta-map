@@ -9,7 +9,12 @@
     "refreshMetadata": "重新抽取元数据（逐行对比选择）",
     "unbindSource": "解绑当前资源",
     "openRelationsPanel": "打开资源关系面板",
-    "backfill": "给所有组补齐缺失的笔记"
+    "backfill": "给所有组补齐缺失的笔记",
+    "organizeActiveNoteAttachments": "按规则整理当前笔记的附件",
+    "organizeNoteAttachments": "整理此笔记的附件…",
+    "organizeAttachment": "整理此附件…",
+    "organizeFolder": "整理此文件夹…",
+    "organizeFolderRecursive": "整理此文件夹及子文件夹…"
   },
   "notices": {
     "noGroup": "「${file}」不属于任何映射组。",
@@ -38,6 +43,17 @@
     "missing": "文件不存在或链接无法解析",
     "unbind": "解绑这个资源",
     "openFailed": "无法打开这个资源。"
+  },
+  "organizer": {
+    "previewTitle": "确认附件整理",
+    "previewSubtitle": "${changes} 个移动或重命名；${managed} 个由映射组接管，${unmatched} 个未匹配。",
+    "confirm": "确认并执行",
+    "nothingFound": "没有找到附件。",
+    "onlyManaged": "${count} 个附件由映射组接管，通用规则未处理。",
+    "nothingToChange": "没有匹配的改动。",
+    "changedSincePreview": "文件状态已变化，本次未执行。",
+    "complete": "已整理 ${count} 个附件。",
+    "failed": "整理失败；已尝试恢复原路径。"
   },
   "backfill": {
     "nothing": "${group}：没有找到受监听的附件。",
@@ -76,7 +92,8 @@
   "settings": {
     "tabs": {
       "general": "通用",
-      "mapping": "字段映射"
+      "mapping": "字段映射",
+      "rules": "附件规则"
     },
     "sections": {
       "general": "通用",
@@ -97,6 +114,34 @@
     "mapping": {
       "desc": "来源 → 属性。留空不写；source 固定。支持模糊匹配。",
       "unmapped": "不映射"
+    },
+    "rules": {
+      "title": "通用附件规则",
+      "desc": "只处理映射组目录之外的附件；从上到下取第一条匹配。",
+      "empty": "暂无通用规则。",
+      "add": "新增规则",
+      "defaultName": "规则 ${index}",
+      "moveUp": "提高优先级",
+      "moveDown": "降低优先级",
+      "remove": "删除规则",
+      "removeConfirm": "删除规则「${name}」？",
+      "catchAllWarning": "这条规则会匹配所有组外附件，后面的规则不会执行。",
+      "fields": {
+        "name": "规则名",
+        "enabled": "启用",
+        "order": "优先级",
+        "sourceFolders": "原始文件夹",
+        "sourceFoldersDesc": "逗号分隔；留空不限。支持模糊选择。",
+        "includeSubfolders": "包含子文件夹",
+        "excludedFolders": "排除文件夹",
+        "extensions": "后缀",
+        "extensionsDesc": "同一栏是或；不同条件之间是且。留空不限。",
+        "excludedExtensions": "排除后缀",
+        "destinationFolder": "目标文件夹",
+        "destinationFolderDesc": "留空保留原文件夹。",
+        "nameTemplate": "附件文件名",
+        "nameTemplateDesc": "扩展名自动保留。支持 {{basename}}、{{parent}}、{{note}}、{{index}}。"
+      }
     },
     "kinds": {
       "vault": "来自库和文件本身",

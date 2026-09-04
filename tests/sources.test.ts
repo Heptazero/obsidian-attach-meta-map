@@ -193,6 +193,9 @@ describe('current settings shape', () => {
         id: 'g1', name: 'P', layout: 'sidecar', resourceFolder: 'A', noteFolder: 'B',
         templatePath: 'T.md',
       }],
+      attachmentRules: [{
+        id: 'r1', name: 'PDF', extensions: ['PDF'], destinationFolder: '/Papers/',
+      }],
     });
 
     expect(settings.language).toBe('zh');
@@ -200,6 +203,9 @@ describe('current settings shape', () => {
     expect(settings.mapping.pdfAuthor).toBe('author');
     expect(settings.extraTemplateFolders).toEqual(['99_assets/template']);
     expect(settings.groups[0].templatePath).toBe('T.md');
+    expect(settings.attachmentRules[0]).toMatchObject({
+      id: 'r1', name: 'PDF', extensions: ['.pdf'], destinationFolder: 'Papers',
+    });
   });
 
   it('does not interpret retired settings shapes', () => {

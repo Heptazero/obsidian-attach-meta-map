@@ -9,7 +9,12 @@
     "refreshMetadata": "Refresh metadata (compare and choose)",
     "unbindSource": "Unbind current resource",
     "openRelationsPanel": "Open resource relations panel",
-    "backfill": "Create missing notes for all groups"
+    "backfill": "Create missing notes for all groups",
+    "organizeActiveNoteAttachments": "Organize attachments for the active note",
+    "organizeNoteAttachments": "Organize this note's attachments…",
+    "organizeAttachment": "Organize this attachment…",
+    "organizeFolder": "Organize this folder…",
+    "organizeFolderRecursive": "Organize this folder and subfolders…"
   },
   "notices": {
     "noGroup": "\"${file}\" does not belong to any mapping group.",
@@ -38,6 +43,17 @@
     "missing": "File is missing or the link cannot be resolved",
     "unbind": "Unbind this resource",
     "openFailed": "Could not open this resource."
+  },
+  "organizer": {
+    "previewTitle": "Confirm attachment organization",
+    "previewSubtitle": "${changes} move(s) or rename(s); ${managed} owned by mapping groups, ${unmatched} unmatched.",
+    "confirm": "Confirm and apply",
+    "nothingFound": "No attachments found.",
+    "onlyManaged": "${count} attachment(s) are owned by mapping groups; generic rules skipped them.",
+    "nothingToChange": "No matching changes.",
+    "changedSincePreview": "Files changed after preview; nothing was applied.",
+    "complete": "Organized ${count} attachment(s).",
+    "failed": "Organization failed; original paths were restored where possible."
   },
   "backfill": {
     "nothing": "${group}: no watched attachments found.",
@@ -76,7 +92,8 @@
   "settings": {
     "tabs": {
       "general": "General",
-      "mapping": "Field mapping"
+      "mapping": "Field mapping",
+      "rules": "Attachment rules"
     },
     "sections": {
       "general": "General",
@@ -97,6 +114,34 @@
     "mapping": {
       "desc": "Source → property. Empty skips it; source is fixed. Fuzzy matching is supported.",
       "unmapped": "not mapped"
+    },
+    "rules": {
+      "title": "Generic attachment rules",
+      "desc": "Only handles attachments outside mapping-group roots; the first match wins.",
+      "empty": "No generic rules yet.",
+      "add": "Add rule",
+      "defaultName": "Rule ${index}",
+      "moveUp": "Raise priority",
+      "moveDown": "Lower priority",
+      "remove": "Delete rule",
+      "removeConfirm": "Delete the rule \"${name}\"?",
+      "catchAllWarning": "This rule matches every unmanaged attachment; later rules cannot run.",
+      "fields": {
+        "name": "Rule name",
+        "enabled": "Enabled",
+        "order": "Priority",
+        "sourceFolders": "Source folders",
+        "sourceFoldersDesc": "Comma separated; empty means any. Fuzzy suggestions are available.",
+        "includeSubfolders": "Include subfolders",
+        "excludedFolders": "Excluded folders",
+        "extensions": "Extensions",
+        "extensionsDesc": "Values in one field use OR; populated fields use AND. Empty means any.",
+        "excludedExtensions": "Excluded extensions",
+        "destinationFolder": "Destination folder",
+        "destinationFolderDesc": "Empty keeps the current folder.",
+        "nameTemplate": "Attachment filename",
+        "nameTemplateDesc": "The extension is preserved. Supports {{basename}}, {{parent}}, {{note}}, and {{index}}."
+      }
     },
     "kinds": {
       "vault": "From the vault and the file itself",

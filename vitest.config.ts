@@ -14,7 +14,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
-      include: ['src/sources.ts', 'src/paths.ts', 'src/template.ts', 'src/resource-links.ts'],
+      include: [
+        'src/attachment-rules.ts', 'src/sources.ts', 'src/paths.ts',
+        'src/template.ts', 'src/resource-links.ts',
+      ],
       thresholds: {
         lines: 90,
         statements: 90,

@@ -4,6 +4,7 @@ import { SOURCE_DEFS, createGroup, groupCreatesNotes } from './sources';
 import { MappingGroup, SourceKind, UiLanguage } from './types';
 import { FolderSuggest, PropertySuggest, TemplateFileSuggest } from './suggesters';
 import { t } from './i18n/i18n';
+import { AttachmentRuleSettings } from './attachment-rule-settings';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -28,7 +29,7 @@ function confirmModal(app: App, message: string): Promise<boolean> {
 
 const KIND_ORDER: SourceKind[] = ['vault', 'pdf', 'lookup'];
 
-/** 'general' | 'mapping' | a group's id. */
+/** 'general' | 'mapping' | 'rules' | a group's id. */
 type TabId = string;
 
 export class AttMetaMapSettingTab extends PluginSettingTab {
@@ -52,6 +53,8 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       this.renderGeneral(content);
     } else if (this.activeTab === 'mapping') {
       this.renderMapping(content);
+    } else if (this.activeTab === 'rules') {
+      new AttachmentRuleSettings(this.app, this.plugin, () => this.redisplay()).render(content);
     } else {
       const group = this.plugin.settings.groups.find(g => g.id === this.activeTab);
       if (group) this.renderGroup(content, group);
@@ -94,6 +97,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
     addTab('general', t('settings.tabs.general'));
     addTab('mapping', t('settings.tabs.mapping'));
+    addTab('rules', t('settings.tabs.rules'));
     for (const group of this.plugin.settings.groups) {
       addTab(group.id, group.name || t('settings.groups.newName'));
     }

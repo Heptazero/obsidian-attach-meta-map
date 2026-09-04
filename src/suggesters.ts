@@ -13,6 +13,34 @@ function rank(query: string, items: string[], limit = 20): string[] {
     .map(entry => entry.item);
 }
 
+function csvParts(value: string): string[] {
+  return value.split(',').map(part => part.trim()).filter(Boolean);
+}
+
+abstract class CsvSuggest extends AbstractInputSuggest<string> {
+  constructor(
+    app: App,
+    private input: HTMLInputElement,
+    private onPickList: (value: string) => void,
+  ) {
+    super(app, input);
+  }
+
+  protected currentQuery(query: string): string {
+    return query.split(',').pop()?.trim() ?? '';
+  }
+
+  protected choose(value: string): void {
+    const parts = csvParts(this.input.value);
+    if (this.input.value.trim().endsWith(',') || parts.length === 0) parts.push(value);
+    else parts[parts.length - 1] = value;
+    const next = Array.from(new Set(parts)).join(', ');
+    this.setValue(next);
+    this.onPickList(next);
+    this.close();
+  }
+}
+
 /** Fuzzy suggestions for a frontmatter property name. */
 export class PropertySuggest extends AbstractInputSuggest<string> {
   constructor(
@@ -62,6 +90,42 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
     this.setValue(value === '/' ? '' : value);
     this.onPick(value === '/' ? '' : value);
     this.close();
+  }
+}
+
+/** Fuzzy, comma-separated folder selection for attachment rules. */
+export class FolderListSuggest extends CsvSuggest {
+  protected getSuggestions(query: string): string[] {
+    const paths = this.app.vault.getAllFolders(true).map(folder => folder.path || '/');
+    return rank(this.currentQuery(query), paths);
+  }
+
+  renderSuggestion(value: string, el: HTMLElement): void {
+    el.setText(value);
+  }
+
+  selectSuggestion(value: string): void {
+    this.choose(value === '/' ? '' : value);
+  }
+}
+
+/** Fuzzy, comma-separated selection over extensions that currently exist in the vault. */
+export class ExtensionSuggest extends CsvSuggest {
+  protected getSuggestions(query: string): string[] {
+    const extensions = Array.from(new Set(this.app.vault.getFiles()
+      .map(file => file.extension.toLowerCase())
+      .filter(Boolean)
+      .map(extension => `.${extension}`)))
+      .sort((a, b) => a.localeCompare(b));
+    return rank(this.currentQuery(query).replace(/^\./, ''), extensions);
+  }
+
+  renderSuggestion(value: string, el: HTMLElement): void {
+    el.setText(value);
+  }
+
+  selectSuggestion(value: string): void {
+    this.choose(value);
   }
 }
 
