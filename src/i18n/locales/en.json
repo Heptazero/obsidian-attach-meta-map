@@ -44,13 +44,11 @@
     "nothing": "${group}: no watched attachments found.",
     "nothingToChange": "There are no pending changes. Resources with a source relation or an existing item folder are skipped.",
     "previewTitle": "Confirm batch changes",
-    "previewSubtitle": "${items} resource(s), ${changes} filesystem or property change(s). Nothing is moved or written before confirmation.",
+    "previewSubtitle": "${items} resource(s), ${changes} change(s). The tree below shows the result after confirmation; nothing is moved or written before then.",
     "confirm": "Confirm and apply",
-    "columns": { "resource": "Resource", "changes": "Pending changes" },
-    "actions": {
-      "move": "Move: ${from} → ${to}",
-      "createNote": "Create note: ${path}",
-      "updateSource": "Update source: ${notePath} ← ${link}"
+    "legend": {
+      "removed": "− Red: leaves the old location (the file is not deleted)",
+      "added": "+ Green: new location, note, or property"
     },
     "starting": "Applying ${total} confirmed resource change(s)…",
     "progress": "${processed}/${total} — ${created} processed, ${skipped} failed or changed",
@@ -127,8 +125,8 @@
         "sidecar": "Sidecar (attachment stays put, note is separate)",
         "folder": "Folder (a new folder holds the attachment and the note together)",
         "desc": {
-          "sidecar": "The attachment stays in the attachments folder; the note lives in a mirrored path under the notes folder. The two recognize each other through the frontmatter link.",
-          "folder": "A new folder, named like the note, is created under the notes folder; the attachment is moved into it and the note lives beside it. Existing pairs are recognized only through source; deleting a resource never deletes its note."
+          "sidecar": "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
+          "folder": "Resources and notes share one collection folder. Loose files are folded into same-named child folders and the note lives beside them. Existing pairs are recognized only through source; deleting a resource never deletes its note."
         }
       },
       "createNoteFile": {
@@ -140,13 +138,17 @@
         "desc": "Comma separated, e.g. cn_, zh_, slides_. A file is matched by its name after the prefix against an existing note or source resource, moved into the same folder, and appended to the source list. No match leaves it in place. Empty disables this.",
         "placeholder": "For example: cn_, zh_, slides_"
       },
-      "attachmentsFolder": {
-        "name": "Attachments folder",
-        "desc": "Files placed here get a note."
+      "resourceFolder": {
+        "name": "Resource folder",
+        "desc": "Original resources in sidecar mode. Watched files placed here get a corresponding note."
       },
-      "notesFolder": {
-        "name": "Notes folder",
-        "desc": "Where the notes are created. May sit above the attachments folder."
+      "noteFolder": {
+        "name": "Note folder",
+        "desc": "Corresponding notes in sidecar mode."
+      },
+      "collectionFolder": {
+        "name": "Resource collection folder",
+        "desc": "The single root for folder mode. Loose resources, organized child folders, and corresponding notes all live here."
       },
       "extensions": {
         "name": "Watched extensions",
@@ -163,7 +165,7 @@
       },
       "mirror": {
         "name": "Mirror subfolders",
-        "desc": "Recreate the attachment's subfolder tree under the notes folder."
+        "desc": "Preserve the resource's existing subfolder hierarchy."
       },
       "noteName": {
         "name": "Note name",

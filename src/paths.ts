@@ -5,6 +5,16 @@ export function cleanFolder(folder: string): string {
   return folder.replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '').trim();
 }
 
+/** Root that contains resources before any folder-layout folding. */
+export function resourceRoot(group: MappingGroup): string {
+  return cleanFolder(group.layout === 'folder' ? group.collectionFolder : group.resourceFolder);
+}
+
+/** Root that contains index notes. Folder layout deliberately shares the resource root. */
+export function noteRoot(group: MappingGroup): string {
+  return cleanFolder(group.layout === 'folder' ? group.collectionFolder : group.noteFolder);
+}
+
 export function isInFolder(path: string, folder: string): boolean {
   const f = cleanFolder(folder);
   if (!f) return true;
@@ -51,7 +61,7 @@ export function templateVars(attachmentPath: string): Record<string, string> {
 }
 
 /**
- * A group owns an attachment when the file sits under its attachments folder
+ * A group owns an attachment when the file sits under its resource root
  * with a watched extension. The most specific folder wins, so nested groups
  * (70_research/PDF inside 70_research) resolve predictably.
  */
@@ -61,7 +71,7 @@ export function groupForAttachment(
   let best: MappingGroup | null = null;
   let bestLen = -1;
   for (const group of groups) {
-    const folder = cleanFolder(group.attachmentsFolder);
+    const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
     if (!group.watchedExtensions.map(e => e.toLowerCase()).includes('.' + extension.toLowerCase())) continue;
@@ -72,8 +82,8 @@ export function groupForAttachment(
 
 /**
  * Recognizes an attachment that has already been folded (folder layout): it
- * no longer sits under any attachmentsFolder, but its own folder sits under
- * a folder-layout group's notesFolder. Extension is not checked here — an
+ * its own folder sits under a folder-layout group's collection root.
+ * Extension is not checked here — an
  * already-folded item may sit beside its note regardless of which watched
  * extension it has, and the caller (findAttachment / the pair opener)
  * confirms the pairing by content, not by this lookup alone.
@@ -83,7 +93,7 @@ export function groupForFoldedAttachment(groups: MappingGroup[], path: string): 
   let bestLen = -1;
   for (const group of groups) {
     if (group.layout !== 'folder') continue;
-    const notes = cleanFolder(group.notesFolder);
+    const notes = noteRoot(group);
     if (!notes) continue;
     if (!isInFolder(path, notes)) continue;
     if (notes.length > bestLen) { best = group; bestLen = notes.length; }
@@ -96,13 +106,13 @@ export function groupForNote(groups: MappingGroup[], path: string): MappingGroup
   let best: MappingGroup | null = null;
   let bestLen = -1;
   for (const group of groups) {
-    const notes = cleanFolder(group.notesFolder);
+    const notes = noteRoot(group);
     if (!notes) continue;
     if (!isInFolder(path, notes)) continue;
-    // A note that lives inside the attachments folder of any group is not a
-    // sidecar note; that folder holds sources, not notes about them.
-    if (groups.some(g => cleanFolder(g.attachmentsFolder) &&
-        isInFolder(path, cleanFolder(g.attachmentsFolder)))) continue;
+    // Only a sidecar resource root excludes notes. Folder-layout collections
+    // intentionally keep the note and resources together.
+    if (groups.some(g => g.layout === 'sidecar' && resourceRoot(g) &&
+        isInFolder(path, resourceRoot(g)))) continue;
     if (notes.length > bestLen) { best = group; bestLen = notes.length; }
   }
   return best;
@@ -149,7 +159,7 @@ export function folderItemNames(group: MappingGroup, attachmentPath: string): st
  * producing `Item/Item/Item.ext`.
  */
 export function isFolderItemPath(group: MappingGroup, attachmentPath: string): boolean {
-  if (!isInFolder(attachmentPath, group.notesFolder)) return false;
+  if (!isInFolder(attachmentPath, noteRoot(group))) return false;
   const parts = cleanFolder(attachmentPath).split('/');
   if (parts.length < 2) return false;
   const parentName = parts[parts.length - 2];
@@ -161,14 +171,14 @@ export function isFolderItemPath(group: MappingGroup, attachmentPath: string): b
 }
 
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
-  const relative = relativeTo(attachmentPath, group.attachmentsFolder);
+  const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
   const subfolder = group.mirrorFolderStructure
     ? relative.split('/').slice(0, -1).join('/')
     : '';
 
   const [safe] = folderItemNames(group, attachmentPath);
-  const notes = cleanFolder(group.notesFolder);
+  const notes = noteRoot(group);
   const dir = [notes, subfolder].filter(Boolean).join('/');
 
   return {
@@ -206,14 +216,14 @@ function buildFolderItem(dir: string, folderName: string, fileName: string): Fol
  * the same way: fall back to the attachment's own file name for the folder.
  */
 export function folderItemCandidates(group: MappingGroup, attachmentPath: string): FolderItemCandidates {
-  const relative = relativeTo(attachmentPath, group.attachmentsFolder);
+  const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
   const subfolder = group.mirrorFolderStructure
     ? relative.split('/').slice(0, -1).join('/')
     : '';
 
   const safe = safeItemName(group, attachmentPath);
-  const notes = cleanFolder(group.notesFolder);
+  const notes = noteRoot(group);
   const dir = [notes, subfolder].filter(Boolean).join('/');
 
   return {
@@ -250,8 +260,8 @@ export function linkFor(group: MappingGroup, attachmentPath: string): string {
  * in priority order — the note name may or may not carry the extension.
  */
 export function attachmentCandidates(group: MappingGroup, notePath: string): string[] {
-  const relative = relativeTo(notePath, group.notesFolder).replace(/\.md$/, '');
-  const attachments = cleanFolder(group.attachmentsFolder);
+  const relative = relativeTo(notePath, noteRoot(group)).replace(/\.md$/, '');
+  const attachments = resourceRoot(group);
   const base = [attachments, relative].filter(Boolean).join('/');
 
   const out: string[] = [];

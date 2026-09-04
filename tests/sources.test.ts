@@ -131,70 +131,67 @@ describe('resolveFields', () => {
   });
 });
 
-describe('settings migration', () => {
+describe('current settings shape', () => {
   it('treats sidecar as note-backed even after folder-only mode was selected', () => {
     expect(groupCreatesNotes(createGroup({ layout: 'sidecar', createNoteFile: false }))).toBe(true);
     expect(groupCreatesNotes(createGroup({ layout: 'folder', createNoteFile: false }))).toBe(false);
     expect(createGroup()).not.toHaveProperty('autoDeleteOnRemove');
   });
 
-  it('turns an Attachments Library config into one group', () => {
+  it('keeps a current sidecar group', () => {
     const settings = normalizeSettings({
-      attachmentsFolder: '70_research/PDF',
-      libraryFolder: '70_research',
-      watchedExtensions: ['.pdf', '.epub'],
-      tagsPropertyName: 'topics',
-    });
-
-    expect(settings.groups).toHaveLength(1);
-    expect(settings.groups[0].attachmentsFolder).toBe('70_research/PDF');
-    expect(settings.groups[0].notesFolder).toBe('70_research');
-    expect(settings.groups[0].name).toBe('PDF');
-    expect(settings.mapping.pdfKeywords).toBe('topics');
-  });
-
-  it('collapses a per-group field table into the global mapping', () => {
-    const settings = normalizeSettings({
-      version: 2,
+      version: 4,
       groups: [{
-        id: 'g1',
-        name: 'Papers',
-        attachmentsFolder: 'A',
-        notesFolder: 'B',
-        fields: {
-          pdfAuthor: { enabled: true, property: 'by' },
-          pdfSubject: { enabled: false, property: 'subject' },
-        },
+        layout: 'sidecar', resourceFolder: '70_research/PDF', noteFolder: '70_research',
+        watchedExtensions: ['.pdf', '.epub'],
       }],
     });
 
-    expect(settings.mapping.pdfAuthor).toBe('by');
-    // Explicitly switched off in v2 -> unmapped now, rather than silently back on.
-    expect(settings.mapping.pdfSubject).toBe('');
-    // Sources the v2 table never mentioned keep their default mapping.
-    expect(settings.mapping.pdfTitle).toBe('title');
-    expect(settings.groups[0]).not.toHaveProperty('fields');
-    expect(settings.groups[0].templatePath).toBe('');
+    expect(settings.groups).toHaveLength(1);
+    expect(settings.groups[0]).toMatchObject({
+      layout: 'sidecar', resourceFolder: '70_research/PDF', noteFolder: '70_research',
+      watchedExtensions: ['.pdf', '.epub'],
+    });
+  });
+
+  it('keeps a folder group with only one collection path', () => {
+    const settings = normalizeSettings({
+      version: 4,
+      groups: [{
+        id: 'g1', name: 'Papers', layout: 'folder', collectionFolder: 'Library',
+        attachmentsFolder: 'old-a', notesFolder: 'old-b', autoDeleteOnRemove: true,
+      }],
+    });
+
+    expect(settings.groups[0]).toMatchObject({
+      id: 'g1', layout: 'folder', collectionFolder: 'Library',
+    });
+    expect(settings.groups[0]).not.toHaveProperty('attachmentsFolder');
+    expect(settings.groups[0]).not.toHaveProperty('notesFolder');
+    expect(settings.groups[0]).not.toHaveProperty('autoDeleteOnRemove');
   });
 
   it('repairs a link template that would point at the note itself', () => {
     const settings = normalizeSettings({
-      version: 3,
+      version: 4,
       groups: [{
-        id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B',
+        id: 'g1', name: 'P', layout: 'sidecar', resourceFolder: 'A', noteFolder: 'B',
         noteNameTemplate: '{{basename}}', linkTemplate: '[[{{basename}}]]',
       }],
     });
     expect(settings.groups[0].linkTemplate).toBe('[[{{name}}]]');
   });
 
-  it('keeps a v3 config as it is', () => {
+  it('keeps current language, mapping, template folders and group settings', () => {
     const settings = normalizeSettings({
-      version: 3,
+      version: 4,
       language: 'zh',
       mapping: { pdfTitle: '标题' },
       extraTemplateFolders: ['99_assets/template'],
-      groups: [{ id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B', templatePath: 'T.md' }],
+      groups: [{
+        id: 'g1', name: 'P', layout: 'sidecar', resourceFolder: 'A', noteFolder: 'B',
+        templatePath: 'T.md',
+      }],
     });
 
     expect(settings.language).toBe('zh');
@@ -204,21 +201,12 @@ describe('settings migration', () => {
     expect(settings.groups[0].templatePath).toBe('T.md');
   });
 
-  it('drops retired and destructive settings while normalizing groups', () => {
-    const settings = normalizeSettings({
-      version: 3,
-      groups: [{
-        id: 'g1', name: 'P', attachmentsFolder: 'A', notesFolder: 'B',
-        autoCreateBaseFile: true, baseFolderPath: 'Bases', autoDeleteOnRemove: true,
-      }],
-    });
-    expect(settings.groups[0]).not.toHaveProperty('autoCreateBaseFile');
-    expect(settings.groups[0]).not.toHaveProperty('baseFolderPath');
-    expect(settings.groups[0]).not.toHaveProperty('autoDeleteOnRemove');
-  });
-
-  it('falls back to defaults for empty or unusable data', () => {
+  it('does not interpret retired settings shapes', () => {
     expect(normalizeSettings(null).groups).toHaveLength(1);
     expect(normalizeSettings({}).mapping).toEqual(defaultMapping());
+    expect(normalizeSettings({
+      version: 3,
+      groups: [{ attachmentsFolder: 'A', notesFolder: 'B' }],
+    }).groups[0]).toMatchObject({ layout: 'sidecar', resourceFolder: 'Attachments' });
   });
 });

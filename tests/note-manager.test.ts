@@ -58,7 +58,7 @@ describe('source-based resource relation', () => {
     const attachment = makeFile('Files/paper.pdf');
     const { created, manager } = harness([attachment], {});
     const group = createGroup({
-      notesFolder: 'Library', attachmentsFolder: 'Files', enablePdfMetadataExtraction: false,
+      noteFolder: 'Library', resourceFolder: 'Files', enablePdfMetadataExtraction: false,
     });
 
     await manager.createNote(attachment, group);
@@ -72,7 +72,7 @@ describe('source-based resource relation', () => {
     const translation = makeFile('Files/paper-zh.pdf');
     const fm = { [note.path]: { source: ['[[paper-en.pdf]]', '[[paper-zh.pdf]]'] } };
     const { manager } = harness([note, original, translation], fm);
-    const group = createGroup({ notesFolder: 'Library', attachmentsFolder: 'Files' });
+    const group = createGroup({ noteFolder: 'Library', resourceFolder: 'Files' });
 
     expect(manager.findNoteBySource([group], translation.path)?.note).toBe(note);
     expect(manager.findAttachment(group, note)).toBe(original);
@@ -85,7 +85,7 @@ describe('source-based resource relation', () => {
     Object.assign(note, { parent: folder });
     Object.assign(attachment, { parent: folder });
     const { manager } = harness([note, attachment], { [note.path]: { title: 'Original' } });
-    const group = createGroup({ layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Inbox' });
+    const group = createGroup({ layout: 'folder', collectionFolder: 'Library' });
 
     expect(manager.findNote(group, attachment.path)).toBeNull();
     expect(manager.findAttachment(group, note)).toBeNull();
@@ -99,7 +99,7 @@ describe('source-based resource relation', () => {
       source: ['[[paper-en.pdf]]', '[[paper-zh.pdf]]'], title: 'Original title',
     } };
     const { manager } = harness([note, original, translation], fm);
-    const group = createGroup({ notesFolder: 'Library', attachmentsFolder: 'Files' });
+    const group = createGroup({ noteFolder: 'Library', resourceFolder: 'Files' });
 
     expect(manager.resolveUnbindContext(translation, [group])).toMatchObject({
       note,
@@ -118,7 +118,7 @@ describe('source-based resource relation', () => {
       source: ['[[paper-en.pdf]]', '[[missing-translation.pdf]]'],
     } };
     const { manager } = harness([note, original], fm);
-    const group = createGroup({ notesFolder: 'Library', attachmentsFolder: 'Files' });
+    const group = createGroup({ noteFolder: 'Library', resourceFolder: 'Files' });
 
     expect(manager.resolveRelationContext(note, [group])).toEqual({
       note,
@@ -135,15 +135,14 @@ describe('source-based resource relation', () => {
     const folder = { path: 'Library/Paper', children: [note] };
     Object.assign(note, { parent: folder });
     const original = makeFile('Library/Paper/paper.pdf');
-    const chinese = makeFile('Inbox/cn_paper.pdf');
-    const slides = makeFile('Inbox/slides_paper.pdf');
+    const chinese = makeFile('Library/cn_paper.pdf');
+    const slides = makeFile('Library/slides_paper.pdf');
     const files = [note, original, chinese, slides];
     const fm = { [note.path]: { source: '[[paper.pdf]]' } };
     const { manager } = harness(files, fm);
     const group = createGroup({
       layout: 'folder',
-      notesFolder: 'Library',
-      attachmentsFolder: 'Inbox',
+      collectionFolder: 'Library',
       auxiliaryPrefix: 'cn_, slides_',
       createNoteFile: true,
     });
@@ -164,7 +163,7 @@ describe('source-based resource relation', () => {
     const fm = { [note.path]: { source: '[[paper.pdf]]' } };
     const { manager } = harness([note, attachment], fm);
     const group = createGroup({
-      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      layout: 'folder', collectionFolder: 'Library',
     });
 
     expect(manager.planCreate(attachment, group)).toBeNull();
@@ -178,7 +177,7 @@ describe('source-based resource relation', () => {
     Object.assign(attachment, { parent: folder });
     const { manager } = harness([note, attachment], { [note.path]: {} });
     const group = createGroup({
-      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      layout: 'folder', collectionFolder: 'Library',
       noteNameTemplate: '{{basename}}',
     });
 
@@ -193,7 +192,7 @@ describe('source-based resource relation', () => {
     Object.assign(attachment, { parent: folder });
     const { manager } = harness([attachment], {});
     const group = createGroup({
-      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      layout: 'folder', collectionFolder: 'Library',
       createNoteFile: false,
     });
 
@@ -206,7 +205,7 @@ describe('source-based resource relation', () => {
     Object.assign(attachment, { parent: folder });
     const { manager } = harness([attachment], {});
     const group = createGroup({
-      layout: 'folder', notesFolder: 'Library', attachmentsFolder: 'Library',
+      layout: 'folder', collectionFolder: 'Library',
       createNoteFile: false,
     });
 

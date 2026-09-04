@@ -4270,11 +4270,17 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian13 = require("obsidian");
 
 // src/types.ts
-var SETTINGS_VERSION = 3;
+var SETTINGS_VERSION = 4;
 
 // src/paths.ts
 function cleanFolder(folder) {
   return folder.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "").trim();
+}
+function resourceRoot(group) {
+  return cleanFolder(group.layout === "folder" ? group.collectionFolder : group.resourceFolder);
+}
+function noteRoot(group) {
+  return cleanFolder(group.layout === "folder" ? group.collectionFolder : group.noteFolder);
 }
 function isInFolder(path, folder) {
   const f = cleanFolder(folder);
@@ -4317,7 +4323,7 @@ function groupForAttachment(groups, path, extension) {
   let best = null;
   let bestLen = -1;
   for (const group of groups) {
-    const folder = cleanFolder(group.attachmentsFolder);
+    const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
     if (!group.watchedExtensions.map((e) => e.toLowerCase()).includes("." + extension.toLowerCase())) continue;
@@ -4333,7 +4339,7 @@ function groupForFoldedAttachment(groups, path) {
   let bestLen = -1;
   for (const group of groups) {
     if (group.layout !== "folder") continue;
-    const notes = cleanFolder(group.notesFolder);
+    const notes = noteRoot(group);
     if (!notes) continue;
     if (!isInFolder(path, notes)) continue;
     if (notes.length > bestLen) {
@@ -4347,10 +4353,10 @@ function groupForNote(groups, path) {
   let best = null;
   let bestLen = -1;
   for (const group of groups) {
-    const notes = cleanFolder(group.notesFolder);
+    const notes = noteRoot(group);
     if (!notes) continue;
     if (!isInFolder(path, notes)) continue;
-    if (groups.some((g) => cleanFolder(g.attachmentsFolder) && isInFolder(path, cleanFolder(g.attachmentsFolder)))) continue;
+    if (groups.some((g) => g.layout === "sidecar" && resourceRoot(g) && isInFolder(path, resourceRoot(g)))) continue;
     if (notes.length > bestLen) {
       best = group;
       bestLen = notes.length;
@@ -4374,7 +4380,7 @@ function folderItemNames(group, attachmentPath) {
   return Array.from(/* @__PURE__ */ new Set([safeItemName(group, attachmentPath), fileName]));
 }
 function isFolderItemPath(group, attachmentPath) {
-  if (!isInFolder(attachmentPath, group.notesFolder)) return false;
+  if (!isInFolder(attachmentPath, noteRoot(group))) return false;
   const parts = cleanFolder(attachmentPath).split("/");
   if (parts.length < 2) return false;
   const parentName = parts[parts.length - 2];
@@ -4386,11 +4392,11 @@ function isFolderItemPath(group, attachmentPath) {
 }
 function notePathCandidates(group, attachmentPath) {
   var _a;
-  const relative = relativeTo(attachmentPath, group.attachmentsFolder);
+  const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
   const subfolder = group.mirrorFolderStructure ? relative.split("/").slice(0, -1).join("/") : "";
   const [safe] = folderItemNames(group, attachmentPath);
-  const notes = cleanFolder(group.notesFolder);
+  const notes = noteRoot(group);
   const dir2 = [notes, subfolder].filter(Boolean).join("/");
   return {
     primary: [dir2, `${safe}.md`].filter(Boolean).join("/"),
@@ -4403,11 +4409,11 @@ function buildFolderItem(dir2, folderName, fileName) {
 }
 function folderItemCandidates(group, attachmentPath) {
   var _a;
-  const relative = relativeTo(attachmentPath, group.attachmentsFolder);
+  const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
   const subfolder = group.mirrorFolderStructure ? relative.split("/").slice(0, -1).join("/") : "";
   const safe = safeItemName(group, attachmentPath);
-  const notes = cleanFolder(group.notesFolder);
+  const notes = noteRoot(group);
   const dir2 = [notes, subfolder].filter(Boolean).join("/");
   return {
     primary: buildFolderItem(dir2, safe, fileName),
@@ -4469,27 +4475,30 @@ function defaultMapping() {
 }
 var groupCounter = 0;
 function createGroup(partial = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
   groupCounter++;
-  return {
-    id: `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
-    name: "New group",
+  const common = {
+    id: (_a = partial.id) != null ? _a : `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
+    name: (_b = partial.name) != null ? _b : "New group",
+    auxiliaryPrefix: (_c = partial.auxiliaryPrefix) != null ? _c : "",
+    createNoteFile: (_d = partial.createNoteFile) != null ? _d : true,
+    watchedExtensions: (_e = partial.watchedExtensions) != null ? _e : [".pdf"],
+    mirrorFolderStructure: (_f = partial.mirrorFolderStructure) != null ? _f : true,
+    templatePath: (_g = partial.templatePath) != null ? _g : "",
+    noteNameTemplate: (_h = partial.noteNameTemplate) != null ? _h : "{{basename}}",
+    linkTemplate: (_i = partial.linkTemplate) != null ? _i : "[[{{name}}]]",
+    embedAttachment: (_j = partial.embedAttachment) != null ? _j : false,
+    autoCreateOnNew: (_k = partial.autoCreateOnNew) != null ? _k : true,
+    syncUpdatedOnModify: (_l = partial.syncUpdatedOnModify) != null ? _l : true,
+    enablePdfMetadataExtraction: (_m = partial.enablePdfMetadataExtraction) != null ? _m : true,
+    enableDoiIsbnLookup: (_n = partial.enableDoiIsbnLookup) != null ? _n : false,
+    sanitizeListValues: (_o = partial.sanitizeListValues) != null ? _o : true
+  };
+  return partial.layout === "folder" ? { ...common, layout: "folder", collectionFolder: (_p = partial.collectionFolder) != null ? _p : "Library" } : {
+    ...common,
     layout: "sidecar",
-    auxiliaryPrefix: "",
-    createNoteFile: true,
-    attachmentsFolder: "Attachments",
-    notesFolder: "Library",
-    watchedExtensions: [".pdf"],
-    mirrorFolderStructure: true,
-    templatePath: "",
-    noteNameTemplate: "{{basename}}",
-    linkTemplate: "[[{{name}}]]",
-    embedAttachment: false,
-    autoCreateOnNew: true,
-    syncUpdatedOnModify: true,
-    enablePdfMetadataExtraction: true,
-    enableDoiIsbnLookup: false,
-    sanitizeListValues: true,
-    ...partial
+    resourceFolder: (_q = partial.resourceFolder) != null ? _q : "Attachments",
+    noteFolder: (_r = partial.noteFolder) != null ? _r : "Library"
   };
 }
 function defaultSettings() {
@@ -4505,61 +4514,25 @@ function groupCreatesNotes(group) {
   return group.layout === "sidecar" || group.createNoteFile;
 }
 function normalizeSettings(raw) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
+  var _a, _b, _c;
   if (!raw || typeof raw !== "object") return defaultSettings();
   const candidate = raw;
   if (Array.isArray(candidate.groups)) {
-    const mapping2 = { ...defaultMapping(), ...(_a = candidate.mapping) != null ? _a : {} };
-    const seen = /* @__PURE__ */ new Set();
-    const enabled = /* @__PURE__ */ new Set();
-    for (const group of candidate.groups) {
-      for (const [id, config] of Object.entries((_b = group.fields) != null ? _b : {})) {
-        if (!SOURCE_DEF_BY_ID[id]) continue;
-        seen.add(id);
-        if (!(config == null ? void 0 : config.enabled)) continue;
-        enabled.add(id);
-        mapping2[id] = ((_d = (_c = config.property) != null ? _c : mapping2[id]) != null ? _d : "").trim();
-      }
-    }
-    for (const id of seen) {
-      if (!enabled.has(id)) mapping2[id] = "";
-    }
-    const groups = candidate.groups.map((group) => {
-      const clean = { ...createGroup(), ...group };
-      delete clean.fields;
-      delete clean.autoCreateBaseFile;
-      delete clean.baseFolderPath;
-      delete clean.autoDeleteOnRemove;
+    const mapping = { ...defaultMapping(), ...(_a = candidate.mapping) != null ? _a : {} };
+    const groups = candidate.groups.filter((group) => group.layout === "folder" ? typeof group.collectionFolder === "string" : typeof group.resourceFolder === "string" && typeof group.noteFolder === "string").map((group) => {
+      const clean = createGroup(group);
       clean.linkTemplate = unambiguousLinkTemplate(clean);
       return clean;
     });
     return {
       version: SETTINGS_VERSION,
-      language: (_e = candidate.language) != null ? _e : "auto",
-      mapping: mapping2,
-      extraTemplateFolders: (_f = candidate.extraTemplateFolders) != null ? _f : [],
+      language: (_b = candidate.language) != null ? _b : "auto",
+      mapping,
+      extraTemplateFolders: (_c = candidate.extraTemplateFolders) != null ? _c : [],
       groups: groups.length ? groups : defaultSettings().groups
     };
   }
-  if (!candidate.attachmentsFolder && !candidate.libraryFolder) return defaultSettings();
-  const mapping = defaultMapping();
-  if (candidate.tagsPropertyName) mapping.pdfKeywords = candidate.tagsPropertyName;
-  return {
-    version: SETTINGS_VERSION,
-    language: "auto",
-    mapping,
-    extraTemplateFolders: [],
-    groups: [createGroup({
-      name: (_h = (_g = candidate.attachmentsFolder) == null ? void 0 : _g.split("/").filter(Boolean).pop()) != null ? _h : "Attachments",
-      attachmentsFolder: (_i = candidate.attachmentsFolder) != null ? _i : "Attachments",
-      notesFolder: (_j = candidate.libraryFolder) != null ? _j : "Library",
-      watchedExtensions: (_k = candidate.watchedExtensions) != null ? _k : [".pdf"],
-      mirrorFolderStructure: (_l = candidate.mirrorFolderStructure) != null ? _l : true,
-      autoCreateOnNew: (_m = candidate.autoCreateOnNew) != null ? _m : true,
-      enablePdfMetadataExtraction: (_n = candidate.enablePdfMetadataExtraction) != null ? _n : true,
-      enableDoiIsbnLookup: (_o = candidate.enableDoiIsbnLookup) != null ? _o : false
-    })]
-  };
+  return defaultSettings();
 }
 function sanitizeListValue(raw) {
   return raw.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9\-_/一-鿿]/g, "").replace(/-{2,}/g, "-").replace(/^[-_]+|[-_]+$/g, "");
@@ -7054,13 +7027,11 @@ var en_default = {
     nothing: "${group}: no watched attachments found.",
     nothingToChange: "There are no pending changes. Resources with a source relation or an existing item folder are skipped.",
     previewTitle: "Confirm batch changes",
-    previewSubtitle: "${items} resource(s), ${changes} filesystem or property change(s). Nothing is moved or written before confirmation.",
+    previewSubtitle: "${items} resource(s), ${changes} change(s). The tree below shows the result after confirmation; nothing is moved or written before then.",
     confirm: "Confirm and apply",
-    columns: { resource: "Resource", changes: "Pending changes" },
-    actions: {
-      move: "Move: ${from} \u2192 ${to}",
-      createNote: "Create note: ${path}",
-      updateSource: "Update source: ${notePath} \u2190 ${link}"
+    legend: {
+      removed: "\u2212 Red: leaves the old location (the file is not deleted)",
+      added: "+ Green: new location, note, or property"
     },
     starting: "Applying ${total} confirmed resource change(s)\u2026",
     progress: "${processed}/${total} \u2014 ${created} processed, ${skipped} failed or changed",
@@ -7137,8 +7108,8 @@ var en_default = {
         sidecar: "Sidecar (attachment stays put, note is separate)",
         folder: "Folder (a new folder holds the attachment and the note together)",
         desc: {
-          sidecar: "The attachment stays in the attachments folder; the note lives in a mirrored path under the notes folder. The two recognize each other through the frontmatter link.",
-          folder: "A new folder, named like the note, is created under the notes folder; the attachment is moved into it and the note lives beside it. Existing pairs are recognized only through source; deleting a resource never deletes its note."
+          sidecar: "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
+          folder: "Resources and notes share one collection folder. Loose files are folded into same-named child folders and the note lives beside them. Existing pairs are recognized only through source; deleting a resource never deletes its note."
         }
       },
       createNoteFile: {
@@ -7150,13 +7121,17 @@ var en_default = {
         desc: "Comma separated, e.g. cn_, zh_, slides_. A file is matched by its name after the prefix against an existing note or source resource, moved into the same folder, and appended to the source list. No match leaves it in place. Empty disables this.",
         placeholder: "For example: cn_, zh_, slides_"
       },
-      attachmentsFolder: {
-        name: "Attachments folder",
-        desc: "Files placed here get a note."
+      resourceFolder: {
+        name: "Resource folder",
+        desc: "Original resources in sidecar mode. Watched files placed here get a corresponding note."
       },
-      notesFolder: {
-        name: "Notes folder",
-        desc: "Where the notes are created. May sit above the attachments folder."
+      noteFolder: {
+        name: "Note folder",
+        desc: "Corresponding notes in sidecar mode."
+      },
+      collectionFolder: {
+        name: "Resource collection folder",
+        desc: "The single root for folder mode. Loose resources, organized child folders, and corresponding notes all live here."
       },
       extensions: {
         name: "Watched extensions",
@@ -7173,7 +7148,7 @@ var en_default = {
       },
       mirror: {
         name: "Mirror subfolders",
-        desc: "Recreate the attachment's subfolder tree under the notes folder."
+        desc: "Preserve the resource's existing subfolder hierarchy."
       },
       noteName: {
         name: "Note name",
@@ -7298,13 +7273,11 @@ var zh_default = {
     nothing: "${group}\uFF1A\u6CA1\u6709\u627E\u5230\u53D7\u76D1\u542C\u7684\u9644\u4EF6\u3002",
     nothingToChange: "\u6CA1\u6709\u5F85\u6267\u884C\u7684\u6539\u52A8\u3002\u5DF2\u6709 source \u5173\u7CFB\u6216\u5DF2\u6574\u7406\u7684\u6587\u4EF6\u90FD\u4F1A\u8DF3\u8FC7\u3002",
     previewTitle: "\u786E\u8BA4\u6279\u91CF\u6539\u52A8",
-    previewSubtitle: "\u5C06\u5904\u7406 ${items} \u4E2A\u8D44\u6E90\uFF0C\u5171 ${changes} \u5904\u6539\u52A8\u3002\u786E\u8BA4\u524D\u4E0D\u4F1A\u79FB\u52A8\u6216\u5199\u5165\u4EFB\u4F55\u6587\u4EF6\u3002",
+    previewSubtitle: "\u5C06\u5904\u7406 ${items} \u4E2A\u8D44\u6E90\uFF0C\u5171 ${changes} \u5904\u6539\u52A8\u3002\u4E0B\u9762\u662F\u786E\u8BA4\u540E\u7684\u6587\u4EF6\u5939\u6837\u5B50\uFF1B\u786E\u8BA4\u524D\u4E0D\u4F1A\u79FB\u52A8\u6216\u5199\u5165\u4EFB\u4F55\u6587\u4EF6\u3002",
     confirm: "\u786E\u8BA4\u5E76\u6267\u884C",
-    columns: { resource: "\u8D44\u6E90", changes: "\u5C06\u6267\u884C\u7684\u6539\u52A8" },
-    actions: {
-      move: "\u79FB\u52A8\uFF1A${from} \u2192 ${to}",
-      createNote: "\u65B0\u5EFA\u7B14\u8BB0\uFF1A${path}",
-      updateSource: "\u66F4\u65B0 source\uFF1A${notePath} \u2190 ${link}"
+    legend: {
+      removed: "\u2212 \u7EA2\u8272\uFF1A\u4ECE\u65E7\u4F4D\u7F6E\u79FB\u51FA\uFF08\u4E0D\u662F\u5220\u9664\u6587\u4EF6\uFF09",
+      added: "+ \u7EFF\u8272\uFF1A\u65B0\u4F4D\u7F6E\u3001\u65B0\u7B14\u8BB0\u6216\u65B0\u589E\u5C5E\u6027"
     },
     starting: "\u6B63\u5728\u6267\u884C ${total} \u4E2A\u5DF2\u786E\u8BA4\u7684\u8D44\u6E90\u6539\u52A8\u2026",
     progress: "${processed}/${total} \u2014\u2014 \u5DF2\u5904\u7406 ${created}\uFF0C\u5931\u8D25\u6216\u72B6\u6001\u53D8\u5316 ${skipped}",
@@ -7381,8 +7354,8 @@ var zh_default = {
         sidecar: "\u955C\u50CF sidecar\uFF08\u9644\u4EF6\u539F\u5730\u4E0D\u52A8\uFF0C\u7B14\u8BB0\u5355\u72EC\u5EFA\uFF09",
         folder: "\u6587\u4EF6\u5939\uFF08\u65B0\u5EFA\u6587\u4EF6\u5939\uFF0C\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\u548C\u7B14\u8BB0\u653E\u4E00\u8D77\uFF09",
         desc: {
-          sidecar: "\u9644\u4EF6\u7559\u5728\u9644\u4EF6\u6587\u4EF6\u5939\u91CC\uFF0C\u7B14\u8BB0\u5EFA\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u7684\u955C\u50CF\u8DEF\u5F84\u4E0B\uFF0C\u4E24\u8005\u9760 frontmatter \u94FE\u63A5\u4E92\u76F8\u8BA4\u8BC6\u3002",
-          folder: "\u65B0\u5EFA\u4E00\u4E2A\u548C\u7B14\u8BB0\u540C\u540D\u7684\u6587\u4EF6\u5939\uFF08\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u4E0B\uFF09\uFF0C\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\uFF0C\u7B14\u8BB0\u4E5F\u5EFA\u5728\u91CC\u9762\u3002\u5DF2\u6709\u914D\u5BF9\u53EA\u8BA4 source\uFF1B\u5220\u9664\u8D44\u6E90\u4E0D\u4F1A\u5220\u9664\u7B14\u8BB0\u3002"
+          sidecar: "\u8D44\u6E90\u7559\u5728\u8D44\u6E90\u6587\u4EF6\u5939\u91CC\uFF0C\u7B14\u8BB0\u5EFA\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u7684\u955C\u50CF\u8DEF\u5F84\u4E0B\uFF0C\u4E24\u8005\u9760 source \u4E92\u76F8\u8BA4\u8BC6\u3002",
+          folder: "\u6240\u6709\u8D44\u6E90\u548C\u7B14\u8BB0\u5171\u7528\u4E00\u4E2A\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939\u3002\u677E\u6563\u6587\u4EF6\u4F1A\u6298\u53E0\u8FDB\u540C\u540D\u5B50\u6587\u4EF6\u5939\uFF0C\u7B14\u8BB0\u4E5F\u5EFA\u5728\u91CC\u9762\u3002\u5DF2\u6709\u914D\u5BF9\u53EA\u8BA4 source\uFF1B\u5220\u9664\u8D44\u6E90\u4E0D\u4F1A\u5220\u9664\u7B14\u8BB0\u3002"
         }
       },
       createNoteFile: {
@@ -7394,13 +7367,17 @@ var zh_default = {
         desc: "\u7528\u9017\u53F7\u5206\u9694\uFF0C\u4F8B\u5982 cn_, zh_, slides_\u3002\u6587\u4EF6\u4F1A\u6309\u53BB\u6389\u524D\u7F00\u540E\u7684\u4E3B\u4F53\u540D\u5339\u914D\u5DF2\u6709\u7B14\u8BB0\u6216 source \u8D44\u6E90\uFF0C\u642C\u8FDB\u540C\u4E00\u6587\u4EF6\u5939\uFF0C\u5E76\u628A\u53CC\u94FE\u8FFD\u52A0\u5230 source \u5217\u8868\u3002\u5339\u914D\u4E0D\u4E0A\u5C31\u539F\u5730\u4E0D\u52A8\u3002\u7559\u7A7A\u5173\u95ED\u3002",
         placeholder: "\u4F8B\u5982 cn_, zh_, slides_"
       },
-      attachmentsFolder: {
-        name: "\u9644\u4EF6\u6587\u4EF6\u5939",
-        desc: "\u653E\u8FDB\u8FD9\u91CC\u7684\u6587\u4EF6\u4F1A\u81EA\u52A8\u83B7\u5F97\u4E00\u7BC7\u7B14\u8BB0\u3002"
+      resourceFolder: {
+        name: "\u8D44\u6E90\u6587\u4EF6\u5939",
+        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u539F\u59CB\u8D44\u6E90\u4F4D\u7F6E\u3002\u653E\u8FDB\u8FD9\u91CC\u7684\u53D7\u76D1\u542C\u6587\u4EF6\u4F1A\u5EFA\u7ACB\u5BF9\u5E94\u7B14\u8BB0\u3002"
       },
-      notesFolder: {
+      noteFolder: {
         name: "\u7B14\u8BB0\u6587\u4EF6\u5939",
-        desc: "\u7B14\u8BB0\u5EFA\u5728\u54EA\u91CC\uFF0C\u53EF\u4EE5\u662F\u9644\u4EF6\u5939\u7684\u4E0A\u5C42\u76EE\u5F55\u3002"
+        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u5BF9\u5E94\u7B14\u8BB0\u4F4D\u7F6E\u3002"
+      },
+      collectionFolder: {
+        name: "\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939",
+        desc: "\u805A\u5408\u6A21\u5F0F\u552F\u4E00\u7684\u6839\u76EE\u5F55\u3002\u677E\u6563\u8D44\u6E90\u3001\u6574\u7406\u540E\u7684\u5B50\u6587\u4EF6\u5939\u548C\u5BF9\u5E94\u7B14\u8BB0\u90FD\u5728\u8FD9\u91CC\uFF0C\u4E0D\u518D\u5206\u522B\u914D\u7F6E\u8D44\u6E90\u4E0E\u7B14\u8BB0\u8DEF\u5F84\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
@@ -7417,7 +7394,7 @@ var zh_default = {
       },
       mirror: {
         name: "\u955C\u50CF\u5B50\u6587\u4EF6\u5939",
-        desc: "\u5728\u7B14\u8BB0\u5939\u91CC\u91CD\u5EFA\u9644\u4EF6\u7684\u5B50\u76EE\u5F55\u7ED3\u6784\u3002"
+        desc: "\u4FDD\u7559\u8D44\u6E90\u539F\u6709\u7684\u5B50\u76EE\u5F55\u5C42\u7EA7\u3002"
       },
       noteName: {
         name: "\u7B14\u8BB0\u6587\u4EF6\u540D",
@@ -23266,15 +23243,15 @@ var NoteManager = class {
   }
   findNoteBySourceInGroup(group, attachmentPath) {
     var _a;
-    const notesFolder = cleanFolder(group.notesFolder);
+    const notesFolder = noteRoot(group);
     if (!notesFolder) return null;
     return (_a = this.app.vault.getMarkdownFiles().find(
       (note) => isInFolder(note.path, notesFolder) && this.noteReferences(note, attachmentPath)
     )) != null ? _a : null;
   }
-  /** Reverse source lookup works even when the resource is outside attachmentsFolder. */
+  /** Reverse source lookup works even when the resource is outside its configured root. */
   findNoteBySource(groups, attachmentPath) {
-    const ordered = [...groups].sort((a, b) => cleanFolder(b.notesFolder).length - cleanFolder(a.notesFolder).length);
+    const ordered = [...groups].sort((a, b) => noteRoot(b).length - noteRoot(a).length);
     for (const group of ordered) {
       const note = this.findNoteBySourceInGroup(group, attachmentPath);
       if (note) return { group, note };
@@ -23451,7 +23428,7 @@ var NoteManager = class {
       }
       return note && this.noteReferences(note, attachment.path) ? note : null;
     }
-    if (group.layout === "folder" && !isInFolder(attachment.path, group.attachmentsFolder)) {
+    if (group.layout === "folder" && !isInFolder(attachment.path, resourceRoot(group))) {
       return null;
     }
     return group.layout === "folder" ? this.createFolderItem(attachment, group) : this.createSidecarNote(attachment, group);
@@ -23490,7 +23467,7 @@ var NoteManager = class {
       };
     }
     if (this.findNote(group, attachment.path)) return null;
-    if (group.layout === "folder" && !isInFolder(attachment.path, group.attachmentsFolder)) return null;
+    if (group.layout === "folder" && !isInFolder(attachment.path, resourceRoot(group))) return null;
     if (group.layout === "sidecar") {
       const notePath = this.targetNotePath(group, attachment.path);
       if (this.app.vault.getFileByPath(notePath)) return null;
@@ -23592,7 +23569,7 @@ var NoteManager = class {
     const stripped = stripAuxiliaryPrefix(file.basename, group.auxiliaryPrefix);
     if (stripped === null) return null;
     const key = normalizeForMatch(stripped);
-    const notesFolder = cleanFolder(group.notesFolder);
+    const notesFolder = noteRoot(group);
     return (_a = this.app.vault.getMarkdownFiles().find((note) => {
       if (!isInFolder(note.path, notesFolder)) return false;
       const names = [note.basename, ...this.linkedResourceFiles(note).map((resource) => {
@@ -23605,7 +23582,7 @@ var NoteManager = class {
   /**
    * A companion file (translation, etc.) never gets a note of its own: find
    * the item it belongs to by normalized-name match against every note under
-   * notesFolder, and move it in beside that note. No match — most likely it
+   * the note root, and move it in beside that note. No match — most likely it
    * arrived before the primary item did, or the names differ too much —
    * leaves it exactly where it is rather than guessing.
    */
@@ -23778,10 +23755,83 @@ var import_obsidian6 = require("obsidian");
 
 // src/backfill-modal.ts
 var import_obsidian5 = require("obsidian");
-function describe(change) {
-  if (change.kind === "move") return t2("backfill.actions.move", change);
-  if (change.kind === "create-note") return t2("backfill.actions.createNote", change);
-  return t2("backfill.actions.updateSource", change);
+
+// src/change-tree.ts
+function addPath(root, path, tone, child) {
+  const parts = path.split("/").filter(Boolean);
+  let parent = root;
+  let currentPath = "";
+  parts.forEach((part, index) => {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    let node = parent.children.find((item) => item.name === part && item.kind !== "property");
+    if (!node) {
+      node = {
+        name: part,
+        path: currentPath,
+        kind: index === parts.length - 1 ? "file" : "folder",
+        tone: index === parts.length - 1 ? tone : "neutral",
+        children: []
+      };
+      parent.children.push(node);
+    } else if (index === parts.length - 1 && tone !== "neutral") {
+      node.tone = tone;
+    }
+    parent = node;
+  });
+  if (child && !parent.children.some((item) => item.name === child.name && item.kind === child.kind)) {
+    parent.children.push(child);
+  }
+  return parent;
+}
+function sortTree(node) {
+  node.children.sort((a, b) => {
+    if (a.kind === "folder" && b.kind !== "folder") return -1;
+    if (a.kind !== "folder" && b.kind === "folder") return 1;
+    return a.name.localeCompare(b.name);
+  });
+  node.children.forEach(sortTree);
+}
+function buildChangeTree(changes) {
+  const root = {
+    name: "",
+    path: "",
+    kind: "folder",
+    tone: "neutral",
+    children: []
+  };
+  for (const change of changes) {
+    if (change.kind === "move") {
+      addPath(root, change.from, "removed");
+      addPath(root, change.to, "added");
+    } else if (change.kind === "create-note") {
+      addPath(root, change.path, "added");
+    } else {
+      addPath(root, change.notePath, "neutral", {
+        name: `source + ${change.link}`,
+        path: `${change.notePath}#source`,
+        kind: "property",
+        tone: "added",
+        children: []
+      });
+    }
+  }
+  sortTree(root);
+  return root;
+}
+
+// src/backfill-modal.ts
+function renderTree(parent, nodes) {
+  const list = parent.createEl("ul", { cls: "amm-change-tree" });
+  for (const node of nodes) {
+    const row = list.createEl("li");
+    const line = row.createEl("div", {
+      cls: `amm-change-line is-${node.kind} is-${node.tone}`
+    });
+    if (node.tone === "removed") line.createSpan({ text: "\u2212", cls: "amm-change-marker" });
+    if (node.tone === "added") line.createSpan({ text: "+", cls: "amm-change-marker" });
+    line.createSpan({ text: node.name });
+    if (node.children.length > 0) renderTree(row, node.children);
+  }
 }
 var BackfillPreviewModal = class extends import_obsidian5.Modal {
   constructor(app, plans, onConfirm, onCancel) {
@@ -23799,20 +23849,11 @@ var BackfillPreviewModal = class extends import_obsidian5.Modal {
     contentEl.createEl("p", {
       text: t2("backfill.previewSubtitle", { items: this.plans.length, changes: changeCount })
     });
-    const table = contentEl.createEl("table", { cls: "amm-backfill-table" });
-    const head = table.createEl("thead").createEl("tr");
-    head.createEl("th", { text: t2("backfill.columns.resource") });
-    head.createEl("th", { text: t2("backfill.columns.changes") });
-    const body = table.createEl("tbody");
-    for (const plan of this.plans) {
-      const row = body.createEl("tr");
-      const resource = row.createEl("td");
-      resource.createEl("div", { text: plan.attachment.name, cls: "amm-backfill-resource" });
-      resource.createEl("div", { text: plan.group.name, cls: "amm-backfill-group" });
-      const changes = row.createEl("td");
-      const list = changes.createEl("ul");
-      for (const change of plan.changes) list.createEl("li", { text: describe(change) });
-    }
+    const legend = contentEl.createEl("div", { cls: "amm-change-legend" });
+    legend.createSpan({ text: t2("backfill.legend.removed"), cls: "is-removed" });
+    legend.createSpan({ text: t2("backfill.legend.added"), cls: "is-added" });
+    const tree = buildChangeTree(this.plans.flatMap((plan) => plan.changes));
+    renderTree(contentEl, tree.children);
     new import_obsidian5.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("backfill.confirm")).setCta().onClick(() => {
       this.confirmed = true;
       this.close();
@@ -23832,7 +23873,7 @@ var BackfillManager = class {
     this.noteManager = noteManager;
   }
   attachmentsOf(group, allGroups) {
-    const folder = cleanFolder(group.attachmentsFolder);
+    const folder = resourceRoot(group);
     if (!folder) return [];
     return this.app.vault.getFiles().filter((file) => {
       var _a;
@@ -23896,7 +23937,7 @@ var UpgradeManager = class {
     this.noteManager = noteManager;
   }
   notesOf(group) {
-    const folder = cleanFolder(group.notesFolder);
+    const folder = noteRoot(group);
     if (!folder) return [];
     return this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(folder + "/"));
   }
@@ -24323,7 +24364,17 @@ var AttMetaMapSettingTab = class extends import_obsidian11.PluginSettingTab {
       })();
     }));
     new import_obsidian11.Setting(body).setName(t2("settings.group.layout.name")).setDesc(t2(`settings.group.layout.desc.${group.layout}`)).addDropdown((drop) => drop.addOption("sidecar", t2("settings.group.layout.sidecar")).addOption("folder", t2("settings.group.layout.folder")).setValue(group.layout).onChange(async (value) => {
-      group.layout = value;
+      const next = value === "folder" ? createGroup({
+        ...group,
+        layout: "folder",
+        collectionFolder: group.layout === "folder" ? group.collectionFolder : group.noteFolder
+      }) : createGroup({
+        ...group,
+        layout: "sidecar",
+        resourceFolder: group.layout === "sidecar" ? group.resourceFolder : group.collectionFolder,
+        noteFolder: group.layout === "sidecar" ? group.noteFolder : group.collectionFolder
+      });
+      this.plugin.settings.groups = this.plugin.settings.groups.map((item) => item.id === group.id ? next : item);
       await this.plugin.saveSettings();
       this.redisplay();
     }));
@@ -24341,26 +24392,39 @@ var AttMetaMapSettingTab = class extends import_obsidian11.PluginSettingTab {
       }));
     }
     this.section(body, t2("settings.group.sections.paths"), true, (el) => {
-      new import_obsidian11.Setting(el).setName(t2("settings.group.attachmentsFolder.name")).setDesc(t2("settings.group.attachmentsFolder.desc")).addText((text) => {
-        text.setPlaceholder("Attachments").setValue(group.attachmentsFolder).onChange(async (value) => {
-          group.attachmentsFolder = value.trim();
-          await this.plugin.saveSettings();
+      if (group.layout === "folder") {
+        new import_obsidian11.Setting(el).setName(t2("settings.group.collectionFolder.name")).setDesc(t2("settings.group.collectionFolder.desc")).addText((text) => {
+          text.setPlaceholder("Library").setValue(group.collectionFolder).onChange(async (value) => {
+            group.collectionFolder = value.trim();
+            await this.plugin.saveSettings();
+          });
+          new FolderSuggest(this.app, text.inputEl, async (value) => {
+            group.collectionFolder = value;
+            await this.plugin.saveSettings();
+          });
         });
-        new FolderSuggest(this.app, text.inputEl, async (value) => {
-          group.attachmentsFolder = value;
-          await this.plugin.saveSettings();
+      } else {
+        new import_obsidian11.Setting(el).setName(t2("settings.group.resourceFolder.name")).setDesc(t2("settings.group.resourceFolder.desc")).addText((text) => {
+          text.setPlaceholder("Attachments").setValue(group.resourceFolder).onChange(async (value) => {
+            group.resourceFolder = value.trim();
+            await this.plugin.saveSettings();
+          });
+          new FolderSuggest(this.app, text.inputEl, async (value) => {
+            group.resourceFolder = value;
+            await this.plugin.saveSettings();
+          });
         });
-      });
-      new import_obsidian11.Setting(el).setName(t2("settings.group.notesFolder.name")).setDesc(t2("settings.group.notesFolder.desc")).addText((text) => {
-        text.setPlaceholder("Library").setValue(group.notesFolder).onChange(async (value) => {
-          group.notesFolder = value.trim();
-          await this.plugin.saveSettings();
+        new import_obsidian11.Setting(el).setName(t2("settings.group.noteFolder.name")).setDesc(t2("settings.group.noteFolder.desc")).addText((text) => {
+          text.setPlaceholder("Library").setValue(group.noteFolder).onChange(async (value) => {
+            group.noteFolder = value.trim();
+            await this.plugin.saveSettings();
+          });
+          new FolderSuggest(this.app, text.inputEl, async (value) => {
+            group.noteFolder = value;
+            await this.plugin.saveSettings();
+          });
         });
-        new FolderSuggest(this.app, text.inputEl, async (value) => {
-          group.notesFolder = value;
-          await this.plugin.saveSettings();
-        });
-      });
+      }
       new import_obsidian11.Setting(el).setName(t2("settings.group.extensions.name")).setDesc(t2("settings.group.extensions.desc")).addText((text) => text.setPlaceholder(".pdf, .epub").setValue(group.watchedExtensions.join(", ")).onChange(async (value) => {
         group.watchedExtensions = value.split(",").map((part) => part.trim().toLowerCase()).filter((part) => part.length > 0).map((part) => part.startsWith(".") ? part : `.${part}`);
         await this.plugin.saveSettings();

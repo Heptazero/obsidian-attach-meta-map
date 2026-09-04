@@ -1,7 +1,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import { MappingGroup } from './types';
 import { NoteManager } from './note-manager';
-import { cleanFolder } from './paths';
+import { noteRoot } from './paths';
 import { t } from './i18n/i18n';
 
 export interface UpgradeResult {
@@ -14,7 +14,7 @@ export class UpgradeManager {
   constructor(private app: App, private noteManager: NoteManager) {}
 
   notesOf(group: MappingGroup): TFile[] {
-    const folder = cleanFolder(group.notesFolder);
+    const folder = noteRoot(group);
     if (!folder) return [];
     return this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(folder + '/'));
   }

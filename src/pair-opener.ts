@@ -49,10 +49,10 @@ export class PairOpener {
       };
     }
 
-    // Not markdown, not under any attachmentsFolder: might already be a
+    // Not markdown, not under any configured resource root: might already be a
     // folded attachment, sitting beside its note (if the group even creates
     // one — createNoteFile: false groups never do) inside a folder-layout
-    // group's notesFolder.
+    // folder-layout collection.
     const asFolded = groupForFoldedAttachment(groups, file.path);
     if (!asFolded) return null;
     return { group: asFolded, attachment: file, note: this.noteManager.findNote(asFolded, file.path) };

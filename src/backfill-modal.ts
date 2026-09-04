@@ -1,11 +1,20 @@
 import { App, Modal, Setting } from 'obsidian';
-import type { CreateChange, CreatePlan } from './note-manager';
+import type { CreatePlan } from './note-manager';
 import { t } from './i18n/i18n';
+import { buildChangeTree, ChangeTreeNode } from './change-tree';
 
-function describe(change: CreateChange): string {
-  if (change.kind === 'move') return t('backfill.actions.move', change);
-  if (change.kind === 'create-note') return t('backfill.actions.createNote', change);
-  return t('backfill.actions.updateSource', change);
+function renderTree(parent: HTMLElement, nodes: ChangeTreeNode[]): void {
+  const list = parent.createEl('ul', { cls: 'amm-change-tree' });
+  for (const node of nodes) {
+    const row = list.createEl('li');
+    const line = row.createEl('div', {
+      cls: `amm-change-line is-${node.kind} is-${node.tone}`,
+    });
+    if (node.tone === 'removed') line.createSpan({ text: '−', cls: 'amm-change-marker' });
+    if (node.tone === 'added') line.createSpan({ text: '+', cls: 'amm-change-marker' });
+    line.createSpan({ text: node.name });
+    if (node.children.length > 0) renderTree(row, node.children);
+  }
 }
 
 export class BackfillPreviewModal extends Modal {
@@ -26,22 +35,12 @@ export class BackfillPreviewModal extends Modal {
     contentEl.createEl('p', {
       text: t('backfill.previewSubtitle', { items: this.plans.length, changes: changeCount }),
     });
+    const legend = contentEl.createEl('div', { cls: 'amm-change-legend' });
+    legend.createSpan({ text: t('backfill.legend.removed'), cls: 'is-removed' });
+    legend.createSpan({ text: t('backfill.legend.added'), cls: 'is-added' });
 
-    const table = contentEl.createEl('table', { cls: 'amm-backfill-table' });
-    const head = table.createEl('thead').createEl('tr');
-    head.createEl('th', { text: t('backfill.columns.resource') });
-    head.createEl('th', { text: t('backfill.columns.changes') });
-    const body = table.createEl('tbody');
-
-    for (const plan of this.plans) {
-      const row = body.createEl('tr');
-      const resource = row.createEl('td');
-      resource.createEl('div', { text: plan.attachment.name, cls: 'amm-backfill-resource' });
-      resource.createEl('div', { text: plan.group.name, cls: 'amm-backfill-group' });
-      const changes = row.createEl('td');
-      const list = changes.createEl('ul');
-      for (const change of plan.changes) list.createEl('li', { text: describe(change) });
-    }
+    const tree = buildChangeTree(this.plans.flatMap(plan => plan.changes));
+    renderTree(contentEl, tree.children);
 
     new Setting(contentEl)
       .addButton(button => button

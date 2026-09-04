@@ -2,7 +2,7 @@ import { App, Notice, TFile } from 'obsidian';
 import { MappingGroup } from './types';
 import { NoteManager } from './note-manager';
 import type { CreatePlan } from './note-manager';
-import { cleanFolder, groupForAttachment } from './paths';
+import { groupForAttachment, resourceRoot } from './paths';
 import { t } from './i18n/i18n';
 import { BackfillPreviewModal } from './backfill-modal';
 
@@ -15,7 +15,7 @@ export class BackfillManager {
   constructor(private app: App, private noteManager: NoteManager) {}
 
   attachmentsOf(group: MappingGroup, allGroups: MappingGroup[]): TFile[] {
-    const folder = cleanFolder(group.attachmentsFolder);
+    const folder = resourceRoot(group);
     if (!folder) return [];
     return this.app.vault.getFiles().filter(file => {
       if (!file.path.startsWith(folder + '/')) return false;

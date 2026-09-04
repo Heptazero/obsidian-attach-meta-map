@@ -1,5 +1,6 @@
 import {
-  AttMetaMapSettings, MappingGroup, SETTINGS_VERSION, SourceDefinition, SourceKind, SourceValues,
+  AttMetaMapSettings, MappingGroup, MappingGroupInput, SETTINGS_VERSION, SourceDefinition, SourceKind,
+  SourceValues,
 } from './types';
 import { renderTemplate, templateVars } from './paths';
 
@@ -62,29 +63,33 @@ export function defaultMapping(): Record<string, string> {
 
 let groupCounter = 0;
 
-export function createGroup(partial: Partial<MappingGroup> = {}): MappingGroup {
+export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
   groupCounter++;
-  return {
-    id: `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
-    name: 'New group',
-    layout: 'sidecar',
-    auxiliaryPrefix: '',
-    createNoteFile: true,
-    attachmentsFolder: 'Attachments',
-    notesFolder: 'Library',
-    watchedExtensions: ['.pdf'],
-    mirrorFolderStructure: true,
-    templatePath: '',
-    noteNameTemplate: '{{basename}}',
-    linkTemplate: '[[{{name}}]]',
-    embedAttachment: false,
-    autoCreateOnNew: true,
-    syncUpdatedOnModify: true,
-    enablePdfMetadataExtraction: true,
-    enableDoiIsbnLookup: false,
-    sanitizeListValues: true,
-    ...partial,
+  const common = {
+    id: partial.id ?? `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
+    name: partial.name ?? 'New group',
+    auxiliaryPrefix: partial.auxiliaryPrefix ?? '',
+    createNoteFile: partial.createNoteFile ?? true,
+    watchedExtensions: partial.watchedExtensions ?? ['.pdf'],
+    mirrorFolderStructure: partial.mirrorFolderStructure ?? true,
+    templatePath: partial.templatePath ?? '',
+    noteNameTemplate: partial.noteNameTemplate ?? '{{basename}}',
+    linkTemplate: partial.linkTemplate ?? '[[{{name}}]]',
+    embedAttachment: partial.embedAttachment ?? false,
+    autoCreateOnNew: partial.autoCreateOnNew ?? true,
+    syncUpdatedOnModify: partial.syncUpdatedOnModify ?? true,
+    enablePdfMetadataExtraction: partial.enablePdfMetadataExtraction ?? true,
+    enableDoiIsbnLookup: partial.enableDoiIsbnLookup ?? false,
+    sanitizeListValues: partial.sanitizeListValues ?? true,
   };
+  return partial.layout === 'folder'
+    ? { ...common, layout: 'folder', collectionFolder: partial.collectionFolder ?? 'Library' }
+    : {
+      ...common,
+      layout: 'sidecar',
+      resourceFolder: partial.resourceFolder ?? 'Attachments',
+      noteFolder: partial.noteFolder ?? 'Library',
+    };
 }
 
 export function defaultSettings(): AttMetaMapSettings {
@@ -102,67 +107,23 @@ export function groupCreatesNotes(group: MappingGroup): boolean {
   return group.layout === 'sidecar' || group.createNoteFile;
 }
 
-interface LegacyV1 {
-  attachmentsFolder?: string;
-  libraryFolder?: string;
-  watchedExtensions?: string[];
-  autoCreateOnNew?: boolean;
-  autoDeleteOnRemove?: boolean;
-  mirrorFolderStructure?: boolean;
-  enablePdfMetadataExtraction?: boolean;
-  enableDoiIsbnLookup?: boolean;
-  tagsPropertyName?: string;
-}
-
-interface LegacyV2Group extends Partial<MappingGroup> {
-  fields?: Record<string, { enabled?: boolean; property?: string }>;
-  autoCreateBaseFile?: boolean;
-  baseFolderPath?: string;
-  autoDeleteOnRemove?: boolean;
-}
-
-/**
- * Reads v1 (Attachments Library), v2 (per-group field tables) and v3 configs.
- * A v2 field table collapses into the global mapping: the first group that
- * enabled a source decides where that source lands.
- */
+/** Reads only the current settings shape; retired fields are not carried forward. */
 export function normalizeSettings(raw: unknown): AttMetaMapSettings {
   if (!raw || typeof raw !== 'object') return defaultSettings();
 
-  const candidate = raw as Partial<AttMetaMapSettings> & LegacyV1 & {
-    groups?: LegacyV2Group[];
-  };
+  const candidate = raw as Partial<AttMetaMapSettings> & { groups?: MappingGroupInput[] };
 
   if (Array.isArray(candidate.groups)) {
     const mapping = { ...defaultMapping(), ...(candidate.mapping ?? {}) };
-
-    // A v2 field table said both "where" and "whether". The template now
-    // answers "whether", so only the "where" survives — and a source every
-    // group had switched off loses its mapping, matching what was intended.
-    const seen = new Set<string>();
-    const enabled = new Set<string>();
-    for (const group of candidate.groups) {
-      for (const [id, config] of Object.entries(group.fields ?? {})) {
-        if (!SOURCE_DEF_BY_ID[id]) continue;
-        seen.add(id);
-        if (!config?.enabled) continue;
-        enabled.add(id);
-        mapping[id] = (config.property ?? mapping[id] ?? '').trim();
-      }
-    }
-    for (const id of seen) {
-      if (!enabled.has(id)) mapping[id] = '';
-    }
-
-    const groups = candidate.groups.map(group => {
-      const clean = { ...createGroup(), ...group };
-      delete (clean as LegacyV2Group).fields;
-      delete (clean as LegacyV2Group).autoCreateBaseFile;
-      delete (clean as LegacyV2Group).baseFolderPath;
-      delete (clean as LegacyV2Group).autoDeleteOnRemove;
-      clean.linkTemplate = unambiguousLinkTemplate(clean);
-      return clean;
-    });
+    const groups = candidate.groups
+      .filter(group => group.layout === 'folder'
+        ? typeof group.collectionFolder === 'string'
+        : typeof group.resourceFolder === 'string' && typeof group.noteFolder === 'string')
+      .map(group => {
+        const clean = createGroup(group);
+        clean.linkTemplate = unambiguousLinkTemplate(clean);
+        return clean;
+      });
 
     return {
       version: SETTINGS_VERSION,
@@ -173,27 +134,7 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
     };
   }
 
-  if (!candidate.attachmentsFolder && !candidate.libraryFolder) return defaultSettings();
-
-  const mapping = defaultMapping();
-  if (candidate.tagsPropertyName) mapping.pdfKeywords = candidate.tagsPropertyName;
-
-  return {
-    version: SETTINGS_VERSION,
-    language: 'auto',
-    mapping,
-    extraTemplateFolders: [],
-    groups: [createGroup({
-      name: candidate.attachmentsFolder?.split('/').filter(Boolean).pop() ?? 'Attachments',
-      attachmentsFolder: candidate.attachmentsFolder ?? 'Attachments',
-      notesFolder: candidate.libraryFolder ?? 'Library',
-      watchedExtensions: candidate.watchedExtensions ?? ['.pdf'],
-      mirrorFolderStructure: candidate.mirrorFolderStructure ?? true,
-      autoCreateOnNew: candidate.autoCreateOnNew ?? true,
-      enablePdfMetadataExtraction: candidate.enablePdfMetadataExtraction ?? true,
-      enableDoiIsbnLookup: candidate.enableDoiIsbnLookup ?? false,
-    })],
-  };
+  return defaultSettings();
 }
 
 export function sanitizeListValue(raw: string): string {

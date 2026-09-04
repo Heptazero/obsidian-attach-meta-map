@@ -153,43 +153,51 @@
   overflow-y: auto;
 }
 
-.amm-backfill-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.75em 0 1em;
+.amm-change-legend {
+  display: flex;
+  gap: 1.25em;
+  margin: 0.75em 0;
 }
 
-.amm-backfill-table th,
-.amm-backfill-table td {
-  padding: 0.45em 0.6em;
-  border-bottom: 1px solid var(--background-modifier-border);
-  text-align: left;
-  vertical-align: top;
+.amm-change-legend .is-removed,
+.amm-change-line.is-removed {
+  color: var(--text-error);
 }
 
-.amm-backfill-table th {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-  font-weight: var(--font-normal);
+.amm-change-legend .is-added,
+.amm-change-line.is-added {
+  color: var(--text-success);
 }
 
-.amm-backfill-resource {
-  font-weight: var(--font-semibold);
-  overflow-wrap: anywhere;
-}
-
-.amm-backfill-group {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.amm-backfill-table ul {
+.amm-change-tree {
+  list-style: none;
   margin: 0;
-  padding-inline-start: 1.2em;
+  padding-inline-start: 1.35em;
 }
 
-.amm-backfill-table li {
+.amm-backfill-modal > .amm-change-tree {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  margin-bottom: 1em;
+  padding: 0.75em 1em;
+}
+
+.amm-change-line {
+  font-family: var(--font-monospace);
+  line-height: 1.65;
   overflow-wrap: anywhere;
+}
+
+.amm-change-line.is-folder {
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-weight: var(--font-semibold);
+}
+
+.amm-change-marker {
+  display: inline-block;
+  font-weight: var(--font-bold);
+  width: 1.2em;
 }
 
 .amm-template-preview {

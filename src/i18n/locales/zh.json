@@ -44,13 +44,11 @@
     "nothing": "${group}：没有找到受监听的附件。",
     "nothingToChange": "没有待执行的改动。已有 source 关系或已整理的文件都会跳过。",
     "previewTitle": "确认批量改动",
-    "previewSubtitle": "将处理 ${items} 个资源，共 ${changes} 处改动。确认前不会移动或写入任何文件。",
+    "previewSubtitle": "将处理 ${items} 个资源，共 ${changes} 处改动。下面是确认后的文件夹样子；确认前不会移动或写入任何文件。",
     "confirm": "确认并执行",
-    "columns": { "resource": "资源", "changes": "将执行的改动" },
-    "actions": {
-      "move": "移动：${from} → ${to}",
-      "createNote": "新建笔记：${path}",
-      "updateSource": "更新 source：${notePath} ← ${link}"
+    "legend": {
+      "removed": "− 红色：从旧位置移出（不是删除文件）",
+      "added": "+ 绿色：新位置、新笔记或新增属性"
     },
     "starting": "正在执行 ${total} 个已确认的资源改动…",
     "progress": "${processed}/${total} —— 已处理 ${created}，失败或状态变化 ${skipped}",
@@ -127,8 +125,8 @@
         "sidecar": "镜像 sidecar（附件原地不动，笔记单独建）",
         "folder": "文件夹（新建文件夹，把附件搬进去和笔记放一起）",
         "desc": {
-          "sidecar": "附件留在附件文件夹里，笔记建在笔记文件夹的镜像路径下，两者靠 frontmatter 链接互相认识。",
-          "folder": "新建一个和笔记同名的文件夹（在笔记文件夹下），把附件搬进去，笔记也建在里面。已有配对只认 source；删除资源不会删除笔记。"
+          "sidecar": "资源留在资源文件夹里，笔记建在笔记文件夹的镜像路径下，两者靠 source 互相认识。",
+          "folder": "所有资源和笔记共用一个资源集合文件夹。松散文件会折叠进同名子文件夹，笔记也建在里面。已有配对只认 source；删除资源不会删除笔记。"
         }
       },
       "createNoteFile": {
@@ -140,13 +138,17 @@
         "desc": "用逗号分隔，例如 cn_, zh_, slides_。文件会按去掉前缀后的主体名匹配已有笔记或 source 资源，搬进同一文件夹，并把双链追加到 source 列表。匹配不上就原地不动。留空关闭。",
         "placeholder": "例如 cn_, zh_, slides_"
       },
-      "attachmentsFolder": {
-        "name": "附件文件夹",
-        "desc": "放进这里的文件会自动获得一篇笔记。"
+      "resourceFolder": {
+        "name": "资源文件夹",
+        "desc": "分离模式的原始资源位置。放进这里的受监听文件会建立对应笔记。"
       },
-      "notesFolder": {
+      "noteFolder": {
         "name": "笔记文件夹",
-        "desc": "笔记建在哪里，可以是附件夹的上层目录。"
+        "desc": "分离模式的对应笔记位置。"
+      },
+      "collectionFolder": {
+        "name": "资源集合文件夹",
+        "desc": "聚合模式唯一的根目录。松散资源、整理后的子文件夹和对应笔记都在这里，不再分别配置资源与笔记路径。"
       },
       "extensions": {
         "name": "监听的扩展名",
@@ -163,7 +165,7 @@
       },
       "mirror": {
         "name": "镜像子文件夹",
-        "desc": "在笔记夹里重建附件的子目录结构。"
+        "desc": "保留资源原有的子目录层级。"
       },
       "noteName": {
         "name": "笔记文件名",

@@ -195,7 +195,7 @@ export default class AttMetaMapPlugin extends Plugin {
       if (!(file instanceof TFile)) return;
       // Folder-layout createNote moves the attachment itself, which fires
       // this same event — ignore it, or the handler below would see the
-      // attachment leaving attachmentsFolder and delete the note just created.
+      // resource moving within its collection and disturb the note just created.
       if (this.noteManager.isPendingMove(oldPath)) return;
       const oldExt = (oldPath.split('/').pop() ?? '').split('.').pop() ?? '';
       const before = groupForAttachment(this.settings.groups, oldPath, oldExt);

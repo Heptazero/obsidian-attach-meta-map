@@ -230,7 +230,20 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .addOption('folder', t('settings.group.layout.folder'))
         .setValue(group.layout)
         .onChange(async value => {
-          group.layout = value as MappingGroup['layout'];
+          const next = value === 'folder'
+            ? createGroup({
+              ...group,
+              layout: 'folder',
+              collectionFolder: group.layout === 'folder' ? group.collectionFolder : group.noteFolder,
+            })
+            : createGroup({
+              ...group,
+              layout: 'sidecar',
+              resourceFolder: group.layout === 'sidecar' ? group.resourceFolder : group.collectionFolder,
+              noteFolder: group.layout === 'sidecar' ? group.noteFolder : group.collectionFolder,
+            });
+          this.plugin.settings.groups = this.plugin.settings.groups.map(item =>
+            item.id === group.id ? next : item);
           await this.plugin.saveSettings();
           this.redisplay();
         }));
@@ -262,39 +275,58 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     }
 
     this.section(body, t('settings.group.sections.paths'), true, el => {
-      new Setting(el)
-        .setName(t('settings.group.attachmentsFolder.name'))
-        .setDesc(t('settings.group.attachmentsFolder.desc'))
-        .addText(text => {
-          text
-            .setPlaceholder('Attachments')
-            .setValue(group.attachmentsFolder)
-            .onChange(async value => {
-              group.attachmentsFolder = value.trim();
+      if (group.layout === 'folder') {
+        new Setting(el)
+          .setName(t('settings.group.collectionFolder.name'))
+          .setDesc(t('settings.group.collectionFolder.desc'))
+          .addText(text => {
+            text
+              .setPlaceholder('Library')
+              .setValue(group.collectionFolder)
+              .onChange(async value => {
+                group.collectionFolder = value.trim();
+                await this.plugin.saveSettings();
+              });
+            new FolderSuggest(this.app, text.inputEl, async value => {
+              group.collectionFolder = value;
               await this.plugin.saveSettings();
             });
-          new FolderSuggest(this.app, text.inputEl, async value => {
-            group.attachmentsFolder = value;
-            await this.plugin.saveSettings();
           });
-        });
+      } else {
+        new Setting(el)
+          .setName(t('settings.group.resourceFolder.name'))
+          .setDesc(t('settings.group.resourceFolder.desc'))
+          .addText(text => {
+            text
+              .setPlaceholder('Attachments')
+              .setValue(group.resourceFolder)
+              .onChange(async value => {
+                group.resourceFolder = value.trim();
+                await this.plugin.saveSettings();
+              });
+            new FolderSuggest(this.app, text.inputEl, async value => {
+              group.resourceFolder = value;
+              await this.plugin.saveSettings();
+            });
+          });
 
-      new Setting(el)
-        .setName(t('settings.group.notesFolder.name'))
-        .setDesc(t('settings.group.notesFolder.desc'))
-        .addText(text => {
-          text
-            .setPlaceholder('Library')
-            .setValue(group.notesFolder)
-            .onChange(async value => {
-              group.notesFolder = value.trim();
+        new Setting(el)
+          .setName(t('settings.group.noteFolder.name'))
+          .setDesc(t('settings.group.noteFolder.desc'))
+          .addText(text => {
+            text
+              .setPlaceholder('Library')
+              .setValue(group.noteFolder)
+              .onChange(async value => {
+                group.noteFolder = value.trim();
+                await this.plugin.saveSettings();
+              });
+            new FolderSuggest(this.app, text.inputEl, async value => {
+              group.noteFolder = value;
               await this.plugin.saveSettings();
             });
-          new FolderSuggest(this.app, text.inputEl, async value => {
-            group.notesFolder = value;
-            await this.plugin.saveSettings();
           });
-        });
+      }
 
       new Setting(el)
         .setName(t('settings.group.extensions.name'))

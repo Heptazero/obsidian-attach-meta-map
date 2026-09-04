@@ -2,8 +2,8 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  cleanFolder, folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
-  normalizeForMatch, notePathCandidates, templateVars,
+  folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
+  normalizeForMatch, notePathCandidates, noteRoot, resourceRoot, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
@@ -145,18 +145,18 @@ export class NoteManager {
   }
 
   private findNoteBySourceInGroup(group: MappingGroup, attachmentPath: string): TFile | null {
-    const notesFolder = cleanFolder(group.notesFolder);
+    const notesFolder = noteRoot(group);
     if (!notesFolder) return null;
     return this.app.vault.getMarkdownFiles().find(note =>
       isInFolder(note.path, notesFolder) && this.noteReferences(note, attachmentPath),
     ) ?? null;
   }
 
-  /** Reverse source lookup works even when the resource is outside attachmentsFolder. */
+  /** Reverse source lookup works even when the resource is outside its configured root. */
   findNoteBySource(
     groups: MappingGroup[], attachmentPath: string,
   ): { group: MappingGroup; note: TFile } | null {
-    const ordered = [...groups].sort((a, b) => cleanFolder(b.notesFolder).length - cleanFolder(a.notesFolder).length);
+    const ordered = [...groups].sort((a, b) => noteRoot(b).length - noteRoot(a).length);
     for (const group of ordered) {
       const note = this.findNoteBySourceInGroup(group, attachmentPath);
       if (note) return { group, note };
@@ -361,7 +361,7 @@ export class NoteManager {
       return note && this.noteReferences(note, attachment.path) ? note : null;
     }
 
-    if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) {
+    if (group.layout === 'folder' && !isInFolder(attachment.path, resourceRoot(group))) {
       // Already moved into its own folder (createNoteFile groups never get a
       // note to find above) — nothing left to fold.
       return null;
@@ -409,7 +409,7 @@ export class NoteManager {
     }
     if (this.findNote(group, attachment.path)) return null;
 
-    if (group.layout === 'folder' && !isInFolder(attachment.path, group.attachmentsFolder)) return null;
+    if (group.layout === 'folder' && !isInFolder(attachment.path, resourceRoot(group))) return null;
 
     if (group.layout === 'sidecar') {
       const notePath = this.targetNotePath(group, attachment.path);
@@ -528,7 +528,7 @@ export class NoteManager {
     const stripped = stripAuxiliaryPrefix(file.basename, group.auxiliaryPrefix);
     if (stripped === null) return null;
     const key = normalizeForMatch(stripped);
-    const notesFolder = cleanFolder(group.notesFolder);
+    const notesFolder = noteRoot(group);
 
     return this.app.vault.getMarkdownFiles().find(note => {
       if (!isInFolder(note.path, notesFolder)) return false;
@@ -542,7 +542,7 @@ export class NoteManager {
   /**
    * A companion file (translation, etc.) never gets a note of its own: find
    * the item it belongs to by normalized-name match against every note under
-   * notesFolder, and move it in beside that note. No match — most likely it
+   * the note root, and move it in beside that note. No match — most likely it
    * arrived before the primary item did, or the names differ too much —
    * leaves it exactly where it is rather than guessing.
    */

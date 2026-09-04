@@ -21,23 +21,14 @@ export interface SourceDefinition {
 }
 
 /**
- * sidecar: the attachment stays where it is; the note lives in a mirrored
- *   tree under notesFolder.
- * folder: a new folder (named like the note) is created under notesFolder,
- *   the attachment is moved into it, and the note lives beside it. Once
- *   folded, the item leaves attachmentsFolder for good — the plugin's
- *   watchers stop tracking it and Obsidian's own link-rename handling takes
- *   over from there.
+ * sidecar: resources and notes have separate roots.
+ * folder: loose resources and their item folders share one collection root.
  */
 export type GroupLayout = 'sidecar' | 'folder';
 
-export interface MappingGroup {
+export interface MappingGroupCommon {
   id: string;
   name: string;
-  layout: GroupLayout;
-
-  attachmentsFolder: string;
-  notesFolder: string;
   watchedExtensions: string[];
   mirrorFolderStructure: boolean;
 
@@ -72,8 +63,27 @@ export interface MappingGroup {
   enablePdfMetadataExtraction: boolean;
   enableDoiIsbnLookup: boolean;
   sanitizeListValues: boolean;
-
 }
+
+export interface SidecarGroup extends MappingGroupCommon {
+  layout: 'sidecar';
+  resourceFolder: string;
+  noteFolder: string;
+}
+
+export interface FolderGroup extends MappingGroupCommon {
+  layout: 'folder';
+  collectionFolder: string;
+}
+
+export type MappingGroup = SidecarGroup | FolderGroup;
+
+export type MappingGroupInput = Partial<MappingGroupCommon> & {
+  layout?: GroupLayout;
+  resourceFolder?: string;
+  noteFolder?: string;
+  collectionFolder?: string;
+};
 
 export type UiLanguage = 'auto' | 'zh' | 'en';
 
@@ -87,7 +97,7 @@ export interface AttMetaMapSettings {
   groups: MappingGroup[];
 }
 
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 /** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {
