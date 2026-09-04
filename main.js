@@ -24275,31 +24275,32 @@ var AttMetaMapSettingTab = class extends import_obsidian11.PluginSettingTab {
       await this.plugin.saveSettings();
     }));
   }
-  // --- the one mapping table ---------------------------------------------
+  // --- field mappings ----------------------------------------------------
   renderMapping(containerEl) {
     new import_obsidian11.Setting(containerEl).setName(t2("settings.sections.mapping")).setDesc(t2("settings.mapping.desc")).setHeading();
     for (const kind of KIND_ORDER) {
       const defs = SOURCE_DEFS.filter((def) => def.kind === kind);
       if (defs.length === 0) continue;
-      containerEl.createEl("div", { text: t2(`settings.kinds.${kind}`), cls: "amm-field-source" });
-      for (const def of defs) {
-        new import_obsidian11.Setting(containerEl).setClass("amm-field-row").setName(t2(`sources.${def.id}.name`)).setDesc(t2(`sources.${def.id}.desc`)).addText((text) => {
-          var _a;
-          text.setPlaceholder(t2("settings.mapping.unmapped")).setValue((_a = this.plugin.settings.mapping[def.id]) != null ? _a : "").onChange(async (value) => {
-            this.plugin.settings.mapping[def.id] = value.trim();
-            await this.plugin.saveSettings();
-          });
-          new PropertySuggest(
-            this.app,
-            text.inputEl,
-            () => this.plugin.registry.knownKeys(),
-            async (value) => {
-              this.plugin.settings.mapping[def.id] = value;
+      this.section(containerEl, t2(`settings.kinds.${kind}`), false, (sectionEl) => {
+        for (const def of defs) {
+          new import_obsidian11.Setting(sectionEl).setClass("amm-field-row").setName(t2(`sources.${def.id}.name`)).setDesc(t2(`sources.${def.id}.desc`)).addText((text) => {
+            var _a;
+            text.setPlaceholder(t2("settings.mapping.unmapped")).setValue((_a = this.plugin.settings.mapping[def.id]) != null ? _a : "").onChange(async (value) => {
+              this.plugin.settings.mapping[def.id] = value.trim();
               await this.plugin.saveSettings();
-            }
-          );
-        });
-      }
+            });
+            new PropertySuggest(
+              this.app,
+              text.inputEl,
+              () => this.plugin.registry.knownKeys(),
+              async (value) => {
+                this.plugin.settings.mapping[def.id] = value;
+                await this.plugin.saveSettings();
+              }
+            );
+          });
+        }
+      });
     }
   }
   // --- groups ------------------------------------------------------------

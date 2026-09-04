@@ -88,14 +88,6 @@
   border-top: none;
 }
 
-.amm-field-source {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 1em 0 0.2em;
-}
-
 .amm-field-row .setting-item-control input[type="text"] {
   max-width: 12em;
 }

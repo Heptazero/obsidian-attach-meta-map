@@ -148,7 +148,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         }));
   }
 
-  // --- the one mapping table ---------------------------------------------
+  // --- field mappings ----------------------------------------------------
 
   private renderMapping(containerEl: HTMLElement): void {
     new Setting(containerEl)
@@ -160,33 +160,33 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       const defs = SOURCE_DEFS.filter(def => def.kind === kind);
       if (defs.length === 0) continue;
 
-      containerEl.createEl('div', { text: t(`settings.kinds.${kind}`), cls: 'amm-field-source' });
+      this.section(containerEl, t(`settings.kinds.${kind}`), false, sectionEl => {
+        for (const def of defs) {
+          new Setting(sectionEl)
+            .setClass('amm-field-row')
+            .setName(t(`sources.${def.id}.name`))
+            .setDesc(t(`sources.${def.id}.desc`))
+            .addText(text => {
+              text
+                .setPlaceholder(t('settings.mapping.unmapped'))
+                .setValue(this.plugin.settings.mapping[def.id] ?? '')
+                .onChange(async value => {
+                  this.plugin.settings.mapping[def.id] = value.trim();
+                  await this.plugin.saveSettings();
+                });
 
-      for (const def of defs) {
-        new Setting(containerEl)
-          .setClass('amm-field-row')
-          .setName(t(`sources.${def.id}.name`))
-          .setDesc(t(`sources.${def.id}.desc`))
-          .addText(text => {
-            text
-              .setPlaceholder(t('settings.mapping.unmapped'))
-              .setValue(this.plugin.settings.mapping[def.id] ?? '')
-              .onChange(async value => {
-                this.plugin.settings.mapping[def.id] = value.trim();
-                await this.plugin.saveSettings();
-              });
-
-            new PropertySuggest(
-              this.app,
-              text.inputEl,
-              () => this.plugin.registry.knownKeys(),
-              async value => {
-                this.plugin.settings.mapping[def.id] = value;
-                await this.plugin.saveSettings();
-              },
-            );
-          });
-      }
+              new PropertySuggest(
+                this.app,
+                text.inputEl,
+                () => this.plugin.registry.knownKeys(),
+                async value => {
+                  this.plugin.settings.mapping[def.id] = value;
+                  await this.plugin.saveSettings();
+                },
+              );
+            });
+        }
+      });
     }
   }
 
