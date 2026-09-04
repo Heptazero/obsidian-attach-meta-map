@@ -345,15 +345,17 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
       if (createsNotes) this.renderTemplatePicker(el, group);
 
-      new Setting(el)
-        .setName(t('settings.group.mirror.name'))
-        .setDesc(t('settings.group.mirror.desc'))
-        .addToggle(toggle => toggle
-          .setValue(group.mirrorFolderStructure)
-          .onChange(async value => {
-            group.mirrorFolderStructure = value;
-            await this.plugin.saveSettings();
-          }));
+      if (group.layout === 'sidecar') {
+        new Setting(el)
+          .setName(t('settings.group.mirror.name'))
+          .setDesc(t('settings.group.mirror.desc'))
+          .addToggle(toggle => toggle
+            .setValue(group.mirrorFolderStructure)
+            .onChange(async value => {
+              group.mirrorFolderStructure = value;
+              await this.plugin.saveSettings();
+            }));
+      }
     });
 
     this.section(body, t('settings.group.sections.naming'), false, el => {

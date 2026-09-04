@@ -169,6 +169,7 @@ describe('current settings shape', () => {
     expect(settings.groups[0]).not.toHaveProperty('attachmentsFolder');
     expect(settings.groups[0]).not.toHaveProperty('notesFolder');
     expect(settings.groups[0]).not.toHaveProperty('autoDeleteOnRemove');
+    expect(settings.groups[0]).not.toHaveProperty('mirrorFolderStructure');
   });
 
   it('repairs a link template that would point at the note itself', () => {

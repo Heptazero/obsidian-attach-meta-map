@@ -27,6 +27,13 @@ export function relativeTo(path: string, folder: string): string {
   return path.startsWith(f + '/') ? path.slice(f.length + 1) : path;
 }
 
+/** True only for a file placed immediately inside the root, never a descendant folder. */
+export function isDirectChild(path: string, folder: string): boolean {
+  if (!isInFolder(path, folder)) return false;
+  const relative = relativeTo(path, folder);
+  return relative.length > 0 && !relative.includes('/');
+}
+
 export function splitName(fileName: string): { basename: string; ext: string } {
   const dot = fileName.lastIndexOf('.');
   if (dot <= 0) return { basename: fileName, ext: '' };
@@ -74,6 +81,7 @@ export function groupForAttachment(
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
+    if (group.layout === 'folder' && !isDirectChild(path, folder)) continue;
     if (!group.watchedExtensions.map(e => e.toLowerCase()).includes('.' + extension.toLowerCase())) continue;
     if (folder.length > bestLen) { best = group; bestLen = folder.length; }
   }
@@ -147,33 +155,16 @@ function safeItemName(group: MappingGroup, attachmentPath: string): string {
   return (rendered || vars.basename).replace(/[\\/:*?"<>|]/g, '-');
 }
 
-/** Names that may legitimately identify one folder-layout item. */
+/** Names that may legitimately identify one generated item. */
 export function folderItemNames(group: MappingGroup, attachmentPath: string): string[] {
   const fileName = attachmentPath.split('/').pop() ?? attachmentPath;
   return Array.from(new Set([safeItemName(group, attachmentPath), fileName]));
 }
 
-/**
- * Conservative structural guard for overlapping input/output roots.
- * A repeated batch pass must recognize `Item/Item.ext` and stop instead of
- * producing `Item/Item/Item.ext`.
- */
-export function isFolderItemPath(group: MappingGroup, attachmentPath: string): boolean {
-  if (!isInFolder(attachmentPath, noteRoot(group))) return false;
-  const parts = cleanFolder(attachmentPath).split('/');
-  if (parts.length < 2) return false;
-  const parentName = parts[parts.length - 2];
-  return folderItemNames(group, attachmentPath).some(name => {
-    if (parentName === name) return true;
-    const suffix = parentName.startsWith(`${name} `) ? parentName.slice(name.length + 1) : '';
-    return /^\d+$/.test(suffix);
-  });
-}
-
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
-  const subfolder = group.mirrorFolderStructure
+  const subfolder = group.layout === 'sidecar' && group.mirrorFolderStructure
     ? relative.split('/').slice(0, -1).join('/')
     : '';
 
@@ -218,13 +209,9 @@ function buildFolderItem(dir: string, folderName: string, fileName: string): Fol
 export function folderItemCandidates(group: MappingGroup, attachmentPath: string): FolderItemCandidates {
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
-  const subfolder = group.mirrorFolderStructure
-    ? relative.split('/').slice(0, -1).join('/')
-    : '';
-
   const safe = safeItemName(group, attachmentPath);
   const notes = noteRoot(group);
-  const dir = [notes, subfolder].filter(Boolean).join('/');
+  const dir = notes;
 
   return {
     primary: buildFolderItem(dir, safe, fileName),

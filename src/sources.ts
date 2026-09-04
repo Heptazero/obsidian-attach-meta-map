@@ -71,7 +71,6 @@ export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
     auxiliaryPrefix: partial.auxiliaryPrefix ?? '',
     createNoteFile: partial.createNoteFile ?? true,
     watchedExtensions: partial.watchedExtensions ?? ['.pdf'],
-    mirrorFolderStructure: partial.mirrorFolderStructure ?? true,
     templatePath: partial.templatePath ?? '',
     noteNameTemplate: partial.noteNameTemplate ?? '{{basename}}',
     linkTemplate: partial.linkTemplate ?? '[[{{name}}]]',
@@ -89,6 +88,7 @@ export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
       layout: 'sidecar',
       resourceFolder: partial.resourceFolder ?? 'Attachments',
       noteFolder: partial.noteFolder ?? 'Library',
+      mirrorFolderStructure: partial.mirrorFolderStructure ?? true,
     };
 }
 

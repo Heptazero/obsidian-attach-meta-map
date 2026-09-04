@@ -23,7 +23,6 @@
     "nothingApplied": "Nothing changed.",
     "applied": "Updated ${count} property/properties.",
     "unbound": "Removed ${count} source relation(s).",
-    "sourceRepairRequired": "Found candidate note \"${note}\", but it has no matching source. Use the batch preview to confirm the relation.",
     "templateMissing": "Template \"${path}\" not found (group ${group}); used the built-in fields.",
     "templaterSkipped": "Skipped ${count} Templater block(s) in the template — this plugin does not run them."
   },
@@ -126,7 +125,7 @@
         "folder": "Folder (a new folder holds the attachment and the note together)",
         "desc": {
           "sidecar": "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
-          "folder": "Resources and notes share one collection folder. Loose files are folded into same-named child folders and the note lives beside them. Existing pairs are recognized only through source; deleting a resource never deletes its note."
+          "folder": "Resources and notes share one collection folder. Only direct files at its root are folded; anything in a child folder is never organized again. Existing pairs are recognized only through source."
         }
       },
       "createNoteFile": {
@@ -148,7 +147,7 @@
       },
       "collectionFolder": {
         "name": "Resource collection folder",
-        "desc": "The single root for folder mode. Loose resources, organized child folders, and corresponding notes all live here."
+        "desc": "The single root for folder mode. Only files directly at the root are managed; content in any child folder is never moved or given another note."
       },
       "extensions": {
         "name": "Watched extensions",
@@ -165,7 +164,7 @@
       },
       "mirror": {
         "name": "Mirror subfolders",
-        "desc": "Preserve the resource's existing subfolder hierarchy."
+        "desc": "Sidecar only: recreate the resource's subfolder hierarchy under the note folder."
       },
       "noteName": {
         "name": "Note name",
@@ -207,7 +206,7 @@
       },
       "backfill": {
         "name": "Create missing notes",
-        "desc": "Scan this group's attachments and create the notes that do not exist yet.",
+        "desc": "Sidecar scans the resource tree; folder mode scans only direct files at the collection root. Nothing runs before preview confirmation.",
         "run": "Run"
       },
       "upgrade": {

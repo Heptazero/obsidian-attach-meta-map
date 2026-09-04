@@ -169,7 +169,7 @@ describe('source-based resource relation', () => {
     expect(manager.planCreate(attachment, group)).toBeNull();
   });
 
-  it('repairs source instead of nesting an already folded resource again', () => {
+  it('never repairs or nests a resource inside a child folder, even when names match', () => {
     const note = makeFile('Library/Paper/Paper.md');
     const attachment = makeFile('Library/Paper/Paper.pdf');
     const folder = { path: 'Library/Paper', name: 'Paper', children: [note, attachment] };
@@ -181,9 +181,7 @@ describe('source-based resource relation', () => {
       noteNameTemplate: '{{basename}}',
     });
 
-    expect(manager.planCreate(attachment, group)?.changes).toEqual([
-      { kind: 'update-source', notePath: note.path, link: '[[Paper.pdf]]' },
-    ]);
+    expect(manager.planCreate(attachment, group)).toBeNull();
   });
 
   it('skips an already folded resource when note creation is disabled', () => {
@@ -200,8 +198,8 @@ describe('source-based resource relation', () => {
   });
 
   it('does not nest an already folded resource through the direct create path', async () => {
-    const attachment = makeFile('Library/Paper/Paper.pdf');
-    const folder = { path: 'Library/Paper', name: 'Paper', children: [attachment] };
+    const attachment = makeFile('Library/Renamed/Paper.pdf');
+    const folder = { path: 'Library/Renamed', name: 'Renamed', children: [attachment] };
     Object.assign(attachment, { parent: folder });
     const { manager } = harness([attachment], {});
     const group = createGroup({
@@ -210,6 +208,21 @@ describe('source-based resource relation', () => {
     });
 
     await manager.createNote(attachment, group);
-    expect(attachment.path).toBe('Library/Paper/Paper.pdf');
+    expect(attachment.path).toBe('Library/Renamed/Paper.pdf');
+  });
+
+  it('does not auto-match a prefixed auxiliary file already inside a child folder', async () => {
+    const note = makeFile('Library/Paper/Paper.md');
+    const original = makeFile('Library/Paper/paper.pdf');
+    const auxiliary = makeFile('Library/Manual/cn_paper.pdf');
+    const fm = { [note.path]: { source: '[[paper.pdf]]' } };
+    const { manager } = harness([note, original, auxiliary], fm);
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', auxiliaryPrefix: 'cn_',
+    });
+
+    expect(await manager.createNote(auxiliary, group)).toBeNull();
+    expect(auxiliary.path).toBe('Library/Manual/cn_paper.pdf');
+    expect(fm[note.path].source).toBe('[[paper.pdf]]');
   });
 });

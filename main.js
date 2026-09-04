@@ -4292,6 +4292,11 @@ function relativeTo(path, folder) {
   if (!f) return path;
   return path.startsWith(f + "/") ? path.slice(f.length + 1) : path;
 }
+function isDirectChild(path, folder) {
+  if (!isInFolder(path, folder)) return false;
+  const relative = relativeTo(path, folder);
+  return relative.length > 0 && !relative.includes("/");
+}
 function splitName(fileName) {
   const dot = fileName.lastIndexOf(".");
   if (dot <= 0) return { basename: fileName, ext: "" };
@@ -4326,6 +4331,7 @@ function groupForAttachment(groups, path, extension) {
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
+    if (group.layout === "folder" && !isDirectChild(path, folder)) continue;
     if (!group.watchedExtensions.map((e) => e.toLowerCase()).includes("." + extension.toLowerCase())) continue;
     if (folder.length > bestLen) {
       best = group;
@@ -4379,22 +4385,11 @@ function folderItemNames(group, attachmentPath) {
   const fileName = (_a = attachmentPath.split("/").pop()) != null ? _a : attachmentPath;
   return Array.from(/* @__PURE__ */ new Set([safeItemName(group, attachmentPath), fileName]));
 }
-function isFolderItemPath(group, attachmentPath) {
-  if (!isInFolder(attachmentPath, noteRoot(group))) return false;
-  const parts = cleanFolder(attachmentPath).split("/");
-  if (parts.length < 2) return false;
-  const parentName = parts[parts.length - 2];
-  return folderItemNames(group, attachmentPath).some((name) => {
-    if (parentName === name) return true;
-    const suffix = parentName.startsWith(`${name} `) ? parentName.slice(name.length + 1) : "";
-    return /^\d+$/.test(suffix);
-  });
-}
 function notePathCandidates(group, attachmentPath) {
   var _a;
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
-  const subfolder = group.mirrorFolderStructure ? relative.split("/").slice(0, -1).join("/") : "";
+  const subfolder = group.layout === "sidecar" && group.mirrorFolderStructure ? relative.split("/").slice(0, -1).join("/") : "";
   const [safe] = folderItemNames(group, attachmentPath);
   const notes = noteRoot(group);
   const dir2 = [notes, subfolder].filter(Boolean).join("/");
@@ -4411,10 +4406,9 @@ function folderItemCandidates(group, attachmentPath) {
   var _a;
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
-  const subfolder = group.mirrorFolderStructure ? relative.split("/").slice(0, -1).join("/") : "";
   const safe = safeItemName(group, attachmentPath);
   const notes = noteRoot(group);
-  const dir2 = [notes, subfolder].filter(Boolean).join("/");
+  const dir2 = notes;
   return {
     primary: buildFolderItem(dir2, safe, fileName),
     fallback: buildFolderItem(dir2, fileName, fileName)
@@ -4483,22 +4477,22 @@ function createGroup(partial = {}) {
     auxiliaryPrefix: (_c = partial.auxiliaryPrefix) != null ? _c : "",
     createNoteFile: (_d = partial.createNoteFile) != null ? _d : true,
     watchedExtensions: (_e = partial.watchedExtensions) != null ? _e : [".pdf"],
-    mirrorFolderStructure: (_f = partial.mirrorFolderStructure) != null ? _f : true,
-    templatePath: (_g = partial.templatePath) != null ? _g : "",
-    noteNameTemplate: (_h = partial.noteNameTemplate) != null ? _h : "{{basename}}",
-    linkTemplate: (_i = partial.linkTemplate) != null ? _i : "[[{{name}}]]",
-    embedAttachment: (_j = partial.embedAttachment) != null ? _j : false,
-    autoCreateOnNew: (_k = partial.autoCreateOnNew) != null ? _k : true,
-    syncUpdatedOnModify: (_l = partial.syncUpdatedOnModify) != null ? _l : true,
-    enablePdfMetadataExtraction: (_m = partial.enablePdfMetadataExtraction) != null ? _m : true,
-    enableDoiIsbnLookup: (_n = partial.enableDoiIsbnLookup) != null ? _n : false,
-    sanitizeListValues: (_o = partial.sanitizeListValues) != null ? _o : true
+    templatePath: (_f = partial.templatePath) != null ? _f : "",
+    noteNameTemplate: (_g = partial.noteNameTemplate) != null ? _g : "{{basename}}",
+    linkTemplate: (_h = partial.linkTemplate) != null ? _h : "[[{{name}}]]",
+    embedAttachment: (_i = partial.embedAttachment) != null ? _i : false,
+    autoCreateOnNew: (_j = partial.autoCreateOnNew) != null ? _j : true,
+    syncUpdatedOnModify: (_k = partial.syncUpdatedOnModify) != null ? _k : true,
+    enablePdfMetadataExtraction: (_l = partial.enablePdfMetadataExtraction) != null ? _l : true,
+    enableDoiIsbnLookup: (_m = partial.enableDoiIsbnLookup) != null ? _m : false,
+    sanitizeListValues: (_n = partial.sanitizeListValues) != null ? _n : true
   };
-  return partial.layout === "folder" ? { ...common, layout: "folder", collectionFolder: (_p = partial.collectionFolder) != null ? _p : "Library" } : {
+  return partial.layout === "folder" ? { ...common, layout: "folder", collectionFolder: (_o = partial.collectionFolder) != null ? _o : "Library" } : {
     ...common,
     layout: "sidecar",
-    resourceFolder: (_q = partial.resourceFolder) != null ? _q : "Attachments",
-    noteFolder: (_r = partial.noteFolder) != null ? _r : "Library"
+    resourceFolder: (_p = partial.resourceFolder) != null ? _p : "Attachments",
+    noteFolder: (_q = partial.noteFolder) != null ? _q : "Library",
+    mirrorFolderStructure: (_r = partial.mirrorFolderStructure) != null ? _r : true
   };
 }
 function defaultSettings() {
@@ -7006,7 +7000,6 @@ var en_default = {
     nothingApplied: "Nothing changed.",
     applied: "Updated ${count} property/properties.",
     unbound: "Removed ${count} source relation(s).",
-    sourceRepairRequired: 'Found candidate note "${note}", but it has no matching source. Use the batch preview to confirm the relation.',
     templateMissing: 'Template "${path}" not found (group ${group}); used the built-in fields.',
     templaterSkipped: "Skipped ${count} Templater block(s) in the template \u2014 this plugin does not run them."
   },
@@ -7109,7 +7102,7 @@ var en_default = {
         folder: "Folder (a new folder holds the attachment and the note together)",
         desc: {
           sidecar: "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
-          folder: "Resources and notes share one collection folder. Loose files are folded into same-named child folders and the note lives beside them. Existing pairs are recognized only through source; deleting a resource never deletes its note."
+          folder: "Resources and notes share one collection folder. Only direct files at its root are folded; anything in a child folder is never organized again. Existing pairs are recognized only through source."
         }
       },
       createNoteFile: {
@@ -7131,7 +7124,7 @@ var en_default = {
       },
       collectionFolder: {
         name: "Resource collection folder",
-        desc: "The single root for folder mode. Loose resources, organized child folders, and corresponding notes all live here."
+        desc: "The single root for folder mode. Only files directly at the root are managed; content in any child folder is never moved or given another note."
       },
       extensions: {
         name: "Watched extensions",
@@ -7148,7 +7141,7 @@ var en_default = {
       },
       mirror: {
         name: "Mirror subfolders",
-        desc: "Preserve the resource's existing subfolder hierarchy."
+        desc: "Sidecar only: recreate the resource's subfolder hierarchy under the note folder."
       },
       noteName: {
         name: "Note name",
@@ -7190,7 +7183,7 @@ var en_default = {
       },
       backfill: {
         name: "Create missing notes",
-        desc: "Scan this group's attachments and create the notes that do not exist yet.",
+        desc: "Sidecar scans the resource tree; folder mode scans only direct files at the collection root. Nothing runs before preview confirmation.",
         run: "Run"
       },
       upgrade: {
@@ -7252,7 +7245,6 @@ var zh_default = {
     nothingApplied: "\u6CA1\u6709\u6539\u52A8\u3002",
     applied: "\u66F4\u65B0\u4E86 ${count} \u4E2A\u5C5E\u6027\u3002",
     unbound: "\u5DF2\u89E3\u9664 ${count} \u4E2A source \u5173\u7CFB\u3002",
-    sourceRepairRequired: "\u627E\u5230\u5019\u9009\u7B14\u8BB0\u300C${note}\u300D\uFF0C\u4F46\u5B83\u6CA1\u6709\u5BF9\u5E94\u7684 source\u3002\u8BF7\u901A\u8FC7\u6279\u91CF\u8865\u9F50\u9884\u89C8\u5E76\u786E\u8BA4\u7ED1\u5B9A\u3002",
     templateMissing: "\u627E\u4E0D\u5230\u6A21\u677F\u300C${path}\u300D\uFF08\u7EC4\uFF1A${group}\uFF09\uFF0C\u672C\u6B21\u7528\u5185\u7F6E\u5B57\u6BB5\u3002",
     templaterSkipped: "\u8DF3\u8FC7\u4E86\u6A21\u677F\u91CC\u7684 ${count} \u6BB5 Templater \u4EE3\u7801\uFF08\u672C\u63D2\u4EF6\u4E0D\u6267\u884C\u5B83\uFF09\u3002"
   },
@@ -7355,7 +7347,7 @@ var zh_default = {
         folder: "\u6587\u4EF6\u5939\uFF08\u65B0\u5EFA\u6587\u4EF6\u5939\uFF0C\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\u548C\u7B14\u8BB0\u653E\u4E00\u8D77\uFF09",
         desc: {
           sidecar: "\u8D44\u6E90\u7559\u5728\u8D44\u6E90\u6587\u4EF6\u5939\u91CC\uFF0C\u7B14\u8BB0\u5EFA\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u7684\u955C\u50CF\u8DEF\u5F84\u4E0B\uFF0C\u4E24\u8005\u9760 source \u4E92\u76F8\u8BA4\u8BC6\u3002",
-          folder: "\u6240\u6709\u8D44\u6E90\u548C\u7B14\u8BB0\u5171\u7528\u4E00\u4E2A\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939\u3002\u677E\u6563\u6587\u4EF6\u4F1A\u6298\u53E0\u8FDB\u540C\u540D\u5B50\u6587\u4EF6\u5939\uFF0C\u7B14\u8BB0\u4E5F\u5EFA\u5728\u91CC\u9762\u3002\u5DF2\u6709\u914D\u5BF9\u53EA\u8BA4 source\uFF1B\u5220\u9664\u8D44\u6E90\u4E0D\u4F1A\u5220\u9664\u7B14\u8BB0\u3002"
+          folder: "\u6240\u6709\u8D44\u6E90\u548C\u7B14\u8BB0\u5171\u7528\u4E00\u4E2A\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939\u3002\u53EA\u6709\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u4F1A\u6298\u53E0\u8FDB\u5B50\u6587\u4EF6\u5939\uFF1B\u5B50\u6587\u4EF6\u5939\u4E2D\u7684\u5185\u5BB9\u6C38\u8FDC\u4E0D\u518D\u81EA\u52A8\u6574\u7406\u3002\u5DF2\u6709\u914D\u5BF9\u53EA\u8BA4 source\u3002"
         }
       },
       createNoteFile: {
@@ -7377,7 +7369,7 @@ var zh_default = {
       },
       collectionFolder: {
         name: "\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939",
-        desc: "\u805A\u5408\u6A21\u5F0F\u552F\u4E00\u7684\u6839\u76EE\u5F55\u3002\u677E\u6563\u8D44\u6E90\u3001\u6574\u7406\u540E\u7684\u5B50\u6587\u4EF6\u5939\u548C\u5BF9\u5E94\u7B14\u8BB0\u90FD\u5728\u8FD9\u91CC\uFF0C\u4E0D\u518D\u5206\u522B\u914D\u7F6E\u8D44\u6E90\u4E0E\u7B14\u8BB0\u8DEF\u5F84\u3002"
+        desc: "\u805A\u5408\u6A21\u5F0F\u552F\u4E00\u7684\u6839\u76EE\u5F55\u3002\u53EA\u6709\u76F4\u63A5\u653E\u5728\u6839\u76EE\u5F55\u91CC\u7684\u6587\u4EF6\u4F1A\u88AB\u63A5\u7BA1\uFF1B\u4EFB\u610F\u5B50\u6587\u4EF6\u5939\u4E2D\u7684\u5185\u5BB9\u90FD\u4E0D\u4F1A\u518D\u6B21\u79FB\u52A8\u6216\u5EFA\u7B14\u8BB0\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
@@ -7394,7 +7386,7 @@ var zh_default = {
       },
       mirror: {
         name: "\u955C\u50CF\u5B50\u6587\u4EF6\u5939",
-        desc: "\u4FDD\u7559\u8D44\u6E90\u539F\u6709\u7684\u5B50\u76EE\u5F55\u5C42\u7EA7\u3002"
+        desc: "\u4EC5\u7528\u4E8E\u5206\u79BB\u6A21\u5F0F\uFF1A\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u91CC\u91CD\u5EFA\u8D44\u6E90\u7684\u5B50\u76EE\u5F55\u5C42\u7EA7\u3002"
       },
       noteName: {
         name: "\u7B14\u8BB0\u6587\u4EF6\u540D",
@@ -7436,7 +7428,7 @@ var zh_default = {
       },
       backfill: {
         name: "\u8865\u9F50\u7F3A\u5931\u7684\u7B14\u8BB0",
-        desc: "\u626B\u63CF\u8FD9\u4E00\u7EC4\u7684\u9644\u4EF6\uFF0C\u7ED9\u8FD8\u6CA1\u6709\u7B14\u8BB0\u7684\u5EFA\u4E0A\u3002",
+        desc: "\u5206\u79BB\u6A21\u5F0F\u626B\u63CF\u6574\u4E2A\u8D44\u6E90\u6811\uFF1B\u805A\u5408\u6A21\u5F0F\u53EA\u626B\u63CF\u96C6\u5408\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u3002\u786E\u8BA4\u9884\u89C8\u540E\u624D\u6267\u884C\u3002",
         run: "\u6267\u884C"
       },
       upgrade: {
@@ -23416,25 +23408,22 @@ var NoteManager = class {
   }
   // --- writing -----------------------------------------------------------
   async createNote(attachment, group) {
-    if (this.isAuxiliaryFile(attachment, group)) {
-      return this.foldAuxiliaryFile(attachment, group);
-    }
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
-    if (group.layout === "folder" && isFolderItemPath(group, attachment.path)) {
-      const note = this.folderIndexNote(attachment);
-      if (note && group.createNoteFile && !this.noteReferences(note, attachment.path)) {
-        new import_obsidian3.Notice(t2("notices.sourceRepairRequired", { note: note.basename }));
-      }
-      return note && this.noteReferences(note, attachment.path) ? note : null;
-    }
-    if (group.layout === "folder" && !isInFolder(attachment.path, resourceRoot(group))) {
+    if (group.layout === "folder" && !isDirectChild(attachment.path, resourceRoot(group))) {
       return null;
+    }
+    if (this.isAuxiliaryFile(attachment, group)) {
+      return this.foldAuxiliaryFile(attachment, group);
     }
     return group.layout === "folder" ? this.createFolderItem(attachment, group) : this.createSidecarNote(attachment, group);
   }
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment, group) {
+    if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
+    if (group.layout === "folder" && !isDirectChild(attachment.path, resourceRoot(group))) {
+      return null;
+    }
     if (this.isAuxiliaryFile(attachment, group)) {
       const note = this.findAuxiliaryNote(attachment, group);
       if (!(note == null ? void 0 : note.parent)) return null;
@@ -23448,26 +23437,9 @@ var NoteManager = class {
       if (!this.noteHasSourceLink(note, link)) {
         changes2.push({ kind: "update-source", notePath: note.path, link });
       }
-      return changes2.length > 0 ? { attachment, group, mode: "auxiliary", changes: changes2, note } : null;
-    }
-    if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-    if (group.layout === "folder" && isFolderItemPath(group, attachment.path)) {
-      const note = this.folderIndexNote(attachment);
-      if (!group.createNoteFile || !note || this.noteReferences(note, attachment.path)) return null;
-      return {
-        attachment,
-        group,
-        mode: "repair-source",
-        note,
-        changes: [{
-          kind: "update-source",
-          notePath: note.path,
-          link: this.linkFor(group, attachment.path)
-        }]
-      };
+      return changes2.length > 0 ? { attachment, group, mode: "auxiliary", changes: changes2 } : null;
     }
     if (this.findNote(group, attachment.path)) return null;
-    if (group.layout === "folder" && !isInFolder(attachment.path, resourceRoot(group))) return null;
     if (group.layout === "sidecar") {
       const notePath = this.targetNotePath(group, attachment.path);
       if (this.app.vault.getFileByPath(notePath)) return null;
@@ -23493,10 +23465,6 @@ var NoteManager = class {
     const fresh = this.planCreate(plan.attachment, plan.group);
     if (!fresh || JSON.stringify(fresh.changes) !== JSON.stringify(plan.changes)) {
       throw new Error("Batch plan changed before apply");
-    }
-    if (fresh.mode === "repair-source" && fresh.note) {
-      await this.appendSource(fresh.note, fresh.group, fresh.attachment);
-      return;
     }
     await this.createNote(fresh.attachment, fresh.group);
   }
@@ -23555,14 +23523,6 @@ var NoteManager = class {
     if (this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(item.notePath))) return null;
     if (this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(item.attachmentPath))) return null;
     return item;
-  }
-  folderIndexNote(file) {
-    const parent = file.parent;
-    if (!parent) return null;
-    const note = parent.children.find(
-      (child) => child instanceof import_obsidian3.TFile && child.extension === "md" && child.basename === parent.name
-    );
-    return note instanceof import_obsidian3.TFile ? note : null;
   }
   findAuxiliaryNote(file, group) {
     var _a;
@@ -24430,10 +24390,12 @@ var AttMetaMapSettingTab = class extends import_obsidian11.PluginSettingTab {
         await this.plugin.saveSettings();
       }));
       if (createsNotes) this.renderTemplatePicker(el, group);
-      new import_obsidian11.Setting(el).setName(t2("settings.group.mirror.name")).setDesc(t2("settings.group.mirror.desc")).addToggle((toggle) => toggle.setValue(group.mirrorFolderStructure).onChange(async (value) => {
-        group.mirrorFolderStructure = value;
-        await this.plugin.saveSettings();
-      }));
+      if (group.layout === "sidecar") {
+        new import_obsidian11.Setting(el).setName(t2("settings.group.mirror.name")).setDesc(t2("settings.group.mirror.desc")).addToggle((toggle) => toggle.setValue(group.mirrorFolderStructure).onChange(async (value) => {
+          group.mirrorFolderStructure = value;
+          await this.plugin.saveSettings();
+        }));
+      }
     });
     this.section(body, t2("settings.group.sections.naming"), false, (el) => {
       new import_obsidian11.Setting(el).setName(t2("settings.group.noteName.name")).setDesc(t2("settings.group.noteName.desc")).addText((text) => text.setPlaceholder("{{basename}}").setValue(group.noteNameTemplate).onChange(async (value) => {

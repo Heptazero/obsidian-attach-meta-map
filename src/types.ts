@@ -30,7 +30,6 @@ export interface MappingGroupCommon {
   id: string;
   name: string;
   watchedExtensions: string[];
-  mirrorFolderStructure: boolean;
 
   /**
    * Folder layout only. Comma-separated prefixes (e.g. "cn_, zh_") mark
@@ -69,6 +68,7 @@ export interface SidecarGroup extends MappingGroupCommon {
   layout: 'sidecar';
   resourceFolder: string;
   noteFolder: string;
+  mirrorFolderStructure: boolean;
 }
 
 export interface FolderGroup extends MappingGroupCommon {
@@ -83,6 +83,7 @@ export type MappingGroupInput = Partial<MappingGroupCommon> & {
   resourceFolder?: string;
   noteFolder?: string;
   collectionFolder?: string;
+  mirrorFolderStructure?: boolean;
 };
 
 export type UiLanguage = 'auto' | 'zh' | 'en';

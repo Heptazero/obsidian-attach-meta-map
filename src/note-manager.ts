@@ -2,7 +2,7 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  folderItemCandidates, isFolderItemPath, isInFolder, linkFor,
+  folderItemCandidates, isDirectChild, isInFolder, linkFor,
   normalizeForMatch, notePathCandidates, noteRoot, resourceRoot, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
@@ -27,9 +27,8 @@ export type CreateChange =
 export interface CreatePlan {
   attachment: TFile;
   group: MappingGroup;
-  mode: 'create' | 'auxiliary' | 'repair-source';
+  mode: 'create' | 'auxiliary';
   changes: CreateChange[];
-  note?: TFile;
 }
 
 export interface UnbindContext {
@@ -344,27 +343,18 @@ export class NoteManager {
   // --- writing -----------------------------------------------------------
 
   async createNote(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
-    if (this.isAuxiliaryFile(attachment, group)) {
-      return this.foldAuxiliaryFile(attachment, group);
-    }
-
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
-    // The output root may overlap the watched input root. Once a resource is
-    // already in the standard item folder, never fold it one level deeper.
-    if (group.layout === 'folder' && isFolderItemPath(group, attachment.path)) {
-      const note = this.folderIndexNote(attachment);
-      if (note && group.createNoteFile && !this.noteReferences(note, attachment.path)) {
-        new Notice(t('notices.sourceRepairRequired', { note: note.basename }));
-      }
-      return note && this.noteReferences(note, attachment.path) ? note : null;
+    // A folder-layout collection is an inbox only at its root. Anything in a
+    // child folder is already user-organized and must never be folded again,
+    // regardless of folder names or whether source is present.
+    if (group.layout === 'folder' && !isDirectChild(attachment.path, resourceRoot(group))) {
+      return null;
     }
 
-    if (group.layout === 'folder' && !isInFolder(attachment.path, resourceRoot(group))) {
-      // Already moved into its own folder (createNoteFile groups never get a
-      // note to find above) — nothing left to fold.
-      return null;
+    if (this.isAuxiliaryFile(attachment, group)) {
+      return this.foldAuxiliaryFile(attachment, group);
     }
 
     return group.layout === 'folder'
@@ -374,6 +364,14 @@ export class NoteManager {
 
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
+    // A source hit is authoritative, but a child-folder resource with no
+    // source is still left alone. Folder structure is never guessed into a
+    // relation and is never used as permission to reorganize again.
+    if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
+    if (group.layout === 'folder' && !isDirectChild(attachment.path, resourceRoot(group))) {
+      return null;
+    }
+
     if (this.isAuxiliaryFile(attachment, group)) {
       const note = this.findAuxiliaryNote(attachment, group);
       if (!note?.parent) return null;
@@ -388,28 +386,11 @@ export class NoteManager {
         changes.push({ kind: 'update-source', notePath: note.path, link });
       }
       return changes.length > 0
-        ? { attachment, group, mode: 'auxiliary', changes, note }
+        ? { attachment, group, mode: 'auxiliary', changes }
         : null;
     }
 
-    // A source hit is authoritative. Structural fallbacks below are only a
-    // guard/repair path; they must not silently pretend the relation exists.
-    if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-
-    if (group.layout === 'folder' && isFolderItemPath(group, attachment.path)) {
-      const note = this.folderIndexNote(attachment);
-      if (!group.createNoteFile || !note || this.noteReferences(note, attachment.path)) return null;
-      return {
-        attachment, group, mode: 'repair-source', note,
-        changes: [{
-          kind: 'update-source', notePath: note.path,
-          link: this.linkFor(group, attachment.path),
-        }],
-      };
-    }
     if (this.findNote(group, attachment.path)) return null;
-
-    if (group.layout === 'folder' && !isInFolder(attachment.path, resourceRoot(group))) return null;
 
     if (group.layout === 'sidecar') {
       const notePath = this.targetNotePath(group, attachment.path);
@@ -434,10 +415,6 @@ export class NoteManager {
     const fresh = this.planCreate(plan.attachment, plan.group);
     if (!fresh || JSON.stringify(fresh.changes) !== JSON.stringify(plan.changes)) {
       throw new Error('Batch plan changed before apply');
-    }
-    if (fresh.mode === 'repair-source' && fresh.note) {
-      await this.appendSource(fresh.note, fresh.group, fresh.attachment);
-      return;
     }
     await this.createNote(fresh.attachment, fresh.group);
   }
@@ -513,15 +490,6 @@ export class NoteManager {
     if (this.app.vault.getFileByPath(normalizePath(item.notePath))) return null;
     if (this.app.vault.getFileByPath(normalizePath(item.attachmentPath))) return null;
     return item;
-  }
-
-  private folderIndexNote(file: TFile): TFile | null {
-    const parent = file.parent;
-    if (!parent) return null;
-    const note = parent.children.find(child =>
-      child instanceof TFile && child.extension === 'md' && child.basename === parent.name,
-    );
-    return note instanceof TFile ? note : null;
   }
 
   private findAuxiliaryNote(file: TFile, group: MappingGroup): TFile | null {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/sources';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
-  isFolderItemPath, linkFor, normalizeForMatch, notePathCandidates, relativeTo, renderTemplate,
+  isDirectChild, linkFor, normalizeForMatch, notePathCandidates, relativeTo, renderTemplate,
   stripPrefix, templateVars,
 } from '../src/paths';
 
@@ -70,6 +70,12 @@ describe('folder helpers', () => {
     expect(relativeTo('elsewhere/a.pdf', '70_research/PDF')).toBe('elsewhere/a.pdf');
   });
 
+  it('distinguishes root files from files in descendant folders', () => {
+    expect(isDirectChild('Library/paper.pdf', 'Library')).toBe(true);
+    expect(isDirectChild('Library/topic/paper.pdf', 'Library')).toBe(false);
+    expect(isDirectChild('Elsewhere/paper.pdf', 'Library')).toBe(false);
+  });
+
   it('renders templates and leaves unknown variables empty', () => {
     expect(renderTemplate('[[{{basename}}]]', { basename: 'a' })).toBe('[[a]]');
     expect(renderTemplate('{{nope}}', {})).toBe('');
@@ -97,6 +103,14 @@ describe('group resolution', () => {
   it('keeps groups apart', () => {
     expect(groupForAttachment([papers, clips], '98_clip/files/x.png', 'png')?.id).toBe(clips.id);
     expect(groupForNote([papers, clips], '98_clip/notes/x.md')?.id).toBe(clips.id);
+  });
+
+  it('lets folder layout own only direct files at the collection root', () => {
+    const collection = createGroup({
+      layout: 'folder', collectionFolder: 'Library', watchedExtensions: ['.pdf'],
+    });
+    expect(groupForAttachment([collection], 'Library/paper.pdf', 'pdf')).toBe(collection);
+    expect(groupForAttachment([collection], 'Library/Paper/paper.pdf', 'pdf')).toBeNull();
   });
 
   it('ignores groups with an empty folder', () => {
@@ -158,29 +172,13 @@ describe('folderItemCandidates', () => {
 
   it('puts the note and the attachment (its own file name) as siblings in one folder', () => {
     const { primary } = folderItemCandidates(
-      folderPapers, '70_research/nn/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
+      folderPapers, '70_research/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
     );
-    expect(primary.folder).toBe('70_research/nn/2021-Hopfield Networks is All You Need');
-    expect(primary.notePath).toBe('70_research/nn/2021-Hopfield Networks is All You Need/2021-Hopfield Networks is All You Need.md');
+    expect(primary.folder).toBe('70_research/2021-Hopfield Networks is All You Need');
+    expect(primary.notePath).toBe('70_research/2021-Hopfield Networks is All You Need/2021-Hopfield Networks is All You Need.md');
     expect(primary.attachmentPath).toBe(
-      '70_research/nn/2021-Hopfield Networks is All You Need/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
+      '70_research/2021-Hopfield Networks is All You Need/Ramsauer 等 - 2021 - Hopfield Networks is All You Need.pdf',
     );
-  });
-
-  it('recognizes an already folded item when input and output roots overlap', () => {
-    const overlapping = createGroup({ ...folderPapers });
-    expect(isFolderItemPath(
-      overlapping,
-      '70_research/hopfield/2023-Energy Transformer/2023-Energy Transformer.pdf',
-    )).toBe(true);
-    expect(isFolderItemPath(
-      overlapping,
-      '70_research/hopfield/2023-Energy Transformer 1/2023-Energy Transformer.pdf',
-    )).toBe(true);
-    expect(isFolderItemPath(
-      overlapping,
-      '70_research/hopfield/2023-Energy Transformer.pdf',
-    )).toBe(false);
   });
 
   it('falls back to the attachment file name for the folder when the template name collides', () => {
@@ -196,11 +194,6 @@ describe('folderItemCandidates', () => {
     expect(primary.folder).toBe('70_research/random-notes');
   });
 
-  it('respects mirrorFolderStructure', () => {
-    const flat = createGroup({ ...folderPapers, mirrorFolderStructure: false });
-    expect(folderItemCandidates(flat, '70_research/nn/a.pdf').primary.folder)
-      .toBe('70_research/a');
-  });
 });
 
 describe('auxiliary-file matching', () => {
