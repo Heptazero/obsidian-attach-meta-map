@@ -85,17 +85,17 @@
     },
     "language": {
       "name": "界面语言",
-      "desc": "命令名要重启 Obsidian 或重新加载插件后才会换语言。",
+      "desc": "重载后生效。",
       "auto": "跟随 Obsidian"
     },
     "templateFolders": {
       "name": "额外的模板文件夹",
-      "detected": "已自动检测到：${folders}。这里再补几个用逗号分隔的路径。",
-      "none": "没检测到模板插件的文件夹，这里手动填，逗号分隔。",
+      "detected": "已检测：${folders}。可用逗号补充。",
+      "none": "用逗号分隔多个路径。",
       "placeholder": "99_assets/template"
     },
     "mapping": {
-      "desc": "决定「哪个元数据来源写进哪个属性名」，全库只配一次。source 是固定的资源关系字段，不在这里改名。其他属性名留空就是不写；模板 frontmatter 里没有的键也不会写入。输入框支持模糊匹配模板属性。",
+      "desc": "来源 → 属性。留空不写；source 固定。支持模糊匹配。",
       "unmapped": "不映射"
     },
     "kinds": {
@@ -104,7 +104,7 @@
       "lookup": "来自联网查询（DOI / ISBN）"
     },
     "groups": {
-      "desc": "一组 = 一个附件夹 → 一个笔记夹，各自的扩展名、模板和命名规则。组可以嵌套，最长前缀的组胜出。",
+      "desc": "每组配置布局、路径、模板和命名。",
       "add": "新增组",
       "newName": "新建组",
       "empty": "还没有映射组。新增一个才会开始建笔记。"
@@ -124,59 +124,59 @@
         "sidecar": "镜像 sidecar（附件原地不动，笔记单独建）",
         "folder": "文件夹（新建文件夹，把附件搬进去和笔记放一起）",
         "desc": {
-          "sidecar": "资源留在资源文件夹里，笔记建在笔记文件夹的镜像路径下，两者靠 source 互相认识。",
-          "folder": "所有资源和笔记共用一个资源集合文件夹。只有根目录里的直接文件会折叠进子文件夹；子文件夹中的内容永远不再自动整理。已有配对只认 source。"
+          "sidecar": "资源不移动，笔记建在另一目录。",
+          "folder": "只整理集合根目录里的直接文件。"
         }
       },
       "createNoteFile": {
         "name": "为新附件建笔记",
-        "desc": "关闭后，折叠进文件夹这件事照常发生（新建同名文件夹、把附件搬进去），但不再建笔记、不抽取任何元数据——适合只是想把某个资料的所有文件放进一个文件夹，不需要一篇带 frontmatter 的笔记的情况。关闭后模板、链接格式、嵌入和 PDF/DOI 抽取这些跟笔记相关的设置都不会显示。"
+        "desc": "关闭后只建文件夹并移动资源。"
       },
       "auxiliaryPrefix": {
         "name": "附属文件前缀（可多个）",
-        "desc": "用逗号分隔，例如 cn_, zh_, slides_。文件会按去掉前缀后的主体名匹配已有笔记或 source 资源，搬进同一文件夹，并把双链追加到 source 列表。匹配不上就原地不动。留空关闭。",
+        "desc": "逗号分隔。匹配后移入同一条目并追加 source。",
         "placeholder": "例如 cn_, zh_, slides_"
       },
       "resourceFolder": {
         "name": "资源文件夹",
-        "desc": "分离模式的原始资源位置。放进这里的受监听文件会建立对应笔记。"
+        "desc": "分离模式的资源根目录。"
       },
       "noteFolder": {
         "name": "笔记文件夹",
-        "desc": "分离模式的对应笔记位置。"
+        "desc": "分离模式的笔记根目录。"
       },
       "collectionFolder": {
         "name": "资源集合文件夹",
-        "desc": "聚合模式唯一的根目录。只有直接放在根目录里的文件会被接管；任意子文件夹中的内容都不会再次移动或建笔记。"
+        "desc": "只处理根目录里的直接文件；子文件夹不动。"
       },
       "extensions": {
         "name": "监听的扩展名",
-        "desc": "逗号分隔，例如 .pdf, .epub。只有这些文件会被接管。"
+        "desc": "逗号分隔，例如 .pdf, .epub。"
       },
       "template": {
         "name": "模板文件",
-        "desc": "模板的 frontmatter 决定这一组的笔记有哪些字段；正文照抄，但模板里的 Templater 代码不会执行。留空则用内置的最小字段。",
+        "desc": "按模板 frontmatter 建字段；留空用内置模板。",
         "placeholder": "99_assets/template/tmp_paper.md",
-        "builtin": "未选模板，使用内置字段：source / title / author / created / updated",
+        "builtin": "内置字段：source / title / author / created / updated",
         "missing": "找不到这个文件。",
-        "keys": "模板字段：${keys}（✓ 表示映射表里有来源）",
-        "noKeys": "这个模板没有 frontmatter，不会写入任何属性。"
+        "keys": "模板字段：${keys}",
+        "noKeys": "模板没有 frontmatter。"
       },
       "mirror": {
         "name": "镜像子文件夹",
-        "desc": "仅用于分离模式：在笔记文件夹里重建资源的子目录层级。"
+        "desc": "在笔记目录中保留资源层级。"
       },
       "noteName": {
         "name": "笔记文件名",
-        "desc": "变量：{{basename}}（不带扩展名）、{{name}}（带扩展名）、{{ext}}。另有 {{year}}、{{title}}：当文件名符合 Zotero 常见的「作者 - 年份 - 标题」格式时，从文件名里拆出年份和标题（纯字符串解析，不读文件内容），例如想要 2023-标题 就写 {{year}}-{{title}}。不符合这个格式的文件 {{year}} 为空、{{title}} 退回完整文件名。这个名字被别的附件占了会自动加回扩展名。"
+        "desc": "支持 {{basename}}、{{name}}、{{ext}}、{{year}}、{{title}}。"
       },
       "linkTemplate": {
         "name": "source 链接格式",
-        "desc": "写进 source 的双链格式，默认 [[{{name}}]]（带扩展名）。注意别用 [[{{basename}}]]：笔记名也是 basename 时，这个链接会指向笔记自己——真撞上了插件会自动补回扩展名。资源重名时改用 [[{{path}}]]。"
+        "desc": "写入 source 的格式，默认 [[{{name}}]]。"
       },
       "embed": {
         "name": "在正文嵌入附件",
-        "desc": "在笔记正文末尾追加一行附件嵌入。默认关闭。"
+        "desc": "在正文末尾嵌入资源。"
       },
       "autoCreate": {
         "name": {
@@ -184,60 +184,60 @@
           "folder": "附件新增时自动整理成文件夹"
         },
         "desc": {
-          "sidecar": "关闭则只能靠命令手动建。",
-          "folder": "关闭则只能靠「成对打开」等命令手动折叠成文件夹；开启后新附件一落地就自动搬进新文件夹、建好笔记。"
+          "sidecar": "关闭后仅手动创建。",
+          "folder": "关闭后仅手动整理根目录文件。"
         }
       },
       "syncUpdated": {
         "name": "同步「更新时间」属性",
-        "desc": "附件在磁盘上变动时刷新该属性。笔记本来没有这个属性就不加。"
+        "desc": "资源变化时刷新已有属性。"
       },
       "pdfExtraction": {
         "name": "读取 PDF 元数据",
-        "desc": "标题、作者、主题、关键词、日期、producer、页数。"
+        "desc": "读取标题、作者、关键词等。"
       },
       "doiLookup": {
         "name": "联网查 DOI / ISBN",
-        "desc": "先在 PDF 元数据里找标识符（Obsidian 的 pdf.js 可用时还会读前两页），再查 CrossRef 或 Open Library。"
+        "desc": "通过 CrossRef 或 Open Library 查询。"
       },
       "sanitize": {
         "name": "清洗列表值",
-        "desc": "把关键词这类列表字段里 Obsidian 标签不接受的字符去掉。"
+        "desc": "移除标签不支持的字符。"
       },
       "backfill": {
         "name": "补齐缺失的笔记",
-        "desc": "分离模式扫描整个资源树；聚合模式只扫描集合根目录里的直接文件。确认预览后才执行。",
+        "desc": "预览后批量补齐。",
         "run": "执行"
       },
       "upgrade": {
         "name": "对齐所有笔记到当前模板",
-        "desc": "扫描这一组已有的笔记：模板现在要求、但某篇笔记还没有的属性，按当前映射表补上。只填空的——已经有内容的属性一律不碰，也不删除笔记里模板之外的其他属性。适合模板改过、映射表改过名字之后，把旧笔记一次性补齐。",
+        "desc": "只补模板要求但尚不存在的属性。",
         "run": "执行"
       }
     }
   },
   "sources": {
-    "path": { "name": "文件路径", "desc": "库内完整路径。也用来判定笔记属于哪个附件。" },
+    "path": { "name": "文件路径", "desc": "库内完整路径。" },
     "fileName": { "name": "文件名", "desc": "带扩展名的文件名。" },
     "fileType": { "name": "文件类型", "desc": "不带点的扩展名。" },
     "fileSize": { "name": "文件大小", "desc": "字节数。" },
     "fileCreated": { "name": "创建时间", "desc": "文件创建日期。" },
     "fileUpdated": { "name": "修改时间", "desc": "文件修改日期。" },
-    "fileNameYear": { "name": "年份（文件名）", "desc": "从「作者 - 年份 - 标题」格式的文件名里解析出的年份，不联网、不读 PDF 内容。默认映射到 year，且排在联网查询之前——文件名里有就不必联网。不符合这个格式则为空。" },
-    "fileNameTitle": { "name": "标题（文件名）", "desc": "同上，解析出的标题部分；不符合格式则整个文件名。默认不映射，需要时手动填属性名。" },
-    "pdfTitle": { "name": "标题", "desc": "PDF 自带标题，没有则退回文件名。" },
+    "fileNameYear": { "name": "年份（文件名）", "desc": "从「作者 - 年份 - 标题」解析。" },
+    "fileNameTitle": { "name": "标题（文件名）", "desc": "从文件名解析；失败则用完整名称。" },
+    "pdfTitle": { "name": "标题", "desc": "PDF 标题；失败则用文件名。" },
     "pdfAuthor": { "name": "作者", "desc": "PDF 的 author 字段。" },
     "pdfSubject": { "name": "主题", "desc": "PDF 的 subject 字段。" },
     "pdfKeywords": { "name": "关键词", "desc": "PDF 的 keywords，写成列表。" },
-    "pdfCreated": { "name": "PDF 创建日期", "desc": "PDF 内部记录的创建时间。" },
-    "pdfModified": { "name": "PDF 修改日期", "desc": "PDF 内部记录的修改时间。" },
-    "pdfCreator": { "name": "PDF creator", "desc": "生成原始文档的程序。" },
-    "pdfProducer": { "name": "PDF producer", "desc": "写出这个 PDF 的程序。" },
+    "pdfCreated": { "name": "PDF 创建日期", "desc": "PDF 内部日期。" },
+    "pdfModified": { "name": "PDF 修改日期", "desc": "PDF 内部日期。" },
+    "pdfCreator": { "name": "PDF creator", "desc": "原始创建程序。" },
+    "pdfProducer": { "name": "PDF producer", "desc": "PDF 生成程序。" },
     "pdfPages": { "name": "页数", "desc": "总页数。" },
-    "doi": { "name": "DOI", "desc": "在文件里找到的标识符。" },
-    "isbn": { "name": "ISBN", "desc": "在文件里找到的标识符。" },
-    "lookupTitle": { "name": "标题（联网）", "desc": "CrossRef / Open Library 的标题。可以和 PDF 标题共用一个属性名，PDF 有值时不会被覆盖。" },
-    "lookupAuthor": { "name": "作者（联网）", "desc": "CrossRef / Open Library 的作者。" },
-    "lookupYear": { "name": "年份（联网）", "desc": "联网查询得到的出版年份，作为 fileNameYear 解析失败时的兜底。" }
+    "doi": { "name": "DOI", "desc": "文件中的 DOI。" },
+    "isbn": { "name": "ISBN", "desc": "文件中的 ISBN。" },
+    "lookupTitle": { "name": "标题（联网）", "desc": "联网查询的标题。" },
+    "lookupAuthor": { "name": "作者（联网）", "desc": "联网查询的作者。" },
+    "lookupYear": { "name": "年份（联网）", "desc": "联网查询的年份。" }
   }
 }

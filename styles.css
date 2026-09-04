@@ -148,8 +148,13 @@
 }
 
 .amm-backfill-modal {
-  width: min(90vw, 70em);
+  max-width: calc(100vw - 2em);
+  width: min(70em, calc(100vw - 2em));
+}
+
+.amm-backfill-content {
   max-height: 80vh;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -175,17 +180,26 @@
   padding-inline-start: 1.35em;
 }
 
-.amm-backfill-modal > .amm-change-tree {
+.amm-change-tree-viewport {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-s);
   margin-bottom: 1em;
+  max-width: 100%;
+  overflow-x: auto;
   padding: 0.75em 1em;
+}
+
+.amm-change-tree-viewport > .amm-change-tree {
+  min-width: 0;
+  padding-inline-start: 0;
 }
 
 .amm-change-line {
   font-family: var(--font-monospace);
   line-height: 1.65;
   overflow-wrap: anywhere;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .amm-change-line.is-folder {

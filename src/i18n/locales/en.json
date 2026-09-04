@@ -85,17 +85,17 @@
     },
     "language": {
       "name": "Interface language",
-      "desc": "Command names change language only after Obsidian reloads the plugin.",
+      "desc": "Applies after reload.",
       "auto": "Follow Obsidian"
     },
     "templateFolders": {
       "name": "Extra template folders",
-      "detected": "Detected: ${folders}. Add more comma-separated paths here.",
-      "none": "No template plugin folder detected. Add comma-separated paths here.",
+      "detected": "Detected: ${folders}. Add more with commas.",
+      "none": "Separate multiple paths with commas.",
       "placeholder": "Templates"
     },
     "mapping": {
-      "desc": "Decides which metadata source fills which property name — configured once for the whole vault. source is the fixed resource-relation property and cannot be renamed here. Leave another name empty to skip it; keys absent from the template are not written. Inputs fuzzy-match template properties.",
+      "desc": "Source → property. Empty skips it; source is fixed. Fuzzy matching is supported.",
       "unmapped": "not mapped"
     },
     "kinds": {
@@ -104,7 +104,7 @@
       "lookup": "From an online lookup (DOI / ISBN)"
     },
     "groups": {
-      "desc": "A group maps one attachment folder to one note folder, with its own extensions, template and naming. Groups may nest — the most specific attachment folder wins.",
+      "desc": "Each group defines its layout, paths, template, and naming.",
       "add": "Add group",
       "newName": "New group",
       "empty": "No groups yet. Add one to start mapping attachments to notes."
@@ -124,59 +124,59 @@
         "sidecar": "Sidecar (attachment stays put, note is separate)",
         "folder": "Folder (a new folder holds the attachment and the note together)",
         "desc": {
-          "sidecar": "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
-          "folder": "Resources and notes share one collection folder. Only direct files at its root are folded; anything in a child folder is never organized again. Existing pairs are recognized only through source."
+          "sidecar": "Resources stay put; notes use another folder.",
+          "folder": "Only direct files at the collection root are organized."
         }
       },
       "createNoteFile": {
         "name": "Create a note for new attachments",
-        "desc": "Off: folding into a folder still happens (a same-named folder is created and the attachment moved in), but no note is created and no metadata is extracted — for material that just needs a folder of its own, not a note with frontmatter. Template, link format, embedding and PDF/DOI extraction are hidden while this is off."
+        "desc": "Off: only create the folder and move the resource."
       },
       "auxiliaryPrefix": {
         "name": "Auxiliary file prefixes",
-        "desc": "Comma separated, e.g. cn_, zh_, slides_. A file is matched by its name after the prefix against an existing note or source resource, moved into the same folder, and appended to the source list. No match leaves it in place. Empty disables this.",
+        "desc": "Comma separated. Matches join the same item and source list.",
         "placeholder": "For example: cn_, zh_, slides_"
       },
       "resourceFolder": {
         "name": "Resource folder",
-        "desc": "Original resources in sidecar mode. Watched files placed here get a corresponding note."
+        "desc": "Resource root for sidecar mode."
       },
       "noteFolder": {
         "name": "Note folder",
-        "desc": "Corresponding notes in sidecar mode."
+        "desc": "Note root for sidecar mode."
       },
       "collectionFolder": {
         "name": "Resource collection folder",
-        "desc": "The single root for folder mode. Only files directly at the root are managed; content in any child folder is never moved or given another note."
+        "desc": "Only direct root files are managed; child folders stay untouched."
       },
       "extensions": {
         "name": "Watched extensions",
-        "desc": "Comma separated, e.g. .pdf, .epub. Only these files are picked up."
+        "desc": "Comma separated, e.g. .pdf, .epub."
       },
       "template": {
         "name": "Template file",
-        "desc": "The template's frontmatter decides which properties this group's notes get. The body is copied as-is, but Templater code in it is not executed. Empty means the built-in minimal field set.",
+        "desc": "Uses template frontmatter; empty uses the built-in template.",
         "placeholder": "Templates/paper.md",
-        "builtin": "No template — built-in fields: source / title / author / created / updated",
+        "builtin": "Built-in fields: source / title / author / created / updated",
         "missing": "File not found.",
-        "keys": "Template keys: ${keys} (✓ = a source is mapped to it)",
-        "noKeys": "This template has no frontmatter, so no properties would be written."
+        "keys": "Template keys: ${keys}",
+        "noKeys": "Template has no frontmatter."
       },
       "mirror": {
         "name": "Mirror subfolders",
-        "desc": "Sidecar only: recreate the resource's subfolder hierarchy under the note folder."
+        "desc": "Keep resource folders under the note root."
       },
       "noteName": {
         "name": "Note name",
-        "desc": "Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. Also {{year}} and {{title}}: when the file name follows Zotero's common \"Author - Year - Title\" pattern, these are parsed back out of it (pure string matching, no file read) — e.g. {{year}}-{{title}} for \"2023-Title\". Files that do not match get an empty {{year}}; {{title}} falls back to the full file name. If the resulting name is taken by another attachment, the extension is added back."
+        "desc": "Supports {{basename}}, {{name}}, {{ext}}, {{year}}, and {{title}}."
       },
       "linkTemplate": {
         "name": "source link format",
-        "desc": "Wikilink format written to source; defaults to [[{{name}}]] (with extension). Avoid [[{{basename}}]]: when the note has the same basename, that link resolves to the note itself — the plugin adds the extension back if detected. Use [[{{path}}]] for duplicate resource names."
+        "desc": "Format written to source. Default: [[{{name}}]]."
       },
       "embed": {
         "name": "Embed the attachment",
-        "desc": "Append an embed of the attachment to the note body. Off by default."
+        "desc": "Embed the resource at the end of the note."
       },
       "autoCreate": {
         "name": {
@@ -184,60 +184,60 @@
           "folder": "Fold new attachments into a folder automatically"
         },
         "desc": {
-          "sidecar": "Off: only the manual commands create notes.",
-          "folder": "Off: fold into a folder only via commands such as \"open pair\". On: a new attachment is moved into its own folder and its note created as soon as it lands."
+          "sidecar": "Off: create only through commands.",
+          "folder": "Off: organize root files only through commands."
         }
       },
       "syncUpdated": {
         "name": "Keep the updated property in sync",
-        "desc": "Refreshes it when the attachment changes on disk. Never adds the property to a note that lacks it."
+        "desc": "Refresh an existing property when the resource changes."
       },
       "pdfExtraction": {
         "name": "Read PDF metadata",
-        "desc": "Title, author, subject, keywords, dates, producer and page count."
+        "desc": "Read title, author, keywords, and more."
       },
       "doiLookup": {
         "name": "Look up DOI / ISBN online",
-        "desc": "Finds an identifier in the PDF metadata (and, if Obsidian's PDF engine is reachable, on the first pages), then queries CrossRef or Open Library."
+        "desc": "Query CrossRef or Open Library."
       },
       "sanitize": {
         "name": "Sanitize list values",
-        "desc": "Strip characters Obsidian rejects in tags from list fields such as keywords."
+        "desc": "Remove unsupported tag characters."
       },
       "backfill": {
         "name": "Create missing notes",
-        "desc": "Sidecar scans the resource tree; folder mode scans only direct files at the collection root. Nothing runs before preview confirmation.",
+        "desc": "Preview, then create missing notes in bulk.",
         "run": "Run"
       },
       "upgrade": {
         "name": "Align all notes to the current template",
-        "desc": "Scans this group's existing notes: properties the template now calls for that a note is missing get filled from the current mapping. Fills only what is empty — never touches a property that already has a value, never removes anything the template does not know about. Good for after the template or a mapping name changes and old notes need to catch up.",
+        "desc": "Add only template properties that do not exist yet.",
         "run": "Run"
       }
     }
   },
   "sources": {
-    "path": { "name": "File path", "desc": "Full vault path. Also used to prove which attachment a note belongs to." },
+    "path": { "name": "File path", "desc": "Full vault path." },
     "fileName": { "name": "File name", "desc": "File name with extension." },
     "fileType": { "name": "File type", "desc": "Extension without the dot." },
     "fileSize": { "name": "File size", "desc": "Size in bytes." },
     "fileCreated": { "name": "Created", "desc": "File creation date." },
     "fileUpdated": { "name": "Updated", "desc": "File modification date." },
-    "fileNameYear": { "name": "Year (from file name)", "desc": "Parsed from a \"Author - Year - Title\" style file name — no network, no file read. Maps to year by default, and is tried before the online lookup: if the file name already carries the year, there is no need to go online. Empty when the name does not match." },
-    "fileNameTitle": { "name": "Title (from file name)", "desc": "Same parsing, the title part; falls back to the full file name when the pattern does not match. Not mapped by default — set a property name if you want it." },
-    "pdfTitle": { "name": "Title", "desc": "PDF title, falling back to the file name." },
+    "fileNameYear": { "name": "Year (from file name)", "desc": "Parsed from Author - Year - Title." },
+    "fileNameTitle": { "name": "Title (from file name)", "desc": "Parsed from the name; falls back to the full name." },
+    "pdfTitle": { "name": "Title", "desc": "PDF title; falls back to the file name." },
     "pdfAuthor": { "name": "Author", "desc": "PDF author field." },
     "pdfSubject": { "name": "Subject", "desc": "PDF subject field." },
     "pdfKeywords": { "name": "Keywords", "desc": "PDF keywords, written as a list." },
-    "pdfCreated": { "name": "PDF created", "desc": "Creation date recorded inside the PDF." },
-    "pdfModified": { "name": "PDF modified", "desc": "Modification date recorded inside the PDF." },
-    "pdfCreator": { "name": "PDF creator", "desc": "Application that produced the original document." },
-    "pdfProducer": { "name": "PDF producer", "desc": "Application that wrote the PDF." },
+    "pdfCreated": { "name": "PDF created", "desc": "Internal PDF date." },
+    "pdfModified": { "name": "PDF modified", "desc": "Internal PDF date." },
+    "pdfCreator": { "name": "PDF creator", "desc": "Original creation app." },
+    "pdfProducer": { "name": "PDF producer", "desc": "PDF writing app." },
     "pdfPages": { "name": "Pages", "desc": "Page count." },
-    "doi": { "name": "DOI", "desc": "Identifier found in the file." },
-    "isbn": { "name": "ISBN", "desc": "Identifier found in the file." },
-    "lookupTitle": { "name": "Title (online)", "desc": "Title from CrossRef or Open Library. May share a property with the PDF title; a value found in the PDF is not overwritten." },
-    "lookupAuthor": { "name": "Author (online)", "desc": "Authors from CrossRef or Open Library." },
-    "lookupYear": { "name": "Year (online)", "desc": "Publication year from the online lookup — a fallback for when fileNameYear cannot be parsed." }
+    "doi": { "name": "DOI", "desc": "DOI found in the file." },
+    "isbn": { "name": "ISBN", "desc": "ISBN found in the file." },
+    "lookupTitle": { "name": "Title (online)", "desc": "Title from an online lookup." },
+    "lookupAuthor": { "name": "Author (online)", "desc": "Authors from an online lookup." },
+    "lookupYear": { "name": "Year (online)", "desc": "Year from an online lookup." }
   }
 }

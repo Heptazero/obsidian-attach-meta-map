@@ -7062,17 +7062,17 @@ var en_default = {
     },
     language: {
       name: "Interface language",
-      desc: "Command names change language only after Obsidian reloads the plugin.",
+      desc: "Applies after reload.",
       auto: "Follow Obsidian"
     },
     templateFolders: {
       name: "Extra template folders",
-      detected: "Detected: ${folders}. Add more comma-separated paths here.",
-      none: "No template plugin folder detected. Add comma-separated paths here.",
+      detected: "Detected: ${folders}. Add more with commas.",
+      none: "Separate multiple paths with commas.",
       placeholder: "Templates"
     },
     mapping: {
-      desc: "Decides which metadata source fills which property name \u2014 configured once for the whole vault. source is the fixed resource-relation property and cannot be renamed here. Leave another name empty to skip it; keys absent from the template are not written. Inputs fuzzy-match template properties.",
+      desc: "Source \u2192 property. Empty skips it; source is fixed. Fuzzy matching is supported.",
       unmapped: "not mapped"
     },
     kinds: {
@@ -7081,7 +7081,7 @@ var en_default = {
       lookup: "From an online lookup (DOI / ISBN)"
     },
     groups: {
-      desc: "A group maps one attachment folder to one note folder, with its own extensions, template and naming. Groups may nest \u2014 the most specific attachment folder wins.",
+      desc: "Each group defines its layout, paths, template, and naming.",
       add: "Add group",
       newName: "New group",
       empty: "No groups yet. Add one to start mapping attachments to notes."
@@ -7101,59 +7101,59 @@ var en_default = {
         sidecar: "Sidecar (attachment stays put, note is separate)",
         folder: "Folder (a new folder holds the attachment and the note together)",
         desc: {
-          sidecar: "Resources stay in the resource folder; notes are created under the note folder. The source property identifies each pair.",
-          folder: "Resources and notes share one collection folder. Only direct files at its root are folded; anything in a child folder is never organized again. Existing pairs are recognized only through source."
+          sidecar: "Resources stay put; notes use another folder.",
+          folder: "Only direct files at the collection root are organized."
         }
       },
       createNoteFile: {
         name: "Create a note for new attachments",
-        desc: "Off: folding into a folder still happens (a same-named folder is created and the attachment moved in), but no note is created and no metadata is extracted \u2014 for material that just needs a folder of its own, not a note with frontmatter. Template, link format, embedding and PDF/DOI extraction are hidden while this is off."
+        desc: "Off: only create the folder and move the resource."
       },
       auxiliaryPrefix: {
         name: "Auxiliary file prefixes",
-        desc: "Comma separated, e.g. cn_, zh_, slides_. A file is matched by its name after the prefix against an existing note or source resource, moved into the same folder, and appended to the source list. No match leaves it in place. Empty disables this.",
+        desc: "Comma separated. Matches join the same item and source list.",
         placeholder: "For example: cn_, zh_, slides_"
       },
       resourceFolder: {
         name: "Resource folder",
-        desc: "Original resources in sidecar mode. Watched files placed here get a corresponding note."
+        desc: "Resource root for sidecar mode."
       },
       noteFolder: {
         name: "Note folder",
-        desc: "Corresponding notes in sidecar mode."
+        desc: "Note root for sidecar mode."
       },
       collectionFolder: {
         name: "Resource collection folder",
-        desc: "The single root for folder mode. Only files directly at the root are managed; content in any child folder is never moved or given another note."
+        desc: "Only direct root files are managed; child folders stay untouched."
       },
       extensions: {
         name: "Watched extensions",
-        desc: "Comma separated, e.g. .pdf, .epub. Only these files are picked up."
+        desc: "Comma separated, e.g. .pdf, .epub."
       },
       template: {
         name: "Template file",
-        desc: "The template's frontmatter decides which properties this group's notes get. The body is copied as-is, but Templater code in it is not executed. Empty means the built-in minimal field set.",
+        desc: "Uses template frontmatter; empty uses the built-in template.",
         placeholder: "Templates/paper.md",
-        builtin: "No template \u2014 built-in fields: source / title / author / created / updated",
+        builtin: "Built-in fields: source / title / author / created / updated",
         missing: "File not found.",
-        keys: "Template keys: ${keys} (\u2713 = a source is mapped to it)",
-        noKeys: "This template has no frontmatter, so no properties would be written."
+        keys: "Template keys: ${keys}",
+        noKeys: "Template has no frontmatter."
       },
       mirror: {
         name: "Mirror subfolders",
-        desc: "Sidecar only: recreate the resource's subfolder hierarchy under the note folder."
+        desc: "Keep resource folders under the note root."
       },
       noteName: {
         name: "Note name",
-        desc: `Variables: {{basename}} (no extension), {{name}} (with extension), {{ext}}. Also {{year}} and {{title}}: when the file name follows Zotero's common "Author - Year - Title" pattern, these are parsed back out of it (pure string matching, no file read) \u2014 e.g. {{year}}-{{title}} for "2023-Title". Files that do not match get an empty {{year}}; {{title}} falls back to the full file name. If the resulting name is taken by another attachment, the extension is added back.`
+        desc: "Supports {{basename}}, {{name}}, {{ext}}, {{year}}, and {{title}}."
       },
       linkTemplate: {
         name: "source link format",
-        desc: "Wikilink format written to source; defaults to [[{{name}}]] (with extension). Avoid [[{{basename}}]]: when the note has the same basename, that link resolves to the note itself \u2014 the plugin adds the extension back if detected. Use [[{{path}}]] for duplicate resource names."
+        desc: "Format written to source. Default: [[{{name}}]]."
       },
       embed: {
         name: "Embed the attachment",
-        desc: "Append an embed of the attachment to the note body. Off by default."
+        desc: "Embed the resource at the end of the note."
       },
       autoCreate: {
         name: {
@@ -7161,61 +7161,61 @@ var en_default = {
           folder: "Fold new attachments into a folder automatically"
         },
         desc: {
-          sidecar: "Off: only the manual commands create notes.",
-          folder: 'Off: fold into a folder only via commands such as "open pair". On: a new attachment is moved into its own folder and its note created as soon as it lands.'
+          sidecar: "Off: create only through commands.",
+          folder: "Off: organize root files only through commands."
         }
       },
       syncUpdated: {
         name: "Keep the updated property in sync",
-        desc: "Refreshes it when the attachment changes on disk. Never adds the property to a note that lacks it."
+        desc: "Refresh an existing property when the resource changes."
       },
       pdfExtraction: {
         name: "Read PDF metadata",
-        desc: "Title, author, subject, keywords, dates, producer and page count."
+        desc: "Read title, author, keywords, and more."
       },
       doiLookup: {
         name: "Look up DOI / ISBN online",
-        desc: "Finds an identifier in the PDF metadata (and, if Obsidian's PDF engine is reachable, on the first pages), then queries CrossRef or Open Library."
+        desc: "Query CrossRef or Open Library."
       },
       sanitize: {
         name: "Sanitize list values",
-        desc: "Strip characters Obsidian rejects in tags from list fields such as keywords."
+        desc: "Remove unsupported tag characters."
       },
       backfill: {
         name: "Create missing notes",
-        desc: "Sidecar scans the resource tree; folder mode scans only direct files at the collection root. Nothing runs before preview confirmation.",
+        desc: "Preview, then create missing notes in bulk.",
         run: "Run"
       },
       upgrade: {
         name: "Align all notes to the current template",
-        desc: "Scans this group's existing notes: properties the template now calls for that a note is missing get filled from the current mapping. Fills only what is empty \u2014 never touches a property that already has a value, never removes anything the template does not know about. Good for after the template or a mapping name changes and old notes need to catch up.",
+        desc: "Add only template properties that do not exist yet.",
         run: "Run"
       }
     }
   },
   sources: {
-    path: { name: "File path", desc: "Full vault path. Also used to prove which attachment a note belongs to." },
+    path: { name: "File path", desc: "Full vault path." },
     fileName: { name: "File name", desc: "File name with extension." },
     fileType: { name: "File type", desc: "Extension without the dot." },
     fileSize: { name: "File size", desc: "Size in bytes." },
     fileCreated: { name: "Created", desc: "File creation date." },
     fileUpdated: { name: "Updated", desc: "File modification date." },
-    fileNameYear: { name: "Year (from file name)", desc: 'Parsed from a "Author - Year - Title" style file name \u2014 no network, no file read. Maps to year by default, and is tried before the online lookup: if the file name already carries the year, there is no need to go online. Empty when the name does not match.' },
-    fileNameTitle: { name: "Title (from file name)", desc: "Same parsing, the title part; falls back to the full file name when the pattern does not match. Not mapped by default \u2014 set a property name if you want it." },
-    pdfTitle: { name: "Title", desc: "PDF title, falling back to the file name." },
+    fileNameYear: { name: "Year (from file name)", desc: "Parsed from Author - Year - Title." },
+    fileNameTitle: { name: "Title (from file name)", desc: "Parsed from the name; falls back to the full name." },
+    pdfTitle: { name: "Title", desc: "PDF title; falls back to the file name." },
     pdfAuthor: { name: "Author", desc: "PDF author field." },
     pdfSubject: { name: "Subject", desc: "PDF subject field." },
     pdfKeywords: { name: "Keywords", desc: "PDF keywords, written as a list." },
-    pdfCreated: { name: "PDF created", desc: "Creation date recorded inside the PDF." },
-    pdfModified: { name: "PDF modified", desc: "Modification date recorded inside the PDF." },
-    pdfCreator: { name: "PDF creator", desc: "Application that produced the original document." },
-    pdfProducer: { name: "PDF producer", desc: "Application that wrote the PDF." },
+    pdfCreated: { name: "PDF created", desc: "Internal PDF date." },
+    pdfModified: { name: "PDF modified", desc: "Internal PDF date." },
+    pdfCreator: { name: "PDF creator", desc: "Original creation app." },
+    pdfProducer: { name: "PDF producer", desc: "PDF writing app." },
     pdfPages: { name: "Pages", desc: "Page count." },
-    doi: { name: "DOI", desc: "Identifier found in the file." },
-    isbn: { name: "ISBN", desc: "Identifier found in the file." },
-    lookupTitle: { name: "Title (online)", desc: "Title from CrossRef or Open Library. May share a property with the PDF title; a value found in the PDF is not overwritten." },
-    lookupAuthor: { name: "Author (online)", desc: "Authors from CrossRef or Open Library." },
-    lookupYear: { name: "Year (online)", desc: "Publication year from the online lookup \u2014 a fallback for when fileNameYear cannot be parsed." }
+    doi: { name: "DOI", desc: "DOI found in the file." },
+    isbn: { name: "ISBN", desc: "ISBN found in the file." },
+    lookupTitle: { name: "Title (online)", desc: "Title from an online lookup." },
+    lookupAuthor: { name: "Author (online)", desc: "Authors from an online lookup." },
+    lookupYear: { name: "Year (online)", desc: "Year from an online lookup." }
   }
 };
 
@@ -7307,17 +7307,17 @@ var zh_default = {
     },
     language: {
       name: "\u754C\u9762\u8BED\u8A00",
-      desc: "\u547D\u4EE4\u540D\u8981\u91CD\u542F Obsidian \u6216\u91CD\u65B0\u52A0\u8F7D\u63D2\u4EF6\u540E\u624D\u4F1A\u6362\u8BED\u8A00\u3002",
+      desc: "\u91CD\u8F7D\u540E\u751F\u6548\u3002",
       auto: "\u8DDF\u968F Obsidian"
     },
     templateFolders: {
       name: "\u989D\u5916\u7684\u6A21\u677F\u6587\u4EF6\u5939",
-      detected: "\u5DF2\u81EA\u52A8\u68C0\u6D4B\u5230\uFF1A${folders}\u3002\u8FD9\u91CC\u518D\u8865\u51E0\u4E2A\u7528\u9017\u53F7\u5206\u9694\u7684\u8DEF\u5F84\u3002",
-      none: "\u6CA1\u68C0\u6D4B\u5230\u6A21\u677F\u63D2\u4EF6\u7684\u6587\u4EF6\u5939\uFF0C\u8FD9\u91CC\u624B\u52A8\u586B\uFF0C\u9017\u53F7\u5206\u9694\u3002",
+      detected: "\u5DF2\u68C0\u6D4B\uFF1A${folders}\u3002\u53EF\u7528\u9017\u53F7\u8865\u5145\u3002",
+      none: "\u7528\u9017\u53F7\u5206\u9694\u591A\u4E2A\u8DEF\u5F84\u3002",
       placeholder: "99_assets/template"
     },
     mapping: {
-      desc: "\u51B3\u5B9A\u300C\u54EA\u4E2A\u5143\u6570\u636E\u6765\u6E90\u5199\u8FDB\u54EA\u4E2A\u5C5E\u6027\u540D\u300D\uFF0C\u5168\u5E93\u53EA\u914D\u4E00\u6B21\u3002source \u662F\u56FA\u5B9A\u7684\u8D44\u6E90\u5173\u7CFB\u5B57\u6BB5\uFF0C\u4E0D\u5728\u8FD9\u91CC\u6539\u540D\u3002\u5176\u4ED6\u5C5E\u6027\u540D\u7559\u7A7A\u5C31\u662F\u4E0D\u5199\uFF1B\u6A21\u677F frontmatter \u91CC\u6CA1\u6709\u7684\u952E\u4E5F\u4E0D\u4F1A\u5199\u5165\u3002\u8F93\u5165\u6846\u652F\u6301\u6A21\u7CCA\u5339\u914D\u6A21\u677F\u5C5E\u6027\u3002",
+      desc: "\u6765\u6E90 \u2192 \u5C5E\u6027\u3002\u7559\u7A7A\u4E0D\u5199\uFF1Bsource \u56FA\u5B9A\u3002\u652F\u6301\u6A21\u7CCA\u5339\u914D\u3002",
       unmapped: "\u4E0D\u6620\u5C04"
     },
     kinds: {
@@ -7326,7 +7326,7 @@ var zh_default = {
       lookup: "\u6765\u81EA\u8054\u7F51\u67E5\u8BE2\uFF08DOI / ISBN\uFF09"
     },
     groups: {
-      desc: "\u4E00\u7EC4 = \u4E00\u4E2A\u9644\u4EF6\u5939 \u2192 \u4E00\u4E2A\u7B14\u8BB0\u5939\uFF0C\u5404\u81EA\u7684\u6269\u5C55\u540D\u3001\u6A21\u677F\u548C\u547D\u540D\u89C4\u5219\u3002\u7EC4\u53EF\u4EE5\u5D4C\u5957\uFF0C\u6700\u957F\u524D\u7F00\u7684\u7EC4\u80DC\u51FA\u3002",
+      desc: "\u6BCF\u7EC4\u914D\u7F6E\u5E03\u5C40\u3001\u8DEF\u5F84\u3001\u6A21\u677F\u548C\u547D\u540D\u3002",
       add: "\u65B0\u589E\u7EC4",
       newName: "\u65B0\u5EFA\u7EC4",
       empty: "\u8FD8\u6CA1\u6709\u6620\u5C04\u7EC4\u3002\u65B0\u589E\u4E00\u4E2A\u624D\u4F1A\u5F00\u59CB\u5EFA\u7B14\u8BB0\u3002"
@@ -7346,59 +7346,59 @@ var zh_default = {
         sidecar: "\u955C\u50CF sidecar\uFF08\u9644\u4EF6\u539F\u5730\u4E0D\u52A8\uFF0C\u7B14\u8BB0\u5355\u72EC\u5EFA\uFF09",
         folder: "\u6587\u4EF6\u5939\uFF08\u65B0\u5EFA\u6587\u4EF6\u5939\uFF0C\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\u548C\u7B14\u8BB0\u653E\u4E00\u8D77\uFF09",
         desc: {
-          sidecar: "\u8D44\u6E90\u7559\u5728\u8D44\u6E90\u6587\u4EF6\u5939\u91CC\uFF0C\u7B14\u8BB0\u5EFA\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u7684\u955C\u50CF\u8DEF\u5F84\u4E0B\uFF0C\u4E24\u8005\u9760 source \u4E92\u76F8\u8BA4\u8BC6\u3002",
-          folder: "\u6240\u6709\u8D44\u6E90\u548C\u7B14\u8BB0\u5171\u7528\u4E00\u4E2A\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939\u3002\u53EA\u6709\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u4F1A\u6298\u53E0\u8FDB\u5B50\u6587\u4EF6\u5939\uFF1B\u5B50\u6587\u4EF6\u5939\u4E2D\u7684\u5185\u5BB9\u6C38\u8FDC\u4E0D\u518D\u81EA\u52A8\u6574\u7406\u3002\u5DF2\u6709\u914D\u5BF9\u53EA\u8BA4 source\u3002"
+          sidecar: "\u8D44\u6E90\u4E0D\u79FB\u52A8\uFF0C\u7B14\u8BB0\u5EFA\u5728\u53E6\u4E00\u76EE\u5F55\u3002",
+          folder: "\u53EA\u6574\u7406\u96C6\u5408\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u3002"
         }
       },
       createNoteFile: {
         name: "\u4E3A\u65B0\u9644\u4EF6\u5EFA\u7B14\u8BB0",
-        desc: "\u5173\u95ED\u540E\uFF0C\u6298\u53E0\u8FDB\u6587\u4EF6\u5939\u8FD9\u4EF6\u4E8B\u7167\u5E38\u53D1\u751F\uFF08\u65B0\u5EFA\u540C\u540D\u6587\u4EF6\u5939\u3001\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\uFF09\uFF0C\u4F46\u4E0D\u518D\u5EFA\u7B14\u8BB0\u3001\u4E0D\u62BD\u53D6\u4EFB\u4F55\u5143\u6570\u636E\u2014\u2014\u9002\u5408\u53EA\u662F\u60F3\u628A\u67D0\u4E2A\u8D44\u6599\u7684\u6240\u6709\u6587\u4EF6\u653E\u8FDB\u4E00\u4E2A\u6587\u4EF6\u5939\uFF0C\u4E0D\u9700\u8981\u4E00\u7BC7\u5E26 frontmatter \u7684\u7B14\u8BB0\u7684\u60C5\u51B5\u3002\u5173\u95ED\u540E\u6A21\u677F\u3001\u94FE\u63A5\u683C\u5F0F\u3001\u5D4C\u5165\u548C PDF/DOI \u62BD\u53D6\u8FD9\u4E9B\u8DDF\u7B14\u8BB0\u76F8\u5173\u7684\u8BBE\u7F6E\u90FD\u4E0D\u4F1A\u663E\u793A\u3002"
+        desc: "\u5173\u95ED\u540E\u53EA\u5EFA\u6587\u4EF6\u5939\u5E76\u79FB\u52A8\u8D44\u6E90\u3002"
       },
       auxiliaryPrefix: {
         name: "\u9644\u5C5E\u6587\u4EF6\u524D\u7F00\uFF08\u53EF\u591A\u4E2A\uFF09",
-        desc: "\u7528\u9017\u53F7\u5206\u9694\uFF0C\u4F8B\u5982 cn_, zh_, slides_\u3002\u6587\u4EF6\u4F1A\u6309\u53BB\u6389\u524D\u7F00\u540E\u7684\u4E3B\u4F53\u540D\u5339\u914D\u5DF2\u6709\u7B14\u8BB0\u6216 source \u8D44\u6E90\uFF0C\u642C\u8FDB\u540C\u4E00\u6587\u4EF6\u5939\uFF0C\u5E76\u628A\u53CC\u94FE\u8FFD\u52A0\u5230 source \u5217\u8868\u3002\u5339\u914D\u4E0D\u4E0A\u5C31\u539F\u5730\u4E0D\u52A8\u3002\u7559\u7A7A\u5173\u95ED\u3002",
+        desc: "\u9017\u53F7\u5206\u9694\u3002\u5339\u914D\u540E\u79FB\u5165\u540C\u4E00\u6761\u76EE\u5E76\u8FFD\u52A0 source\u3002",
         placeholder: "\u4F8B\u5982 cn_, zh_, slides_"
       },
       resourceFolder: {
         name: "\u8D44\u6E90\u6587\u4EF6\u5939",
-        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u539F\u59CB\u8D44\u6E90\u4F4D\u7F6E\u3002\u653E\u8FDB\u8FD9\u91CC\u7684\u53D7\u76D1\u542C\u6587\u4EF6\u4F1A\u5EFA\u7ACB\u5BF9\u5E94\u7B14\u8BB0\u3002"
+        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u8D44\u6E90\u6839\u76EE\u5F55\u3002"
       },
       noteFolder: {
         name: "\u7B14\u8BB0\u6587\u4EF6\u5939",
-        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u5BF9\u5E94\u7B14\u8BB0\u4F4D\u7F6E\u3002"
+        desc: "\u5206\u79BB\u6A21\u5F0F\u7684\u7B14\u8BB0\u6839\u76EE\u5F55\u3002"
       },
       collectionFolder: {
         name: "\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939",
-        desc: "\u805A\u5408\u6A21\u5F0F\u552F\u4E00\u7684\u6839\u76EE\u5F55\u3002\u53EA\u6709\u76F4\u63A5\u653E\u5728\u6839\u76EE\u5F55\u91CC\u7684\u6587\u4EF6\u4F1A\u88AB\u63A5\u7BA1\uFF1B\u4EFB\u610F\u5B50\u6587\u4EF6\u5939\u4E2D\u7684\u5185\u5BB9\u90FD\u4E0D\u4F1A\u518D\u6B21\u79FB\u52A8\u6216\u5EFA\u7B14\u8BB0\u3002"
+        desc: "\u53EA\u5904\u7406\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\uFF1B\u5B50\u6587\u4EF6\u5939\u4E0D\u52A8\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
-        desc: "\u9017\u53F7\u5206\u9694\uFF0C\u4F8B\u5982 .pdf, .epub\u3002\u53EA\u6709\u8FD9\u4E9B\u6587\u4EF6\u4F1A\u88AB\u63A5\u7BA1\u3002"
+        desc: "\u9017\u53F7\u5206\u9694\uFF0C\u4F8B\u5982 .pdf, .epub\u3002"
       },
       template: {
         name: "\u6A21\u677F\u6587\u4EF6",
-        desc: "\u6A21\u677F\u7684 frontmatter \u51B3\u5B9A\u8FD9\u4E00\u7EC4\u7684\u7B14\u8BB0\u6709\u54EA\u4E9B\u5B57\u6BB5\uFF1B\u6B63\u6587\u7167\u6284\uFF0C\u4F46\u6A21\u677F\u91CC\u7684 Templater \u4EE3\u7801\u4E0D\u4F1A\u6267\u884C\u3002\u7559\u7A7A\u5219\u7528\u5185\u7F6E\u7684\u6700\u5C0F\u5B57\u6BB5\u3002",
+        desc: "\u6309\u6A21\u677F frontmatter \u5EFA\u5B57\u6BB5\uFF1B\u7559\u7A7A\u7528\u5185\u7F6E\u6A21\u677F\u3002",
         placeholder: "99_assets/template/tmp_paper.md",
-        builtin: "\u672A\u9009\u6A21\u677F\uFF0C\u4F7F\u7528\u5185\u7F6E\u5B57\u6BB5\uFF1Asource / title / author / created / updated",
+        builtin: "\u5185\u7F6E\u5B57\u6BB5\uFF1Asource / title / author / created / updated",
         missing: "\u627E\u4E0D\u5230\u8FD9\u4E2A\u6587\u4EF6\u3002",
-        keys: "\u6A21\u677F\u5B57\u6BB5\uFF1A${keys}\uFF08\u2713 \u8868\u793A\u6620\u5C04\u8868\u91CC\u6709\u6765\u6E90\uFF09",
-        noKeys: "\u8FD9\u4E2A\u6A21\u677F\u6CA1\u6709 frontmatter\uFF0C\u4E0D\u4F1A\u5199\u5165\u4EFB\u4F55\u5C5E\u6027\u3002"
+        keys: "\u6A21\u677F\u5B57\u6BB5\uFF1A${keys}",
+        noKeys: "\u6A21\u677F\u6CA1\u6709 frontmatter\u3002"
       },
       mirror: {
         name: "\u955C\u50CF\u5B50\u6587\u4EF6\u5939",
-        desc: "\u4EC5\u7528\u4E8E\u5206\u79BB\u6A21\u5F0F\uFF1A\u5728\u7B14\u8BB0\u6587\u4EF6\u5939\u91CC\u91CD\u5EFA\u8D44\u6E90\u7684\u5B50\u76EE\u5F55\u5C42\u7EA7\u3002"
+        desc: "\u5728\u7B14\u8BB0\u76EE\u5F55\u4E2D\u4FDD\u7559\u8D44\u6E90\u5C42\u7EA7\u3002"
       },
       noteName: {
         name: "\u7B14\u8BB0\u6587\u4EF6\u540D",
-        desc: "\u53D8\u91CF\uFF1A{{basename}}\uFF08\u4E0D\u5E26\u6269\u5C55\u540D\uFF09\u3001{{name}}\uFF08\u5E26\u6269\u5C55\u540D\uFF09\u3001{{ext}}\u3002\u53E6\u6709 {{year}}\u3001{{title}}\uFF1A\u5F53\u6587\u4EF6\u540D\u7B26\u5408 Zotero \u5E38\u89C1\u7684\u300C\u4F5C\u8005 - \u5E74\u4EFD - \u6807\u9898\u300D\u683C\u5F0F\u65F6\uFF0C\u4ECE\u6587\u4EF6\u540D\u91CC\u62C6\u51FA\u5E74\u4EFD\u548C\u6807\u9898\uFF08\u7EAF\u5B57\u7B26\u4E32\u89E3\u6790\uFF0C\u4E0D\u8BFB\u6587\u4EF6\u5185\u5BB9\uFF09\uFF0C\u4F8B\u5982\u60F3\u8981 2023-\u6807\u9898 \u5C31\u5199 {{year}}-{{title}}\u3002\u4E0D\u7B26\u5408\u8FD9\u4E2A\u683C\u5F0F\u7684\u6587\u4EF6 {{year}} \u4E3A\u7A7A\u3001{{title}} \u9000\u56DE\u5B8C\u6574\u6587\u4EF6\u540D\u3002\u8FD9\u4E2A\u540D\u5B57\u88AB\u522B\u7684\u9644\u4EF6\u5360\u4E86\u4F1A\u81EA\u52A8\u52A0\u56DE\u6269\u5C55\u540D\u3002"
+        desc: "\u652F\u6301 {{basename}}\u3001{{name}}\u3001{{ext}}\u3001{{year}}\u3001{{title}}\u3002"
       },
       linkTemplate: {
         name: "source \u94FE\u63A5\u683C\u5F0F",
-        desc: "\u5199\u8FDB source \u7684\u53CC\u94FE\u683C\u5F0F\uFF0C\u9ED8\u8BA4 [[{{name}}]]\uFF08\u5E26\u6269\u5C55\u540D\uFF09\u3002\u6CE8\u610F\u522B\u7528 [[{{basename}}]]\uFF1A\u7B14\u8BB0\u540D\u4E5F\u662F basename \u65F6\uFF0C\u8FD9\u4E2A\u94FE\u63A5\u4F1A\u6307\u5411\u7B14\u8BB0\u81EA\u5DF1\u2014\u2014\u771F\u649E\u4E0A\u4E86\u63D2\u4EF6\u4F1A\u81EA\u52A8\u8865\u56DE\u6269\u5C55\u540D\u3002\u8D44\u6E90\u91CD\u540D\u65F6\u6539\u7528 [[{{path}}]]\u3002"
+        desc: "\u5199\u5165 source \u7684\u683C\u5F0F\uFF0C\u9ED8\u8BA4 [[{{name}}]]\u3002"
       },
       embed: {
         name: "\u5728\u6B63\u6587\u5D4C\u5165\u9644\u4EF6",
-        desc: "\u5728\u7B14\u8BB0\u6B63\u6587\u672B\u5C3E\u8FFD\u52A0\u4E00\u884C\u9644\u4EF6\u5D4C\u5165\u3002\u9ED8\u8BA4\u5173\u95ED\u3002"
+        desc: "\u5728\u6B63\u6587\u672B\u5C3E\u5D4C\u5165\u8D44\u6E90\u3002"
       },
       autoCreate: {
         name: {
@@ -7406,61 +7406,61 @@ var zh_default = {
           folder: "\u9644\u4EF6\u65B0\u589E\u65F6\u81EA\u52A8\u6574\u7406\u6210\u6587\u4EF6\u5939"
         },
         desc: {
-          sidecar: "\u5173\u95ED\u5219\u53EA\u80FD\u9760\u547D\u4EE4\u624B\u52A8\u5EFA\u3002",
-          folder: "\u5173\u95ED\u5219\u53EA\u80FD\u9760\u300C\u6210\u5BF9\u6253\u5F00\u300D\u7B49\u547D\u4EE4\u624B\u52A8\u6298\u53E0\u6210\u6587\u4EF6\u5939\uFF1B\u5F00\u542F\u540E\u65B0\u9644\u4EF6\u4E00\u843D\u5730\u5C31\u81EA\u52A8\u642C\u8FDB\u65B0\u6587\u4EF6\u5939\u3001\u5EFA\u597D\u7B14\u8BB0\u3002"
+          sidecar: "\u5173\u95ED\u540E\u4EC5\u624B\u52A8\u521B\u5EFA\u3002",
+          folder: "\u5173\u95ED\u540E\u4EC5\u624B\u52A8\u6574\u7406\u6839\u76EE\u5F55\u6587\u4EF6\u3002"
         }
       },
       syncUpdated: {
         name: "\u540C\u6B65\u300C\u66F4\u65B0\u65F6\u95F4\u300D\u5C5E\u6027",
-        desc: "\u9644\u4EF6\u5728\u78C1\u76D8\u4E0A\u53D8\u52A8\u65F6\u5237\u65B0\u8BE5\u5C5E\u6027\u3002\u7B14\u8BB0\u672C\u6765\u6CA1\u6709\u8FD9\u4E2A\u5C5E\u6027\u5C31\u4E0D\u52A0\u3002"
+        desc: "\u8D44\u6E90\u53D8\u5316\u65F6\u5237\u65B0\u5DF2\u6709\u5C5E\u6027\u3002"
       },
       pdfExtraction: {
         name: "\u8BFB\u53D6 PDF \u5143\u6570\u636E",
-        desc: "\u6807\u9898\u3001\u4F5C\u8005\u3001\u4E3B\u9898\u3001\u5173\u952E\u8BCD\u3001\u65E5\u671F\u3001producer\u3001\u9875\u6570\u3002"
+        desc: "\u8BFB\u53D6\u6807\u9898\u3001\u4F5C\u8005\u3001\u5173\u952E\u8BCD\u7B49\u3002"
       },
       doiLookup: {
         name: "\u8054\u7F51\u67E5 DOI / ISBN",
-        desc: "\u5148\u5728 PDF \u5143\u6570\u636E\u91CC\u627E\u6807\u8BC6\u7B26\uFF08Obsidian \u7684 pdf.js \u53EF\u7528\u65F6\u8FD8\u4F1A\u8BFB\u524D\u4E24\u9875\uFF09\uFF0C\u518D\u67E5 CrossRef \u6216 Open Library\u3002"
+        desc: "\u901A\u8FC7 CrossRef \u6216 Open Library \u67E5\u8BE2\u3002"
       },
       sanitize: {
         name: "\u6E05\u6D17\u5217\u8868\u503C",
-        desc: "\u628A\u5173\u952E\u8BCD\u8FD9\u7C7B\u5217\u8868\u5B57\u6BB5\u91CC Obsidian \u6807\u7B7E\u4E0D\u63A5\u53D7\u7684\u5B57\u7B26\u53BB\u6389\u3002"
+        desc: "\u79FB\u9664\u6807\u7B7E\u4E0D\u652F\u6301\u7684\u5B57\u7B26\u3002"
       },
       backfill: {
         name: "\u8865\u9F50\u7F3A\u5931\u7684\u7B14\u8BB0",
-        desc: "\u5206\u79BB\u6A21\u5F0F\u626B\u63CF\u6574\u4E2A\u8D44\u6E90\u6811\uFF1B\u805A\u5408\u6A21\u5F0F\u53EA\u626B\u63CF\u96C6\u5408\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u3002\u786E\u8BA4\u9884\u89C8\u540E\u624D\u6267\u884C\u3002",
+        desc: "\u9884\u89C8\u540E\u6279\u91CF\u8865\u9F50\u3002",
         run: "\u6267\u884C"
       },
       upgrade: {
         name: "\u5BF9\u9F50\u6240\u6709\u7B14\u8BB0\u5230\u5F53\u524D\u6A21\u677F",
-        desc: "\u626B\u63CF\u8FD9\u4E00\u7EC4\u5DF2\u6709\u7684\u7B14\u8BB0\uFF1A\u6A21\u677F\u73B0\u5728\u8981\u6C42\u3001\u4F46\u67D0\u7BC7\u7B14\u8BB0\u8FD8\u6CA1\u6709\u7684\u5C5E\u6027\uFF0C\u6309\u5F53\u524D\u6620\u5C04\u8868\u8865\u4E0A\u3002\u53EA\u586B\u7A7A\u7684\u2014\u2014\u5DF2\u7ECF\u6709\u5185\u5BB9\u7684\u5C5E\u6027\u4E00\u5F8B\u4E0D\u78B0\uFF0C\u4E5F\u4E0D\u5220\u9664\u7B14\u8BB0\u91CC\u6A21\u677F\u4E4B\u5916\u7684\u5176\u4ED6\u5C5E\u6027\u3002\u9002\u5408\u6A21\u677F\u6539\u8FC7\u3001\u6620\u5C04\u8868\u6539\u8FC7\u540D\u5B57\u4E4B\u540E\uFF0C\u628A\u65E7\u7B14\u8BB0\u4E00\u6B21\u6027\u8865\u9F50\u3002",
+        desc: "\u53EA\u8865\u6A21\u677F\u8981\u6C42\u4F46\u5C1A\u4E0D\u5B58\u5728\u7684\u5C5E\u6027\u3002",
         run: "\u6267\u884C"
       }
     }
   },
   sources: {
-    path: { name: "\u6587\u4EF6\u8DEF\u5F84", desc: "\u5E93\u5185\u5B8C\u6574\u8DEF\u5F84\u3002\u4E5F\u7528\u6765\u5224\u5B9A\u7B14\u8BB0\u5C5E\u4E8E\u54EA\u4E2A\u9644\u4EF6\u3002" },
+    path: { name: "\u6587\u4EF6\u8DEF\u5F84", desc: "\u5E93\u5185\u5B8C\u6574\u8DEF\u5F84\u3002" },
     fileName: { name: "\u6587\u4EF6\u540D", desc: "\u5E26\u6269\u5C55\u540D\u7684\u6587\u4EF6\u540D\u3002" },
     fileType: { name: "\u6587\u4EF6\u7C7B\u578B", desc: "\u4E0D\u5E26\u70B9\u7684\u6269\u5C55\u540D\u3002" },
     fileSize: { name: "\u6587\u4EF6\u5927\u5C0F", desc: "\u5B57\u8282\u6570\u3002" },
     fileCreated: { name: "\u521B\u5EFA\u65F6\u95F4", desc: "\u6587\u4EF6\u521B\u5EFA\u65E5\u671F\u3002" },
     fileUpdated: { name: "\u4FEE\u6539\u65F6\u95F4", desc: "\u6587\u4EF6\u4FEE\u6539\u65E5\u671F\u3002" },
-    fileNameYear: { name: "\u5E74\u4EFD\uFF08\u6587\u4EF6\u540D\uFF09", desc: "\u4ECE\u300C\u4F5C\u8005 - \u5E74\u4EFD - \u6807\u9898\u300D\u683C\u5F0F\u7684\u6587\u4EF6\u540D\u91CC\u89E3\u6790\u51FA\u7684\u5E74\u4EFD\uFF0C\u4E0D\u8054\u7F51\u3001\u4E0D\u8BFB PDF \u5185\u5BB9\u3002\u9ED8\u8BA4\u6620\u5C04\u5230 year\uFF0C\u4E14\u6392\u5728\u8054\u7F51\u67E5\u8BE2\u4E4B\u524D\u2014\u2014\u6587\u4EF6\u540D\u91CC\u6709\u5C31\u4E0D\u5FC5\u8054\u7F51\u3002\u4E0D\u7B26\u5408\u8FD9\u4E2A\u683C\u5F0F\u5219\u4E3A\u7A7A\u3002" },
-    fileNameTitle: { name: "\u6807\u9898\uFF08\u6587\u4EF6\u540D\uFF09", desc: "\u540C\u4E0A\uFF0C\u89E3\u6790\u51FA\u7684\u6807\u9898\u90E8\u5206\uFF1B\u4E0D\u7B26\u5408\u683C\u5F0F\u5219\u6574\u4E2A\u6587\u4EF6\u540D\u3002\u9ED8\u8BA4\u4E0D\u6620\u5C04\uFF0C\u9700\u8981\u65F6\u624B\u52A8\u586B\u5C5E\u6027\u540D\u3002" },
-    pdfTitle: { name: "\u6807\u9898", desc: "PDF \u81EA\u5E26\u6807\u9898\uFF0C\u6CA1\u6709\u5219\u9000\u56DE\u6587\u4EF6\u540D\u3002" },
+    fileNameYear: { name: "\u5E74\u4EFD\uFF08\u6587\u4EF6\u540D\uFF09", desc: "\u4ECE\u300C\u4F5C\u8005 - \u5E74\u4EFD - \u6807\u9898\u300D\u89E3\u6790\u3002" },
+    fileNameTitle: { name: "\u6807\u9898\uFF08\u6587\u4EF6\u540D\uFF09", desc: "\u4ECE\u6587\u4EF6\u540D\u89E3\u6790\uFF1B\u5931\u8D25\u5219\u7528\u5B8C\u6574\u540D\u79F0\u3002" },
+    pdfTitle: { name: "\u6807\u9898", desc: "PDF \u6807\u9898\uFF1B\u5931\u8D25\u5219\u7528\u6587\u4EF6\u540D\u3002" },
     pdfAuthor: { name: "\u4F5C\u8005", desc: "PDF \u7684 author \u5B57\u6BB5\u3002" },
     pdfSubject: { name: "\u4E3B\u9898", desc: "PDF \u7684 subject \u5B57\u6BB5\u3002" },
     pdfKeywords: { name: "\u5173\u952E\u8BCD", desc: "PDF \u7684 keywords\uFF0C\u5199\u6210\u5217\u8868\u3002" },
-    pdfCreated: { name: "PDF \u521B\u5EFA\u65E5\u671F", desc: "PDF \u5185\u90E8\u8BB0\u5F55\u7684\u521B\u5EFA\u65F6\u95F4\u3002" },
-    pdfModified: { name: "PDF \u4FEE\u6539\u65E5\u671F", desc: "PDF \u5185\u90E8\u8BB0\u5F55\u7684\u4FEE\u6539\u65F6\u95F4\u3002" },
-    pdfCreator: { name: "PDF creator", desc: "\u751F\u6210\u539F\u59CB\u6587\u6863\u7684\u7A0B\u5E8F\u3002" },
-    pdfProducer: { name: "PDF producer", desc: "\u5199\u51FA\u8FD9\u4E2A PDF \u7684\u7A0B\u5E8F\u3002" },
+    pdfCreated: { name: "PDF \u521B\u5EFA\u65E5\u671F", desc: "PDF \u5185\u90E8\u65E5\u671F\u3002" },
+    pdfModified: { name: "PDF \u4FEE\u6539\u65E5\u671F", desc: "PDF \u5185\u90E8\u65E5\u671F\u3002" },
+    pdfCreator: { name: "PDF creator", desc: "\u539F\u59CB\u521B\u5EFA\u7A0B\u5E8F\u3002" },
+    pdfProducer: { name: "PDF producer", desc: "PDF \u751F\u6210\u7A0B\u5E8F\u3002" },
     pdfPages: { name: "\u9875\u6570", desc: "\u603B\u9875\u6570\u3002" },
-    doi: { name: "DOI", desc: "\u5728\u6587\u4EF6\u91CC\u627E\u5230\u7684\u6807\u8BC6\u7B26\u3002" },
-    isbn: { name: "ISBN", desc: "\u5728\u6587\u4EF6\u91CC\u627E\u5230\u7684\u6807\u8BC6\u7B26\u3002" },
-    lookupTitle: { name: "\u6807\u9898\uFF08\u8054\u7F51\uFF09", desc: "CrossRef / Open Library \u7684\u6807\u9898\u3002\u53EF\u4EE5\u548C PDF \u6807\u9898\u5171\u7528\u4E00\u4E2A\u5C5E\u6027\u540D\uFF0CPDF \u6709\u503C\u65F6\u4E0D\u4F1A\u88AB\u8986\u76D6\u3002" },
-    lookupAuthor: { name: "\u4F5C\u8005\uFF08\u8054\u7F51\uFF09", desc: "CrossRef / Open Library \u7684\u4F5C\u8005\u3002" },
-    lookupYear: { name: "\u5E74\u4EFD\uFF08\u8054\u7F51\uFF09", desc: "\u8054\u7F51\u67E5\u8BE2\u5F97\u5230\u7684\u51FA\u7248\u5E74\u4EFD\uFF0C\u4F5C\u4E3A fileNameYear \u89E3\u6790\u5931\u8D25\u65F6\u7684\u515C\u5E95\u3002" }
+    doi: { name: "DOI", desc: "\u6587\u4EF6\u4E2D\u7684 DOI\u3002" },
+    isbn: { name: "ISBN", desc: "\u6587\u4EF6\u4E2D\u7684 ISBN\u3002" },
+    lookupTitle: { name: "\u6807\u9898\uFF08\u8054\u7F51\uFF09", desc: "\u8054\u7F51\u67E5\u8BE2\u7684\u6807\u9898\u3002" },
+    lookupAuthor: { name: "\u4F5C\u8005\uFF08\u8054\u7F51\uFF09", desc: "\u8054\u7F51\u67E5\u8BE2\u7684\u4F5C\u8005\u3002" },
+    lookupYear: { name: "\u5E74\u4EFD\uFF08\u8054\u7F51\uFF09", desc: "\u8054\u7F51\u67E5\u8BE2\u7684\u5E74\u4EFD\u3002" }
   }
 };
 
@@ -23803,7 +23803,8 @@ var BackfillPreviewModal = class extends import_obsidian5.Modal {
   }
   onOpen() {
     const { contentEl } = this;
-    contentEl.addClass("amm-backfill-modal");
+    this.modalEl.addClass("amm-backfill-modal");
+    contentEl.addClass("amm-backfill-content");
     contentEl.createEl("h3", { text: t2("backfill.previewTitle") });
     const changeCount = this.plans.reduce((sum2, plan) => sum2 + plan.changes.length, 0);
     contentEl.createEl("p", {
@@ -23813,7 +23814,8 @@ var BackfillPreviewModal = class extends import_obsidian5.Modal {
     legend.createSpan({ text: t2("backfill.legend.removed"), cls: "is-removed" });
     legend.createSpan({ text: t2("backfill.legend.added"), cls: "is-added" });
     const tree = buildChangeTree(this.plans.flatMap((plan) => plan.changes));
-    renderTree(contentEl, tree.children);
+    const treeViewport = contentEl.createEl("div", { cls: "amm-change-tree-viewport" });
+    renderTree(treeViewport, tree.children);
     new import_obsidian5.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("backfill.confirm")).setCta().onClick(() => {
       this.confirmed = true;
       this.close();

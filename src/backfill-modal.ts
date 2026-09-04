@@ -29,7 +29,8 @@ export class BackfillPreviewModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.addClass('amm-backfill-modal');
+    this.modalEl.addClass('amm-backfill-modal');
+    contentEl.addClass('amm-backfill-content');
     contentEl.createEl('h3', { text: t('backfill.previewTitle') });
     const changeCount = this.plans.reduce((sum, plan) => sum + plan.changes.length, 0);
     contentEl.createEl('p', {
@@ -40,7 +41,8 @@ export class BackfillPreviewModal extends Modal {
     legend.createSpan({ text: t('backfill.legend.added'), cls: 'is-added' });
 
     const tree = buildChangeTree(this.plans.flatMap(plan => plan.changes));
-    renderTree(contentEl, tree.children);
+    const treeViewport = contentEl.createEl('div', { cls: 'amm-change-tree-viewport' });
+    renderTree(treeViewport, tree.children);
 
     new Setting(contentEl)
       .addButton(button => button
