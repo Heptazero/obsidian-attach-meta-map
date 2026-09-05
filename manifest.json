@@ -1,7 +1,7 @@
 {
   "id": "att-meta-map",
   "name": "Att Meta Map",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "minAppVersion": "1.7.2",
   "description": "Maps resource collections to index notes through the source property, with sidecar/folder layouts and a paired source view.",
   "author": "Hzero (fork of Attachments Library by José Compadre Junior)",
