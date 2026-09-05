@@ -147,7 +147,11 @@ Additional boundaries:
 
 Changes to `data.json` are loaded only when the plugin starts. Disable and re-enable the plugin, use *View → Force Reload*, or restart Obsidian after editing that file externally.
 
-## Language and architecture
+## Privacy, language, and architecture
+
+- Notes, attachments, settings, and extracted PDF metadata stay inside the Obsidian vault.
+- DOI/ISBN lookup is disabled by default. When enabled, the detected DOI is sent to Crossref or the detected ISBN is sent to Open Library to retrieve bibliographic metadata.
+- Att Meta Map has no account, telemetry, advertisements, or access to files outside the vault.
 
 The interface can follow Obsidian or be switched directly between Chinese and English. Translation keys are kept in `src/i18n/locales/en.json` and `src/i18n/locales/zh.json`; UI code does not contain parallel hard-coded copies.
 

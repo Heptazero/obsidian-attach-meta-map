@@ -147,7 +147,11 @@ Att Meta Map 不监听 `delete`，也永远不会自动删除笔记。资源消�
 
 外部修改 `data.json` 后，正在运行的插件不会立刻重新加载。请禁用再启用插件、执行“View → Force Reload”，或重启 Obsidian。
 
-## 语言和架构
+## 隐私、语言和架构
+
+- 笔记、附件、设置和抽取出的 PDF 元数据都保留在 Obsidian 库内。
+- DOI/ISBN 查询默认关闭。启用后，检测到的 DOI 会发送给 Crossref，ISBN 会发送给 Open Library，以获取书目信息。
+- Att Meta Map 不需要账号，没有遥测、广告，也不访问库外文件。
 
 界面可以跟随 Obsidian，也可以直接切换中文或 English。翻译按消息键集中保存在 `src/i18n/locales/en.json` 和 `src/i18n/locales/zh.json`，界面代码没有散落的中英文副本。
 
