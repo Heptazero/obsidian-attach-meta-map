@@ -161,13 +161,13 @@ export class AttachmentRuleSettings {
 
     const includeSubfoldersSetting = new Setting(body)
       .setName(t('settings.rules.fields.includeSubfolders'))
-      .setDisabled(rule.sourceFolders.length === 0)
       .addToggle(toggle => toggle
         .setValue(rule.includeSubfolders)
         .onChange(async value => {
           rule.includeSubfolders = value;
           await this.plugin.saveSettings();
-        }));
+        }))
+      .setDisabled(rule.sourceFolders.length === 0);
 
     new Setting(body)
       .setName(t('settings.rules.fields.excludedFolders'))

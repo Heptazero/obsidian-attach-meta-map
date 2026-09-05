@@ -24586,10 +24586,10 @@ var AttachmentRuleSettings = class {
         void updateSourceFolders(value, includeSubfoldersSetting);
       });
     });
-    const includeSubfoldersSetting = new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).setDisabled(rule.sourceFolders.length === 0).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
+    const includeSubfoldersSetting = new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
       rule.includeSubfolders = value;
       await this.plugin.saveSettings();
-    }));
+    })).setDisabled(rule.sourceFolders.length === 0);
     new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.excludedFolders")).addText((text) => {
       text.setValue(rule.excludedFolders.join(", ")).onChange(async (value) => {
         rule.excludedFolders = folders(value);
