@@ -102,7 +102,6 @@
     },
     "language": {
       "name": "界面语言",
-      "desc": "重载后生效。",
       "auto": "跟随 Obsidian"
     },
     "templateFolders": {
@@ -167,10 +166,10 @@
       "layout": {
         "name": "布局",
         "sidecar": "镜像 sidecar（附件原地不动，笔记单独建）",
-        "folder": "文件夹（新建文件夹，把附件搬进去和笔记放一起）",
+        "folder": "文件夹（附件和笔记共用一个条目文件夹）",
         "desc": {
           "sidecar": "资源不移动，笔记建在另一目录。",
-          "folder": "只整理集合根目录里的直接文件。"
+          "folder": "使用一个集合根目录，只接管选中的精确层级。"
         }
       },
       "createNoteFile": {

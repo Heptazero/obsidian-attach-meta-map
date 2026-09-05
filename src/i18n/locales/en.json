@@ -102,7 +102,6 @@
     },
     "language": {
       "name": "Interface language",
-      "desc": "Applies after reload.",
       "auto": "Follow Obsidian"
     },
     "templateFolders": {
@@ -167,10 +166,10 @@
       "layout": {
         "name": "Layout",
         "sidecar": "Sidecar (attachment stays put, note is separate)",
-        "folder": "Folder (a new folder holds the attachment and the note together)",
+        "folder": "Folder (resource and note share one item folder)",
         "desc": {
           "sidecar": "Resources stay put; notes use another folder.",
-          "folder": "Only direct files at the collection root are organized."
+          "folder": "Uses one collection root and handles the selected exact depth."
         }
       },
       "createNoteFile": {

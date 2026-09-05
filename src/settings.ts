@@ -123,7 +123,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName(t('settings.language.name'))
-      .setDesc(t('settings.language.desc'))
       .addDropdown(drop => drop
         .addOption('auto', t('settings.language.auto'))
         .addOption('zh', '中文')

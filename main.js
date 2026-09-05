@@ -22799,7 +22799,6 @@ var en_default = {
     },
     language: {
       name: "Interface language",
-      desc: "Applies after reload.",
       auto: "Follow Obsidian"
     },
     templateFolders: {
@@ -22864,10 +22863,10 @@ var en_default = {
       layout: {
         name: "Layout",
         sidecar: "Sidecar (attachment stays put, note is separate)",
-        folder: "Folder (a new folder holds the attachment and the note together)",
+        folder: "Folder (resource and note share one item folder)",
         desc: {
           sidecar: "Resources stay put; notes use another folder.",
-          folder: "Only direct files at the collection root are organized."
+          folder: "Uses one collection root and handles the selected exact depth."
         }
       },
       createNoteFile: {
@@ -23093,7 +23092,6 @@ var zh_default = {
     },
     language: {
       name: "\u754C\u9762\u8BED\u8A00",
-      desc: "\u91CD\u8F7D\u540E\u751F\u6548\u3002",
       auto: "\u8DDF\u968F Obsidian"
     },
     templateFolders: {
@@ -23158,10 +23156,10 @@ var zh_default = {
       layout: {
         name: "\u5E03\u5C40",
         sidecar: "\u955C\u50CF sidecar\uFF08\u9644\u4EF6\u539F\u5730\u4E0D\u52A8\uFF0C\u7B14\u8BB0\u5355\u72EC\u5EFA\uFF09",
-        folder: "\u6587\u4EF6\u5939\uFF08\u65B0\u5EFA\u6587\u4EF6\u5939\uFF0C\u628A\u9644\u4EF6\u642C\u8FDB\u53BB\u548C\u7B14\u8BB0\u653E\u4E00\u8D77\uFF09",
+        folder: "\u6587\u4EF6\u5939\uFF08\u9644\u4EF6\u548C\u7B14\u8BB0\u5171\u7528\u4E00\u4E2A\u6761\u76EE\u6587\u4EF6\u5939\uFF09",
         desc: {
           sidecar: "\u8D44\u6E90\u4E0D\u79FB\u52A8\uFF0C\u7B14\u8BB0\u5EFA\u5728\u53E6\u4E00\u76EE\u5F55\u3002",
-          folder: "\u53EA\u6574\u7406\u96C6\u5408\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\u3002"
+          folder: "\u4F7F\u7528\u4E00\u4E2A\u96C6\u5408\u6839\u76EE\u5F55\uFF0C\u53EA\u63A5\u7BA1\u9009\u4E2D\u7684\u7CBE\u786E\u5C42\u7EA7\u3002"
         }
       },
       createNoteFile: {
@@ -24794,7 +24792,7 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
   // --- general -----------------------------------------------------------
   renderGeneral(containerEl) {
     new import_obsidian12.Setting(containerEl).setName(t2("settings.sections.general")).setHeading();
-    new import_obsidian12.Setting(containerEl).setName(t2("settings.language.name")).setDesc(t2("settings.language.desc")).addDropdown((drop) => drop.addOption("auto", t2("settings.language.auto")).addOption("zh", "\u4E2D\u6587").addOption("en", "English").setValue(this.plugin.settings.language).onChange(async (value) => {
+    new import_obsidian12.Setting(containerEl).setName(t2("settings.language.name")).addDropdown((drop) => drop.addOption("auto", t2("settings.language.auto")).addOption("zh", "\u4E2D\u6587").addOption("en", "English").setValue(this.plugin.settings.language).onChange(async (value) => {
       this.plugin.settings.language = value;
       await this.plugin.saveSettings();
       await this.plugin.applyLanguage();
