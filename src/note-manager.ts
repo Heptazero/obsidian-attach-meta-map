@@ -2,7 +2,7 @@ import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
 import {
-  folderItemCandidates, isDirectChild, isInFolder, linkFor,
+  folderItemCandidates, isAtFolderDepth, isInFolder, linkFor,
   normalizeForMatch, notePathCandidates, noteRoot, resourceRoot, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
@@ -169,7 +169,13 @@ export class NoteManager {
   }
 
   targetNotePath(group: MappingGroup, attachmentPath: string): string {
-    const { primary, fallback } = notePathCandidates(group, attachmentPath);
+    const candidates = group.layout === 'folder'
+      ? (() => {
+        const items = folderItemCandidates(group, attachmentPath);
+        return { primary: items.primary.notePath, fallback: items.fallback.notePath };
+      })()
+      : notePathCandidates(group, attachmentPath);
+    const { primary, fallback } = candidates;
     const existing = this.app.vault.getFileByPath(normalizePath(primary));
     if (!existing) return normalizePath(primary);
     if (this.notePointsAt(existing, group, attachmentPath) === 'yes') return normalizePath(primary);
@@ -346,10 +352,10 @@ export class NoteManager {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
-    // A folder-layout collection is an inbox only at its root. Anything in a
-    // child folder is already user-organized and must never be folded again,
-    // regardless of folder names or whether source is present.
-    if (group.layout === 'folder' && !isDirectChild(attachment.path, resourceRoot(group))) {
+    // Folder layout handles one exact configured depth. Deeper or shallower
+    // resources stay untouched rather than being guessed into this group.
+    if (group.layout === 'folder' &&
+        !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
       return null;
     }
 
@@ -364,11 +370,11 @@ export class NoteManager {
 
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
-    // A source hit is authoritative, but a child-folder resource with no
-    // source is still left alone. Folder structure is never guessed into a
-    // relation and is never used as permission to reorganize again.
+    // A source hit is authoritative; otherwise only the configured exact
+    // attachment depth is eligible for creation.
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-    if (group.layout === 'folder' && !isDirectChild(attachment.path, resourceRoot(group))) {
+    if (group.layout === 'folder' &&
+        !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
       return null;
     }
 
@@ -403,11 +409,11 @@ export class NoteManager {
 
     const item = this.folderItemFor(attachment, group);
     if (!item) return null;
-    const changes: CreateChange[] = [{
-      kind: 'move', from: normalizePath(attachment.path), to: normalizePath(item.attachmentPath),
-    }];
+    const from = normalizePath(attachment.path);
+    const to = normalizePath(item.attachmentPath);
+    const changes: CreateChange[] = from === to ? [] : [{ kind: 'move', from, to }];
     if (group.createNoteFile) changes.push({ kind: 'create-note', path: normalizePath(item.notePath) });
-    return { attachment, group, mode: 'create', changes };
+    return changes.length > 0 ? { attachment, group, mode: 'create', changes } : null;
   }
 
   /** Apply one previously previewed item; the mutating path rechecks safety. */
@@ -452,11 +458,14 @@ export class NoteManager {
     await this.app.vault.createFolder(item.folder).catch(() => { /* exists */ });
 
     const oldPath = normalizePath(attachment.path);
-    this.pendingMoves.add(oldPath);
-    try {
-      await this.app.fileManager.renameFile(attachment, normalizePath(item.attachmentPath));
-    } finally {
-      this.pendingMoves.delete(oldPath);
+    const targetPath = normalizePath(item.attachmentPath);
+    if (oldPath !== targetPath) {
+      this.pendingMoves.add(oldPath);
+      try {
+        await this.app.fileManager.renameFile(attachment, targetPath);
+      } finally {
+        this.pendingMoves.delete(oldPath);
+      }
     }
 
     if (!group.createNoteFile) return null;
@@ -484,11 +493,14 @@ export class NoteManager {
 
     // An existing folder alone is reusable. Only a concrete note/resource
     // target being occupied is a collision that selects the fallback name.
+    const primaryAttachment = normalizePath(primary.attachmentPath);
+    const currentAttachment = normalizePath(attachment.path);
     const primaryTaken = Boolean(this.app.vault.getFileByPath(normalizePath(primary.notePath))) ||
-      Boolean(this.app.vault.getFileByPath(normalizePath(primary.attachmentPath)));
+      (primaryAttachment !== currentAttachment && Boolean(this.app.vault.getFileByPath(primaryAttachment)));
     const item = primaryTaken ? fallback : primary;
     if (this.app.vault.getFileByPath(normalizePath(item.notePath))) return null;
-    if (this.app.vault.getFileByPath(normalizePath(item.attachmentPath))) return null;
+    const itemAttachment = normalizePath(item.attachmentPath);
+    if (itemAttachment !== currentAttachment && this.app.vault.getFileByPath(itemAttachment)) return null;
     return item;
   }
 

@@ -211,6 +211,35 @@ describe('source-based resource relation', () => {
     expect(attachment.path).toBe('Library/Renamed/Paper.pdf');
   });
 
+  it('creates a note beside an attachment at the configured child depth without moving it', async () => {
+    const attachment = makeFile('Library/Paper/paper.pdf');
+    const { created, manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+      enablePdfMetadataExtraction: false,
+    });
+
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'create-note', path: 'Library/Paper/paper.md' },
+    ]);
+
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Paper/paper.pdf');
+    expect(created.get('Library/Paper/paper.md')).toContain('source: "[[paper.pdf]]"');
+  });
+
+  it('does not manage attachments above or below the configured exact depth', () => {
+    const root = makeFile('Library/root.pdf');
+    const deeper = makeFile('Library/Topic/Paper/deeper.pdf');
+    const { manager } = harness([root, deeper], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+    });
+
+    expect(manager.planCreate(root, group)).toBeNull();
+    expect(manager.planCreate(deeper, group)).toBeNull();
+  });
+
   it('does not auto-match a prefixed auxiliary file already inside a child folder', async () => {
     const note = makeFile('Library/Paper/Paper.md');
     const original = makeFile('Library/Paper/paper.pdf');

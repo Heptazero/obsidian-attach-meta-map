@@ -192,7 +192,11 @@
       },
       "collectionFolder": {
         "name": "资源集合文件夹",
-        "desc": "只处理根目录里的直接文件；子文件夹不动。"
+        "desc": "聚合模式的共同根目录。"
+      },
+      "attachmentDepth": {
+        "name": "附件所在层级",
+        "desc": "0 是根目录，1 是下一层；只处理这一层。"
       },
       "extensions": {
         "name": "监听的扩展名",

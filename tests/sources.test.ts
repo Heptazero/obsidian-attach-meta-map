@@ -159,12 +159,13 @@ describe('current settings shape', () => {
       version: 4,
       groups: [{
         id: 'g1', name: 'Papers', layout: 'folder', collectionFolder: 'Library',
+        attachmentDepth: 2,
         attachmentsFolder: 'old-a', notesFolder: 'old-b', autoDeleteOnRemove: true,
       }],
     });
 
     expect(settings.groups[0]).toMatchObject({
-      id: 'g1', layout: 'folder', collectionFolder: 'Library',
+      id: 'g1', layout: 'folder', collectionFolder: 'Library', attachmentDepth: 2,
     });
     expect(settings.groups[0]).not.toHaveProperty('attachmentsFolder');
     expect(settings.groups[0]).not.toHaveProperty('notesFolder');

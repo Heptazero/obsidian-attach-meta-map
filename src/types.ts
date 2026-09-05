@@ -74,6 +74,8 @@ export interface SidecarGroup extends MappingGroupCommon {
 export interface FolderGroup extends MappingGroupCommon {
   layout: 'folder';
   collectionFolder: string;
+  /** Exact folder depth of incoming attachments. Root files are depth 0. */
+  attachmentDepth: number;
 }
 
 export type MappingGroup = SidecarGroup | FolderGroup;
@@ -83,6 +85,7 @@ export type MappingGroupInput = Partial<MappingGroupCommon> & {
   resourceFolder?: string;
   noteFolder?: string;
   collectionFolder?: string;
+  attachmentDepth?: number;
   mirrorFolderStructure?: boolean;
 };
 
@@ -120,7 +123,7 @@ export interface AttMetaMapSettings {
   attachmentRules: AttachmentRule[];
 }
 
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
 
 /** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {

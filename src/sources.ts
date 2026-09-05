@@ -66,6 +66,9 @@ let groupCounter = 0;
 
 export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
   groupCounter++;
+  const attachmentDepth = typeof partial.attachmentDepth === 'number' && Number.isFinite(partial.attachmentDepth)
+    ? Math.max(0, Math.floor(partial.attachmentDepth))
+    : 0;
   const common = {
     id: partial.id ?? `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
     name: partial.name ?? 'New group',
@@ -83,7 +86,12 @@ export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
     sanitizeListValues: partial.sanitizeListValues ?? true,
   };
   return partial.layout === 'folder'
-    ? { ...common, layout: 'folder', collectionFolder: partial.collectionFolder ?? 'Library' }
+    ? {
+      ...common,
+      layout: 'folder',
+      collectionFolder: partial.collectionFolder ?? 'Library',
+      attachmentDepth,
+    }
     : {
       ...common,
       layout: 'sidecar',

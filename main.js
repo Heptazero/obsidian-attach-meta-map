@@ -4270,7 +4270,7 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian16 = require("obsidian");
 
 // src/types.ts
-var SETTINGS_VERSION = 5;
+var SETTINGS_VERSION = 6;
 
 // src/paths.ts
 function cleanFolder(folder) {
@@ -4292,10 +4292,14 @@ function relativeTo(path, folder) {
   if (!f) return path;
   return path.startsWith(f + "/") ? path.slice(f.length + 1) : path;
 }
-function isDirectChild(path, folder) {
-  if (!isInFolder(path, folder)) return false;
+function folderDepth(path, folder) {
+  if (!isInFolder(path, folder)) return null;
   const relative = relativeTo(path, folder);
-  return relative.length > 0 && !relative.includes("/");
+  if (!relative) return null;
+  return relative.split("/").filter(Boolean).length - 1;
+}
+function isAtFolderDepth(path, folder, depth) {
+  return folderDepth(path, folder) === Math.max(0, Math.floor(depth));
 }
 function splitName(fileName) {
   const dot = fileName.lastIndexOf(".");
@@ -4331,7 +4335,7 @@ function groupForAttachment(groups, path, extension) {
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
-    if (group.layout === "folder" && !isDirectChild(path, folder)) continue;
+    if (group.layout === "folder" && !isAtFolderDepth(path, folder, group.attachmentDepth)) continue;
     if (!group.watchedExtensions.map((e) => e.toLowerCase()).includes("." + extension.toLowerCase())) continue;
     if (folder.length > bestLen) {
       best = group;
@@ -4408,10 +4412,16 @@ function folderItemCandidates(group, attachmentPath) {
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
   const safe = safeItemName(group, attachmentPath);
   const notes = noteRoot(group);
-  const dir2 = notes;
+  if (group.layout === "folder" && group.attachmentDepth > 0) {
+    const folder = attachmentPath.split("/").slice(0, -1).join("/");
+    return {
+      primary: { folder, notePath: `${folder}/${safe}.md`, attachmentPath },
+      fallback: { folder, notePath: `${folder}/${fileName}.md`, attachmentPath }
+    };
+  }
   return {
-    primary: buildFolderItem(dir2, safe, fileName),
-    fallback: buildFolderItem(dir2, fileName, fileName)
+    primary: buildFolderItem(notes, safe, fileName),
+    fallback: buildFolderItem(notes, fileName, fileName)
   };
 }
 function linkFor(group, attachmentPath) {
@@ -4623,6 +4633,7 @@ var groupCounter = 0;
 function createGroup(partial = {}) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
   groupCounter++;
+  const attachmentDepth = typeof partial.attachmentDepth === "number" && Number.isFinite(partial.attachmentDepth) ? Math.max(0, Math.floor(partial.attachmentDepth)) : 0;
   const common = {
     id: (_a = partial.id) != null ? _a : `g${Date.now().toString(36)}${groupCounter.toString(36)}`,
     name: (_b = partial.name) != null ? _b : "New group",
@@ -4639,7 +4650,12 @@ function createGroup(partial = {}) {
     enableDoiIsbnLookup: (_m = partial.enableDoiIsbnLookup) != null ? _m : false,
     sanitizeListValues: (_n = partial.sanitizeListValues) != null ? _n : true
   };
-  return partial.layout === "folder" ? { ...common, layout: "folder", collectionFolder: (_o = partial.collectionFolder) != null ? _o : "Library" } : {
+  return partial.layout === "folder" ? {
+    ...common,
+    layout: "folder",
+    collectionFolder: (_o = partial.collectionFolder) != null ? _o : "Library",
+    attachmentDepth
+  } : {
     ...common,
     layout: "sidecar",
     resourceFolder: (_p = partial.resourceFolder) != null ? _p : "Attachments",
@@ -7323,7 +7339,11 @@ var en_default = {
       },
       collectionFolder: {
         name: "Resource collection folder",
-        desc: "Only direct root files are managed; child folders stay untouched."
+        desc: "Shared root for the folder layout."
+      },
+      attachmentDepth: {
+        name: "Attachment depth",
+        desc: "0 is the root, 1 is one level down; only that depth is managed."
       },
       extensions: {
         name: "Watched extensions",
@@ -7613,7 +7633,11 @@ var zh_default = {
       },
       collectionFolder: {
         name: "\u8D44\u6E90\u96C6\u5408\u6587\u4EF6\u5939",
-        desc: "\u53EA\u5904\u7406\u6839\u76EE\u5F55\u91CC\u7684\u76F4\u63A5\u6587\u4EF6\uFF1B\u5B50\u6587\u4EF6\u5939\u4E0D\u52A8\u3002"
+        desc: "\u805A\u5408\u6A21\u5F0F\u7684\u5171\u540C\u6839\u76EE\u5F55\u3002"
+      },
+      attachmentDepth: {
+        name: "\u9644\u4EF6\u6240\u5728\u5C42\u7EA7",
+        desc: "0 \u662F\u6839\u76EE\u5F55\uFF0C1 \u662F\u4E0B\u4E00\u5C42\uFF1B\u53EA\u5904\u7406\u8FD9\u4E00\u5C42\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
@@ -23499,7 +23523,11 @@ var NoteManager = class {
     return this.findNoteBySourceInGroup(group, attachmentPath);
   }
   targetNotePath(group, attachmentPath) {
-    const { primary, fallback } = notePathCandidates(group, attachmentPath);
+    const candidates = group.layout === "folder" ? (() => {
+      const items = folderItemCandidates(group, attachmentPath);
+      return { primary: items.primary.notePath, fallback: items.fallback.notePath };
+    })() : notePathCandidates(group, attachmentPath);
+    const { primary, fallback } = candidates;
     const existing = this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary));
     if (!existing) return (0, import_obsidian3.normalizePath)(primary);
     if (this.notePointsAt(existing, group, attachmentPath) === "yes") return (0, import_obsidian3.normalizePath)(primary);
@@ -23654,7 +23682,7 @@ var NoteManager = class {
   async createNote(attachment, group) {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
-    if (group.layout === "folder" && !isDirectChild(attachment.path, resourceRoot(group))) {
+    if (group.layout === "folder" && !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
       return null;
     }
     if (this.isAuxiliaryFile(attachment, group)) {
@@ -23665,7 +23693,7 @@ var NoteManager = class {
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment, group) {
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-    if (group.layout === "folder" && !isDirectChild(attachment.path, resourceRoot(group))) {
+    if (group.layout === "folder" && !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
       return null;
     }
     if (this.isAuxiliaryFile(attachment, group)) {
@@ -23696,13 +23724,11 @@ var NoteManager = class {
     }
     const item = this.folderItemFor(attachment, group);
     if (!item) return null;
-    const changes = [{
-      kind: "move",
-      from: (0, import_obsidian3.normalizePath)(attachment.path),
-      to: (0, import_obsidian3.normalizePath)(item.attachmentPath)
-    }];
+    const from = (0, import_obsidian3.normalizePath)(attachment.path);
+    const to = (0, import_obsidian3.normalizePath)(item.attachmentPath);
+    const changes = from === to ? [] : [{ kind: "move", from, to }];
     if (group.createNoteFile) changes.push({ kind: "create-note", path: (0, import_obsidian3.normalizePath)(item.notePath) });
-    return { attachment, group, mode: "create", changes };
+    return changes.length > 0 ? { attachment, group, mode: "create", changes } : null;
   }
   /** Apply one previously previewed item; the mutating path rechecks safety. */
   async applyCreatePlan(plan) {
@@ -23740,11 +23766,14 @@ var NoteManager = class {
     await this.app.vault.createFolder(item.folder).catch(() => {
     });
     const oldPath = (0, import_obsidian3.normalizePath)(attachment.path);
-    this.pendingMoves.add(oldPath);
-    try {
-      await this.app.fileManager.renameFile(attachment, (0, import_obsidian3.normalizePath)(item.attachmentPath));
-    } finally {
-      this.pendingMoves.delete(oldPath);
+    const targetPath = (0, import_obsidian3.normalizePath)(item.attachmentPath);
+    if (oldPath !== targetPath) {
+      this.pendingMoves.add(oldPath);
+      try {
+        await this.app.fileManager.renameFile(attachment, targetPath);
+      } finally {
+        this.pendingMoves.delete(oldPath);
+      }
     }
     if (!group.createNoteFile) return null;
     const { template, builtin } = await this.templateFor(group);
@@ -23762,10 +23791,13 @@ var NoteManager = class {
   }
   folderItemFor(attachment, group) {
     const { primary, fallback } = folderItemCandidates(group, attachment.path);
-    const primaryTaken = Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary.notePath))) || Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary.attachmentPath)));
+    const primaryAttachment = (0, import_obsidian3.normalizePath)(primary.attachmentPath);
+    const currentAttachment = (0, import_obsidian3.normalizePath)(attachment.path);
+    const primaryTaken = Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary.notePath))) || primaryAttachment !== currentAttachment && Boolean(this.app.vault.getFileByPath(primaryAttachment));
     const item = primaryTaken ? fallback : primary;
     if (this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(item.notePath))) return null;
-    if (this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(item.attachmentPath))) return null;
+    const itemAttachment = (0, import_obsidian3.normalizePath)(item.attachmentPath);
+    if (itemAttachment !== currentAttachment && this.app.vault.getFileByPath(itemAttachment)) return null;
     return item;
   }
   findAuxiliaryNote(file, group) {
@@ -24856,6 +24888,17 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
           });
           new FolderSuggest(this.app, text.inputEl, async (value) => {
             group.collectionFolder = value;
+            await this.plugin.saveSettings();
+          });
+        });
+        new import_obsidian12.Setting(el).setName(t2("settings.group.attachmentDepth.name")).setDesc(t2("settings.group.attachmentDepth.desc")).addText((text) => {
+          text.inputEl.type = "number";
+          text.inputEl.min = "0";
+          text.inputEl.step = "1";
+          text.inputEl.addClass("amm-depth-input");
+          text.setValue(String(group.attachmentDepth)).onChange(async (value) => {
+            const parsed = Number.parseInt(value, 10);
+            group.attachmentDepth = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
             await this.plugin.saveSettings();
           });
         });

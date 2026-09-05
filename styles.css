@@ -123,6 +123,10 @@
   max-width: 12em;
 }
 
+.amm-depth-input {
+  max-width: 5em;
+}
+
 .amm-rules-empty {
   color: var(--text-muted);
 }

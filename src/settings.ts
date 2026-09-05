@@ -296,6 +296,21 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             });
           });
+
+        new Setting(el)
+          .setName(t('settings.group.attachmentDepth.name'))
+          .setDesc(t('settings.group.attachmentDepth.desc'))
+          .addText(text => {
+            text.inputEl.type = 'number';
+            text.inputEl.min = '0';
+            text.inputEl.step = '1';
+            text.inputEl.addClass('amm-depth-input');
+            text.setValue(String(group.attachmentDepth)).onChange(async value => {
+              const parsed = Number.parseInt(value, 10);
+              group.attachmentDepth = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+              await this.plugin.saveSettings();
+            });
+          });
       } else {
         new Setting(el)
           .setName(t('settings.group.resourceFolder.name'))

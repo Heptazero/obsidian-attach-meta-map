@@ -192,7 +192,11 @@
       },
       "collectionFolder": {
         "name": "Resource collection folder",
-        "desc": "Only direct root files are managed; child folders stay untouched."
+        "desc": "Shared root for the folder layout."
+      },
+      "attachmentDepth": {
+        "name": "Attachment depth",
+        "desc": "0 is the root, 1 is one level down; only that depth is managed."
       },
       "extensions": {
         "name": "Watched extensions",

@@ -29,9 +29,20 @@ export function relativeTo(path: string, folder: string): string {
 
 /** True only for a file placed immediately inside the root, never a descendant folder. */
 export function isDirectChild(path: string, folder: string): boolean {
-  if (!isInFolder(path, folder)) return false;
+  return folderDepth(path, folder) === 0;
+}
+
+/** File depth below a root: direct file = 0, one child folder = 1. */
+export function folderDepth(path: string, folder: string): number | null {
+  if (!isInFolder(path, folder)) return null;
   const relative = relativeTo(path, folder);
-  return relative.length > 0 && !relative.includes('/');
+  if (!relative) return null;
+  return relative.split('/').filter(Boolean).length - 1;
+}
+
+/** True only for files at the configured exact depth. */
+export function isAtFolderDepth(path: string, folder: string, depth: number): boolean {
+  return folderDepth(path, folder) === Math.max(0, Math.floor(depth));
 }
 
 export function splitName(fileName: string): { basename: string; ext: string } {
@@ -81,7 +92,7 @@ export function groupForAttachment(
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
-    if (group.layout === 'folder' && !isDirectChild(path, folder)) continue;
+    if (group.layout === 'folder' && !isAtFolderDepth(path, folder, group.attachmentDepth)) continue;
     if (!group.watchedExtensions.map(e => e.toLowerCase()).includes('.' + extension.toLowerCase())) continue;
     if (folder.length > bestLen) { best = group; bestLen = folder.length; }
   }
@@ -183,7 +194,7 @@ export interface FolderItem {
   folder: string;
   /** The note inside it. */
   notePath: string;
-  /** Where the attachment lands after being moved into the folder. */
+  /** Final attachment path; unchanged when the configured depth is above 0. */
   attachmentPath: string;
 }
 
@@ -211,11 +222,18 @@ export function folderItemCandidates(group: MappingGroup, attachmentPath: string
   const fileName = relative.split('/').pop() ?? relative;
   const safe = safeItemName(group, attachmentPath);
   const notes = noteRoot(group);
-  const dir = notes;
+
+  if (group.layout === 'folder' && group.attachmentDepth > 0) {
+    const folder = attachmentPath.split('/').slice(0, -1).join('/');
+    return {
+      primary: { folder, notePath: `${folder}/${safe}.md`, attachmentPath },
+      fallback: { folder, notePath: `${folder}/${fileName}.md`, attachmentPath },
+    };
+  }
 
   return {
-    primary: buildFolderItem(dir, safe, fileName),
-    fallback: buildFolderItem(dir, fileName, fileName),
+    primary: buildFolderItem(notes, safe, fileName),
+    fallback: buildFolderItem(notes, fileName, fileName),
   };
 }
 
