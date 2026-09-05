@@ -174,7 +174,7 @@
       },
       "createNoteFile": {
         "name": "Create a note for new attachments",
-        "desc": "Off: only create the folder and move the resource."
+        "desc": "Off: do not create or maintain a note; depth 0 still organizes the folder."
       },
       "auxiliaryPrefix": {
         "name": "Auxiliary file prefixes",

@@ -22871,7 +22871,7 @@ var en_default = {
       },
       createNoteFile: {
         name: "Create a note for new attachments",
-        desc: "Off: only create the folder and move the resource."
+        desc: "Off: do not create or maintain a note; depth 0 still organizes the folder."
       },
       auxiliaryPrefix: {
         name: "Auxiliary file prefixes",
@@ -23164,7 +23164,7 @@ var zh_default = {
       },
       createNoteFile: {
         name: "\u4E3A\u65B0\u9644\u4EF6\u5EFA\u7B14\u8BB0",
-        desc: "\u5173\u95ED\u540E\u53EA\u5EFA\u6587\u4EF6\u5939\u5E76\u79FB\u52A8\u8D44\u6E90\u3002"
+        desc: "\u5173\u95ED\u540E\u4E0D\u521B\u5EFA\u6216\u7EF4\u62A4\u7B14\u8BB0\uFF1B0 \u7EA7\u4ECD\u4F1A\u6574\u7406\u6587\u4EF6\u5939\u3002"
       },
       auxiliaryPrefix: {
         name: "\u9644\u5C5E\u6587\u4EF6\u524D\u7F00\uFF08\u53EF\u591A\u4E2A\uFF09",
