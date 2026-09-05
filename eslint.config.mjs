@@ -65,12 +65,9 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
 
-      // Obsidian Setting callbacks (onClick, onChange) are typed as () => void
-      // but plugins routinely use async handlers. Allow async where void is expected
-      // in callback arguments, but keep the check for return values of functions.
-      '@typescript-eslint/no-misused-promises': ['error', {
-        checksVoidReturn: { arguments: false },
-      }],
+      // Keep Promise-returning UI callbacks out of void callback slots. Async work
+      // must cross an explicit background-task boundary so rejections are handled.
+      '@typescript-eslint/no-misused-promises': 'error',
 
       // obsidianmd/recommended sets this as error; downgrade because Obsidian's
       // own types deprecate things we can't avoid at minAppVersion 1.7.0.

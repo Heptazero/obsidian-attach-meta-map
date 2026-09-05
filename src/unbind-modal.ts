@@ -1,5 +1,6 @@
 import { App, ButtonComponent, Modal, Setting, TFile } from 'obsidian';
 import { t } from './i18n/i18n';
+import { runInBackground } from './background-task';
 
 export class UnbindModal extends Modal {
   private selected: Set<string>;
@@ -50,7 +51,10 @@ export class UnbindModal extends Modal {
           .setDisabled(this.selected.size === 0)
           .onClick(() => {
             const selected = [...this.selected];
-            void this.onApply(selected).then(() => this.close());
+            runInBackground(
+              async () => { await this.onApply(selected); this.close(); },
+              'Could not unbind sources',
+            );
           });
       });
   }

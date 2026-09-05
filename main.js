@@ -4267,7 +4267,7 @@ __export(main_exports, {
   default: () => AttMetaMapPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/types.ts
 var SETTINGS_VERSION = 6;
@@ -4787,7 +4787,7 @@ function normalizeSettings(raw) {
 }
 
 // src/note-manager.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/template.ts
 var TEMPLATER_BLOCK = /<%[\s\S]*?%>/g;
@@ -20394,36 +20394,58 @@ var PdfMetadataExtractor = class {
   }
 };
 var EMPTY_LOOKUP = { title: "", author: "", year: "" };
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function optionalString(value) {
+  return typeof value === "string" ? value : "";
+}
+function parseCrossRefLookup(value) {
+  var _a;
+  const work = record((_a = record(value)) == null ? void 0 : _a.message);
+  if (!work) return { ...EMPTY_LOOKUP };
+  const titles = Array.isArray(work.title) ? work.title : [];
+  const authors = Array.isArray(work.author) ? work.author.flatMap((value2) => {
+    const author = record(value2);
+    if (!author) return [];
+    const name = optionalString(author.name);
+    if (name) return [name];
+    const combined = [optionalString(author.family), optionalString(author.given)].filter(Boolean).join(", ");
+    return combined ? [combined] : [];
+  }) : [];
+  const issued = record(work.issued);
+  const dateParts = issued && Array.isArray(issued["date-parts"]) ? issued["date-parts"] : [];
+  const firstDate = Array.isArray(dateParts[0]) ? dateParts[0] : [];
+  const year = typeof firstDate[0] === "number" ? String(firstDate[0]) : "";
+  return {
+    title: optionalString(titles[0]),
+    author: authors.join("; "),
+    year
+  };
+}
 async function lookupDoi(doi) {
-  var _a, _b, _c, _d, _e, _f;
   try {
     const response = await (0, import_obsidian.requestUrl)(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
-    const work = response.json.message;
-    const authors = ((_a = work.author) != null ? _a : []).map((a) => {
-      var _a2;
-      return (_a2 = a.name) != null ? _a2 : [a.family, a.given].filter(Boolean).join(", ");
-    }).filter((a) => a.length > 0);
-    const year = (_d = (_c = (_b = work.issued) == null ? void 0 : _b["date-parts"]) == null ? void 0 : _c[0]) == null ? void 0 : _d[0];
-    return {
-      title: (_f = (_e = work.title) == null ? void 0 : _e[0]) != null ? _f : "",
-      author: authors.join("; "),
-      year: year ? String(year) : ""
-    };
+    return parseCrossRefLookup(response.json);
   } catch (e) {
     return { ...EMPTY_LOOKUP };
   }
 }
+function parseOpenLibraryLookup(value) {
+  var _a, _b;
+  const data = record(value);
+  if (!data) return { ...EMPTY_LOOKUP };
+  const publishDate = optionalString(data.publish_date);
+  return {
+    title: optionalString(data.title),
+    author: optionalString(data.by_statement),
+    year: (_b = (_a = /\b(1[5-9]\d{2}|20\d{2})\b/.exec(publishDate)) == null ? void 0 : _a[1]) != null ? _b : ""
+  };
+}
 async function lookupIsbn(isbn) {
-  var _a, _b, _c, _d, _e;
   try {
     const response = await (0, import_obsidian.requestUrl)(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`);
-    const data = response.json;
-    const year = (_c = (_b = /\b(1[5-9]\d{2}|20\d{2})\b/.exec((_a = data.publish_date) != null ? _a : "")) == null ? void 0 : _b[1]) != null ? _c : "";
-    return {
-      title: (_d = data.title) != null ? _d : "",
-      author: (_e = data.by_statement) != null ? _e : "",
-      year
-    };
+    return parseOpenLibraryLookup(response.json);
   } catch (e) {
     return { ...EMPTY_LOOKUP };
   }
@@ -22694,6 +22716,9 @@ var hasLoadedNamespace = instance.hasLoadedNamespace;
 var loadNamespaces = instance.loadNamespaces;
 var loadLanguages = instance.loadLanguages;
 
+// src/i18n/i18n.ts
+var import_obsidian2 = require("obsidian");
+
 // src/i18n/locales/en.json
 var en_default = {
   common: {
@@ -23282,9 +23307,8 @@ var zh_default = {
 
 // src/i18n/i18n.ts
 function resolveLanguage(preference) {
-  var _a;
   if (preference !== "auto") return preference;
-  const appLanguage = (_a = window.localStorage.getItem("language")) != null ? _a : "en";
+  const appLanguage = (0, import_obsidian2.getLanguage)();
   return appLanguage.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 async function initI18n(preference = "auto") {
@@ -23371,7 +23395,7 @@ var NoteManager = class {
     this.pdfExtractor = new PdfMetadataExtractor(app);
   }
   isPendingMove(path) {
-    return this.pendingMoves.has((0, import_obsidian2.normalizePath)(path));
+    return this.pendingMoves.has((0, import_obsidian3.normalizePath)(path));
   }
   // --- mapping -----------------------------------------------------------
   linkFor(group, attachmentPath) {
@@ -23408,10 +23432,10 @@ var NoteManager = class {
     }));
   }
   sourceTargetsForAttachment(note, attachmentPath) {
-    const normalized = (0, import_obsidian2.normalizePath)(attachmentPath);
+    const normalized = (0, import_obsidian3.normalizePath)(attachmentPath);
     return this.sourceTargets(note).filter((target) => {
       const file = this.app.metadataCache.getFirstLinkpathDest(target, note.path);
-      return Boolean(file && (0, import_obsidian2.normalizePath)(file.path) === normalized);
+      return Boolean(file && (0, import_obsidian3.normalizePath)(file.path) === normalized);
     });
   }
   /** Canonical source first, followed by old configurable/attachment fields. */
@@ -23427,11 +23451,11 @@ var NoteManager = class {
   }
   noteReferences(note, attachmentPath) {
     var _a;
-    const normalized = (0, import_obsidian2.normalizePath)(attachmentPath);
+    const normalized = (0, import_obsidian3.normalizePath)(attachmentPath);
     const frontmatter = (_a = this.app.metadataCache.getFileCache(note)) == null ? void 0 : _a.frontmatter;
     const canonical = sourceLinkTargets(frontmatter == null ? void 0 : frontmatter[SOURCE_PROPERTY]);
     const files = canonical.length > 0 ? this.sourceFiles(note) : this.linkedResourceFiles(note);
-    return files.some((file) => (0, import_obsidian2.normalizePath)(file.path) === normalized);
+    return files.some((file) => (0, import_obsidian3.normalizePath)(file.path) === normalized);
   }
   noteHasSourceLink(note, link) {
     var _a;
@@ -23466,10 +23490,10 @@ var NoteManager = class {
       return { primary: items.primary.notePath, fallback: items.fallback.notePath };
     })() : notePathCandidates(group, attachmentPath);
     const { primary, fallback } = candidates;
-    const existing = this.app.vault.getFileByPath((0, import_obsidian2.normalizePath)(primary));
-    if (!existing) return (0, import_obsidian2.normalizePath)(primary);
-    if (this.notePointsAt(existing, group, attachmentPath) === "yes") return (0, import_obsidian2.normalizePath)(primary);
-    return (0, import_obsidian2.normalizePath)(fallback);
+    const existing = this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary));
+    if (!existing) return (0, import_obsidian3.normalizePath)(primary);
+    if (this.notePointsAt(existing, group, attachmentPath) === "yes") return (0, import_obsidian3.normalizePath)(primary);
+    return (0, import_obsidian3.normalizePath)(fallback);
   }
   findAttachment(group, note) {
     var _a;
@@ -23514,13 +23538,13 @@ var NoteManager = class {
     if (!fm) return "unknown";
     const sourceTargets = sourceLinkTargets(fm[SOURCE_PROPERTY]);
     if (sourceTargets.length > 0) {
-      const normalized = (0, import_obsidian2.normalizePath)(attachmentPath);
-      return this.sourceFiles(note).some((file) => (0, import_obsidian2.normalizePath)(file.path) === normalized) ? "yes" : "no";
+      const normalized = (0, import_obsidian3.normalizePath)(attachmentPath);
+      return this.sourceFiles(note).some((file) => (0, import_obsidian3.normalizePath)(file.path) === normalized) ? "yes" : "no";
     }
     const pathProp = this.propertyOf("path");
     const recordedPath = pathProp ? fm[pathProp] : void 0;
     if (typeof recordedPath === "string" && recordedPath.trim()) {
-      return (0, import_obsidian2.normalizePath)(recordedPath.trim()) === (0, import_obsidian2.normalizePath)(attachmentPath) ? "yes" : "no";
+      return (0, import_obsidian3.normalizePath)(recordedPath.trim()) === (0, import_obsidian3.normalizePath)(attachmentPath) ? "yes" : "no";
     }
     const linkProp = this.propertyOf("link");
     const recordedLink = linkProp ? fm[linkProp] : void 0;
@@ -23536,7 +23560,7 @@ var NoteManager = class {
     if (path) {
       const parsed = await this.registry.parse(path);
       if (parsed) return { template: parsed, builtin: false };
-      new import_obsidian2.Notice(t2("notices.templateMissing", { path, group: group.name }));
+      new import_obsidian3.Notice(t2("notices.templateMissing", { path, group: group.name }));
     }
     return { template: builtinTemplate(BUILTIN_TEMPLATE_KEYS), builtin: true };
   }
@@ -23637,11 +23661,11 @@ var NoteManager = class {
     if (this.isAuxiliaryFile(attachment, group)) {
       const note = this.findAuxiliaryNote(attachment, group);
       if (!(note == null ? void 0 : note.parent)) return null;
-      const target = (0, import_obsidian2.normalizePath)(`${note.parent.path}/${attachment.name}`);
+      const target = (0, import_obsidian3.normalizePath)(`${note.parent.path}/${attachment.name}`);
       const changes2 = [];
-      if ((0, import_obsidian2.normalizePath)(attachment.path) !== target) {
+      if ((0, import_obsidian3.normalizePath)(attachment.path) !== target) {
         if (this.app.vault.getFileByPath(target)) return null;
-        changes2.push({ kind: "move", from: (0, import_obsidian2.normalizePath)(attachment.path), to: target });
+        changes2.push({ kind: "move", from: (0, import_obsidian3.normalizePath)(attachment.path), to: target });
       }
       const link = this.linkFor(group, target);
       if (!this.noteHasSourceLink(note, link)) {
@@ -23659,10 +23683,10 @@ var NoteManager = class {
     }
     const item = this.folderItemFor(attachment, group);
     if (!item) return null;
-    const from = (0, import_obsidian2.normalizePath)(attachment.path);
-    const to = (0, import_obsidian2.normalizePath)(item.attachmentPath);
+    const from = (0, import_obsidian3.normalizePath)(attachment.path);
+    const to = (0, import_obsidian3.normalizePath)(item.attachmentPath);
     const changes = from === to ? [] : [{ kind: "move", from, to }];
-    if (group.createNoteFile) changes.push({ kind: "create-note", path: (0, import_obsidian2.normalizePath)(item.notePath) });
+    if (group.createNoteFile) changes.push({ kind: "create-note", path: (0, import_obsidian3.normalizePath)(item.notePath) });
     return planWithChanges(attachment, group, "create", changes);
   }
   /** Apply one previously previewed item; the mutating path rechecks safety. */
@@ -23685,7 +23709,7 @@ var NoteManager = class {
     });
     const note = await this.app.vault.create(notePath, rendered.content);
     if (rendered.templaterBlocks > 0) {
-      new import_obsidian2.Notice(t2("notices.templaterSkipped", { count: rendered.templaterBlocks }));
+      new import_obsidian3.Notice(t2("notices.templaterSkipped", { count: rendered.templaterBlocks }));
     }
     return note;
   }
@@ -23700,8 +23724,8 @@ var NoteManager = class {
     if (!item) return null;
     await this.app.vault.createFolder(item.folder).catch(() => {
     });
-    const oldPath = (0, import_obsidian2.normalizePath)(attachment.path);
-    const targetPath = (0, import_obsidian2.normalizePath)(item.attachmentPath);
+    const oldPath = (0, import_obsidian3.normalizePath)(attachment.path);
+    const targetPath = (0, import_obsidian3.normalizePath)(item.attachmentPath);
     if (oldPath !== targetPath) {
       this.pendingMoves.add(oldPath);
       try {
@@ -23715,9 +23739,9 @@ var NoteManager = class {
     const rows = await this.resolveFor(attachment, group, template.keys);
     const embed = group.embedAttachment ? this.embedFor(group, attachment) : "";
     const rendered = this.renderNewNote(template, rows, group, attachment, embed, builtin);
-    const note = await this.app.vault.create((0, import_obsidian2.normalizePath)(item.notePath), rendered.content);
+    const note = await this.app.vault.create((0, import_obsidian3.normalizePath)(item.notePath), rendered.content);
     if (rendered.templaterBlocks > 0) {
-      new import_obsidian2.Notice(t2("notices.templaterSkipped", { count: rendered.templaterBlocks }));
+      new import_obsidian3.Notice(t2("notices.templaterSkipped", { count: rendered.templaterBlocks }));
     }
     return note;
   }
@@ -23726,12 +23750,12 @@ var NoteManager = class {
   }
   folderItemFor(attachment, group) {
     const { primary, fallback } = folderItemCandidates(group, attachment.path);
-    const primaryAttachment = (0, import_obsidian2.normalizePath)(primary.attachmentPath);
-    const currentAttachment = (0, import_obsidian2.normalizePath)(attachment.path);
-    const primaryTaken = Boolean(this.app.vault.getFileByPath((0, import_obsidian2.normalizePath)(primary.notePath))) || primaryAttachment !== currentAttachment && Boolean(this.app.vault.getFileByPath(primaryAttachment));
+    const primaryAttachment = (0, import_obsidian3.normalizePath)(primary.attachmentPath);
+    const currentAttachment = (0, import_obsidian3.normalizePath)(attachment.path);
+    const primaryTaken = Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(primary.notePath))) || primaryAttachment !== currentAttachment && Boolean(this.app.vault.getFileByPath(primaryAttachment));
     const item = primaryTaken ? fallback : primary;
-    if (this.app.vault.getFileByPath((0, import_obsidian2.normalizePath)(item.notePath))) return null;
-    const itemAttachment = (0, import_obsidian2.normalizePath)(item.attachmentPath);
+    if (this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(item.notePath))) return null;
+    const itemAttachment = (0, import_obsidian3.normalizePath)(item.attachmentPath);
     if (itemAttachment !== currentAttachment && this.app.vault.getFileByPath(itemAttachment)) return null;
     return item;
   }
@@ -23760,16 +23784,16 @@ var NoteManager = class {
   async foldAuxiliaryFile(file, group) {
     const match = this.findAuxiliaryNote(file, group);
     if (!(match == null ? void 0 : match.parent)) {
-      new import_obsidian2.Notice(t2("notices.auxiliaryUnmatched", { file: file.name }));
+      new import_obsidian3.Notice(t2("notices.auxiliaryUnmatched", { file: file.name }));
       return null;
     }
-    const targetPath = (0, import_obsidian2.normalizePath)(`${match.parent.path}/${file.name}`);
+    const targetPath = (0, import_obsidian3.normalizePath)(`${match.parent.path}/${file.name}`);
     const existing = this.app.vault.getFileByPath(targetPath);
-    if (existing instanceof import_obsidian2.TFile) {
+    if (existing instanceof import_obsidian3.TFile) {
       await this.appendSource(match, group, existing);
       return match;
     }
-    const oldPath = (0, import_obsidian2.normalizePath)(file.path);
+    const oldPath = (0, import_obsidian3.normalizePath)(file.path);
     this.pendingMoves.add(oldPath);
     try {
       await this.app.fileManager.renameFile(file, targetPath);
@@ -23777,7 +23801,7 @@ var NoteManager = class {
       this.pendingMoves.delete(oldPath);
     }
     await this.appendSource(match, group, file);
-    new import_obsidian2.Notice(t2("notices.auxiliaryMatched", { file: file.name, note: match.basename }));
+    new import_obsidian3.Notice(t2("notices.auxiliaryMatched", { file: file.name, note: match.basename }));
     return match;
   }
   async appendSource(note, group, file) {
@@ -23846,7 +23870,7 @@ var NoteManager = class {
       }
     });
     const target = this.targetNotePath(group, newPath);
-    if ((0, import_obsidian2.normalizePath)(note.path) === target) return;
+    if ((0, import_obsidian3.normalizePath)(note.path) === target) return;
     if (this.app.vault.getFileByPath(target)) return;
     const folder = target.split("/").slice(0, -1).join("/");
     if (folder) await this.app.vault.createFolder(folder).catch(() => {
@@ -23856,7 +23880,7 @@ var NoteManager = class {
 };
 
 // src/template-registry.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var TemplateRegistry = class {
   constructor(app, settings) {
     this.app = app;
@@ -23889,7 +23913,7 @@ var TemplateRegistry = class {
   files() {
     const folders2 = this.folders();
     const inFolders = this.app.vault.getMarkdownFiles().filter((file) => folders2.some((folder) => isInFolder(file.path, folder)));
-    const configured = this.settings().groups.map((group) => group.templatePath.trim()).filter((path) => path.length > 0).map((path) => this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(path))).filter((file) => file !== null);
+    const configured = this.settings().groups.map((group) => group.templatePath.trim()).filter((path) => path.length > 0).map((path) => this.app.vault.getFileByPath((0, import_obsidian4.normalizePath)(path))).filter((file) => file !== null);
     const seen = /* @__PURE__ */ new Set();
     return [...inFolders, ...configured].filter((file) => {
       if (seen.has(file.path)) return false;
@@ -23898,7 +23922,7 @@ var TemplateRegistry = class {
     });
   }
   async parse(path) {
-    const file = this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(path.trim()));
+    const file = this.app.vault.getFileByPath((0, import_obsidian4.normalizePath)(path.trim()));
     if (!file) return null;
     return parseTemplate(await this.app.vault.cachedRead(file));
   }
@@ -23922,10 +23946,10 @@ var TemplateRegistry = class {
 };
 
 // src/backfill.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/backfill-modal.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/change-tree.ts
 function addPath(root, path, tone, child) {
@@ -23990,6 +24014,18 @@ function buildChangeTree(changes) {
   return root;
 }
 
+// src/background-task.ts
+function reportFailure(context, error2) {
+  console.error(`[Att Meta Map] ${context}`, error2);
+}
+function runInBackground(task, context) {
+  try {
+    void Promise.resolve(task()).catch((error2) => reportFailure(context, error2));
+  } catch (error2) {
+    reportFailure(context, error2);
+  }
+}
+
 // src/backfill-modal.ts
 function renderTree(parent, nodes) {
   const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
@@ -24004,7 +24040,7 @@ function renderTree(parent, nodes) {
     if (node.children.length > 0) renderTree(row, node.children);
   }
 }
-var BackfillPreviewModal = class extends import_obsidian4.Modal {
+var BackfillPreviewModal = class extends import_obsidian5.Modal {
   constructor(app, plans, onConfirm, onCancel) {
     super(app);
     this.plans = plans;
@@ -24027,10 +24063,10 @@ var BackfillPreviewModal = class extends import_obsidian4.Modal {
     const tree = buildChangeTree(this.plans.flatMap((plan) => plan.changes));
     const treeViewport = contentEl.createEl("div", { cls: "amm-change-tree-viewport" });
     renderTree(treeViewport, tree.children);
-    new import_obsidian4.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("backfill.confirm")).setCta().onClick(() => {
+    new import_obsidian5.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("backfill.confirm")).setCta().onClick(() => {
       this.confirmed = true;
       this.close();
-      void this.onConfirm();
+      runInBackground(() => this.onConfirm(), "Could not apply backfill plan");
     }));
   }
   onClose() {
@@ -24063,7 +24099,7 @@ var BackfillManager = class {
   async previewAndRun(groups, allGroups) {
     const plans = this.plansFor(groups, allGroups);
     if (plans.length === 0) {
-      new import_obsidian5.Notice(t2("backfill.nothingToChange"));
+      new import_obsidian6.Notice(t2("backfill.nothingToChange"));
       return { created: 0, skipped: 0 };
     }
     return new Promise((resolve) => {
@@ -24074,7 +24110,7 @@ var BackfillManager = class {
   }
   async apply(plans) {
     const total = plans.length;
-    new import_obsidian5.Notice(t2("backfill.starting", { total }));
+    new import_obsidian6.Notice(t2("backfill.starting", { total }));
     let created = 0;
     let skipped = 0;
     let processed = 0;
@@ -24090,11 +24126,11 @@ var BackfillManager = class {
         processed++;
       }
       if (processed % 50 === 0 && processed !== total) {
-        new import_obsidian5.Notice(t2("backfill.progress", { processed, total, created, skipped }));
+        new import_obsidian6.Notice(t2("backfill.progress", { processed, total, created, skipped }));
       }
       await new Promise((resolve) => window.setTimeout(resolve, 50));
     }
-    new import_obsidian5.Notice(t2("backfill.complete", { created, skipped }));
+    new import_obsidian6.Notice(t2("backfill.complete", { created, skipped }));
     return { created, skipped };
   }
   async runForAll(groups) {
@@ -24103,7 +24139,7 @@ var BackfillManager = class {
 };
 
 // src/upgrade.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var UpgradeManager = class {
   constructor(app, noteManager) {
     this.app = app;
@@ -24118,10 +24154,10 @@ var UpgradeManager = class {
     const notes = this.notesOf(group);
     const total = notes.length;
     if (total === 0) {
-      new import_obsidian6.Notice(t2("upgrade.nothing", { group: group.name }));
+      new import_obsidian7.Notice(t2("upgrade.nothing", { group: group.name }));
       return { notesUpdated: 0, propertiesAdded: 0 };
     }
-    new import_obsidian6.Notice(t2("upgrade.starting", { total, group: group.name }));
+    new import_obsidian7.Notice(t2("upgrade.starting", { total, group: group.name }));
     let notesUpdated = 0;
     let propertiesAdded = 0;
     let processed = 0;
@@ -24136,17 +24172,17 @@ var UpgradeManager = class {
         processed++;
       }));
       if (processed % 50 === 0 && processed !== total) {
-        new import_obsidian6.Notice(t2("upgrade.progress", { processed, total, notesUpdated, propertiesAdded }));
+        new import_obsidian7.Notice(t2("upgrade.progress", { processed, total, notesUpdated, propertiesAdded }));
       }
       await new Promise((resolve) => window.setTimeout(resolve, 50));
     }
-    new import_obsidian6.Notice(t2("upgrade.complete", { notesUpdated, propertiesAdded, group: group.name }));
+    new import_obsidian7.Notice(t2("upgrade.complete", { notesUpdated, propertiesAdded, group: group.name }));
     return { notesUpdated, propertiesAdded };
   }
 };
 
 // src/pair-opener.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var PairOpener = class {
   constructor(app, noteManager) {
     this.app = app;
@@ -24183,7 +24219,7 @@ var PairOpener = class {
   async openPair(file, groups, createIfMissing = true) {
     const pair = this.resolvePair(file, groups);
     if (!pair) {
-      new import_obsidian7.Notice(t2("notices.noGroup", { file: file.name }));
+      new import_obsidian8.Notice(t2("notices.noGroup", { file: file.name }));
       return;
     }
     let { note } = pair;
@@ -24196,7 +24232,7 @@ var PairOpener = class {
     } else if (note) {
       await this.showInMain(note, null);
     } else if (!pair.attachment) {
-      new import_obsidian7.Notice(t2("notices.noAttachment", { file: file.name }));
+      new import_obsidian8.Notice(t2("notices.noAttachment", { file: file.name }));
     }
   }
   /**
@@ -24262,8 +24298,8 @@ var PairOpener = class {
 };
 
 // src/refresh-modal.ts
-var import_obsidian8 = require("obsidian");
-var RefreshModal = class extends import_obsidian8.Modal {
+var import_obsidian9 = require("obsidian");
+var RefreshModal = class extends import_obsidian9.Modal {
   constructor(app, note, rows, onApply) {
     super(app);
     this.note = note;
@@ -24278,7 +24314,7 @@ var RefreshModal = class extends import_obsidian8.Modal {
     const changed = this.rows.filter((r) => !r.unchanged);
     if (changed.length === 0) {
       contentEl.createEl("p", { text: t2("refresh.noChanges") });
-      new import_obsidian8.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("common.close")).setCta().onClick(() => this.close()));
+      new import_obsidian9.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("common.close")).setCta().onClick(() => this.close()));
       return;
     }
     const table = contentEl.createEl("table", { cls: "amm-diff-table" });
@@ -24308,11 +24344,11 @@ var RefreshModal = class extends import_obsidian8.Modal {
         take.checked = takeIncoming;
       }
     };
-    new import_obsidian8.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("refresh.keepAll")).onClick(() => setAll(false))).addButton((btn) => btn.setButtonText(t2("refresh.takeAll")).onClick(() => setAll(true)));
-    new import_obsidian8.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((btn) => btn.setButtonText(t2("refresh.apply")).setCta().onClick(() => {
+    new import_obsidian9.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("refresh.keepAll")).onClick(() => setAll(false))).addButton((btn) => btn.setButtonText(t2("refresh.takeAll")).onClick(() => setAll(true)));
+    new import_obsidian9.Setting(contentEl).addButton((btn) => btn.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((btn) => btn.setButtonText(t2("refresh.apply")).setCta().onClick(() => {
       const accepted = changed.filter((r) => r.takeIncoming);
       this.close();
-      void this.onApply(accepted);
+      runInBackground(() => this.onApply(accepted), "Could not apply metadata changes");
     }));
   }
   valueCell(tr, name, text, checked) {
@@ -24332,8 +24368,8 @@ var RefreshModal = class extends import_obsidian8.Modal {
 };
 
 // src/unbind-modal.ts
-var import_obsidian9 = require("obsidian");
-var UnbindModal = class extends import_obsidian9.Modal {
+var import_obsidian10 = require("obsidian");
+var UnbindModal = class extends import_obsidian10.Modal {
   constructor(app, note, targets, preselected, onApply) {
     super(app);
     this.note = note;
@@ -24351,17 +24387,23 @@ var UnbindModal = class extends import_obsidian9.Modal {
       confirmButton == null ? void 0 : confirmButton.setDisabled(this.selected.size === 0);
     };
     for (const target of this.targets) {
-      new import_obsidian9.Setting(contentEl).setName(target).addToggle((toggle) => toggle.setValue(this.selected.has(target)).onChange((value) => {
+      new import_obsidian10.Setting(contentEl).setName(target).addToggle((toggle) => toggle.setValue(this.selected.has(target)).onChange((value) => {
         if (value) this.selected.add(target);
         else this.selected.delete(target);
         refreshConfirm();
       }));
     }
-    new import_obsidian9.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => {
+    new import_obsidian10.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => {
       confirmButton = button;
       button.setButtonText(t2("unbind.confirm")).setCta().setDisabled(this.selected.size === 0).onClick(() => {
         const selected = [...this.selected];
-        void this.onApply(selected).then(() => this.close());
+        runInBackground(
+          async () => {
+            await this.onApply(selected);
+            this.close();
+          },
+          "Could not unbind sources"
+        );
       });
     });
   }
@@ -24371,14 +24413,14 @@ var UnbindModal = class extends import_obsidian9.Modal {
 };
 
 // src/settings.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/suggesters.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 function rank(query, items, limit = 20) {
   const trimmed = query.trim();
   if (!trimmed) return items.slice(0, limit);
-  const search = (0, import_obsidian10.prepareFuzzySearch)(trimmed);
+  const search = (0, import_obsidian11.prepareFuzzySearch)(trimmed);
   return items.map((item) => {
     var _a, _b;
     return { item, score: (_b = (_a = search(item)) == null ? void 0 : _a.score) != null ? _b : null };
@@ -24387,7 +24429,7 @@ function rank(query, items, limit = 20) {
 function csvParts(value) {
   return value.split(",").map((part) => part.trim()).filter(Boolean);
 }
-var CsvSuggest = class extends import_obsidian10.AbstractInputSuggest {
+var CsvSuggest = class extends import_obsidian11.AbstractInputSuggest {
   constructor(app, input, onPickList) {
     super(app, input);
     this.input = input;
@@ -24403,11 +24445,11 @@ var CsvSuggest = class extends import_obsidian10.AbstractInputSuggest {
     else parts[parts.length - 1] = value;
     const next = Array.from(new Set(parts)).join(", ");
     this.setValue(next);
-    this.onPickList(next);
+    runInBackground(() => this.onPickList(next), "Could not apply suggested list");
     this.close();
   }
 };
-var PropertySuggest = class extends import_obsidian10.AbstractInputSuggest {
+var PropertySuggest = class extends import_obsidian11.AbstractInputSuggest {
   constructor(app, input, items, onPick) {
     super(app, input);
     this.items = items;
@@ -24421,11 +24463,11 @@ var PropertySuggest = class extends import_obsidian10.AbstractInputSuggest {
   }
   selectSuggestion(value) {
     this.setValue(value);
-    this.onPick(value);
+    runInBackground(() => this.onPick(value), "Could not apply suggested property");
     this.close();
   }
 };
-var FolderSuggest = class extends import_obsidian10.AbstractInputSuggest {
+var FolderSuggest = class extends import_obsidian11.AbstractInputSuggest {
   constructor(app, input, onPick) {
     super(app, input);
     this.onPick = onPick;
@@ -24439,7 +24481,10 @@ var FolderSuggest = class extends import_obsidian10.AbstractInputSuggest {
   }
   selectSuggestion(value) {
     this.setValue(value === "/" ? "" : value);
-    this.onPick(value === "/" ? "" : value);
+    runInBackground(
+      () => this.onPick(value === "/" ? "" : value),
+      "Could not apply suggested folder"
+    );
     this.close();
   }
 };
@@ -24467,7 +24512,7 @@ var ExtensionSuggest = class extends CsvSuggest {
     this.choose(value);
   }
 };
-var TemplateFileSuggest = class extends import_obsidian10.AbstractInputSuggest {
+var TemplateFileSuggest = class extends import_obsidian11.AbstractInputSuggest {
   constructor(app, input, files, onPick) {
     super(app, input);
     this.files = files;
@@ -24481,13 +24526,13 @@ var TemplateFileSuggest = class extends import_obsidian10.AbstractInputSuggest {
   }
   selectSuggestion(value) {
     this.setValue(value);
-    this.onPick(value);
+    runInBackground(() => this.onPick(value), "Could not apply suggested template");
     this.close();
   }
 };
 
 // src/attachment-rule-settings.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 function folders(value) {
   return value.split(",").map((part) => part.trim().replace(/^\/+|\/+$/g, "")).filter(Boolean);
 }
@@ -24497,10 +24542,10 @@ function extensions(value) {
 function confirmRemoval(app, name) {
   return new Promise((resolve) => {
     let answered = false;
-    class ConfirmModal extends import_obsidian11.Modal {
+    class ConfirmModal extends import_obsidian12.Modal {
       onOpen() {
         this.contentEl.createEl("p", { text: t2("settings.rules.removeConfirm", { name }) });
-        new import_obsidian11.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.confirm")).setCta().onClick(() => {
+        new import_obsidian12.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.confirm")).setCta().onClick(() => {
           answered = true;
           resolve(true);
           this.close();
@@ -24532,7 +24577,7 @@ function summaryButton(parent, icon, tooltip, disabled, onClick) {
     cls: "amm-accordion-summary-action clickable-icon",
     attr: { "aria-label": tooltip, title: tooltip, type: "button" }
   });
-  (0, import_obsidian11.setIcon)(button, icon);
+  (0, import_obsidian12.setIcon)(button, icon);
   button.disabled = disabled;
   button.addEventListener("click", (event) => {
     event.preventDefault();
@@ -24547,7 +24592,7 @@ var AttachmentRuleSettings = class {
     this.redisplay = redisplay;
   }
   render(containerEl) {
-    new import_obsidian11.Setting(containerEl).setName(t2("settings.rules.title")).setDesc(t2("settings.rules.desc")).setHeading();
+    new import_obsidian12.Setting(containerEl).setName(t2("settings.rules.title")).setDesc(t2("settings.rules.desc")).setHeading();
     if (this.plugin.settings.attachmentRules.length === 0) {
       containerEl.createEl("p", { text: t2("settings.rules.empty"), cls: "amm-rules-empty" });
     }
@@ -24559,7 +24604,7 @@ var AttachmentRuleSettings = class {
             cls: "amm-rule-warning"
           });
         }
-        new import_obsidian11.Setting(el).setName(t2("settings.rules.fields.name")).addText((text) => text.setValue(rule.name).onChange(async (value) => {
+        new import_obsidian12.Setting(el).setName(t2("settings.rules.fields.name")).addText((text) => text.setValue(rule.name).onChange(async (value) => {
           rule.name = value.trim() || t2("settings.rules.defaultName", { index: index + 1 });
           await this.plugin.saveSettings();
         })).addToggle((toggle) => toggle.setTooltip(t2("settings.rules.fields.enabled")).setValue(rule.enabled).onChange(async (value) => {
@@ -24574,40 +24619,32 @@ var AttachmentRuleSettings = class {
           "arrow-up",
           t2("settings.rules.moveUp"),
           index === 0,
-          () => {
-            void this.move(index, -1);
-          }
+          () => runInBackground(() => this.move(index, -1), "Could not move attachment rule")
         );
         summaryButton(
           summaryActions,
           "arrow-down",
           t2("settings.rules.moveDown"),
           index === this.plugin.settings.attachmentRules.length - 1,
-          () => {
-            void this.move(index, 1);
-          }
+          () => runInBackground(() => this.move(index, 1), "Could not move attachment rule")
         );
         summaryButton(
           summaryActions,
           "trash",
           t2("settings.rules.remove"),
           false,
-          () => {
-            void this.remove(rule);
-          }
+          () => runInBackground(() => this.remove(rule), "Could not remove attachment rule")
         );
       });
     });
-    new import_obsidian11.Setting(containerEl).addButton((button) => button.setButtonText(t2("settings.rules.add")).setCta().onClick(() => {
-      void (async () => {
-        const index = this.plugin.settings.attachmentRules.length + 1;
-        this.plugin.settings.attachmentRules.push(createAttachmentRule({
-          name: t2("settings.rules.defaultName", { index })
-        }));
-        await this.plugin.saveSettings();
-        this.redisplay();
-      })();
-    }));
+    new import_obsidian12.Setting(containerEl).addButton((button) => button.setButtonText(t2("settings.rules.add")).setCta().onClick(() => runInBackground(async () => {
+      const index = this.plugin.settings.attachmentRules.length + 1;
+      this.plugin.settings.attachmentRules.push(createAttachmentRule({
+        name: t2("settings.rules.defaultName", { index })
+      }));
+      await this.plugin.saveSettings();
+      this.redisplay();
+    }, "Could not add attachment rule")));
   }
   renderConditions(body, rule) {
     const updateSourceFolders = async (value, includeSubfoldersSetting2) => {
@@ -24615,26 +24652,29 @@ var AttachmentRuleSettings = class {
       includeSubfoldersSetting2.setDisabled(rule.sourceFolders.length === 0);
       await this.plugin.saveSettings();
     };
-    new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.sourceFolders")).setDesc(t2("settings.rules.fields.sourceFoldersDesc")).addText((text) => {
+    new import_obsidian12.Setting(body).setName(t2("settings.rules.fields.sourceFolders")).setDesc(t2("settings.rules.fields.sourceFoldersDesc")).addText((text) => {
       text.setValue(rule.sourceFolders.join(", ")).onChange((value) => {
-        void updateSourceFolders(value, includeSubfoldersSetting);
+        runInBackground(
+          () => updateSourceFolders(value, includeSubfoldersSetting),
+          "Could not update source folders"
+        );
       });
       new FolderListSuggest(this.app, text.inputEl, (value) => {
-        void updateSourceFolders(value, includeSubfoldersSetting);
+        return updateSourceFolders(value, includeSubfoldersSetting);
       });
     });
-    const includeSubfoldersSetting = new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
+    const includeSubfoldersSetting = new import_obsidian12.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
       rule.includeSubfolders = value;
       await this.plugin.saveSettings();
     })).setDisabled(rule.sourceFolders.length === 0);
-    new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.excludedFolders")).addText((text) => {
+    new import_obsidian12.Setting(body).setName(t2("settings.rules.fields.excludedFolders")).addText((text) => {
       text.setValue(rule.excludedFolders.join(", ")).onChange(async (value) => {
         rule.excludedFolders = folders(value);
         await this.plugin.saveSettings();
       });
       new FolderListSuggest(this.app, text.inputEl, (value) => {
         rule.excludedFolders = folders(value);
-        void this.plugin.saveSettings();
+        return this.plugin.saveSettings();
       });
     });
     this.renderExtensionField(body, rule, false);
@@ -24642,19 +24682,19 @@ var AttachmentRuleSettings = class {
   }
   renderExtensionField(body, rule, excluded) {
     const key = excluded ? "excludedExtensions" : "extensions";
-    new import_obsidian11.Setting(body).setName(t2(`settings.rules.fields.${key}`)).setDesc(excluded ? "" : t2("settings.rules.fields.extensionsDesc")).addText((text) => {
+    new import_obsidian12.Setting(body).setName(t2(`settings.rules.fields.${key}`)).setDesc(excluded ? "" : t2("settings.rules.fields.extensionsDesc")).addText((text) => {
       text.setValue(rule[key].join(", ")).onChange(async (value) => {
         rule[key] = extensions(value);
         await this.plugin.saveSettings();
       });
       new ExtensionSuggest(this.app, text.inputEl, (value) => {
         rule[key] = extensions(value);
-        void this.plugin.saveSettings();
+        return this.plugin.saveSettings();
       });
     });
   }
   renderActions(body, rule) {
-    new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.destinationFolder")).setDesc(t2("settings.rules.fields.destinationFolderDesc")).addText((text) => {
+    new import_obsidian12.Setting(body).setName(t2("settings.rules.fields.destinationFolder")).setDesc(t2("settings.rules.fields.destinationFolderDesc")).addText((text) => {
       text.setValue(rule.destinationFolder).onChange(async (value) => {
         rule.destinationFolder = value.trim();
         await this.plugin.saveSettings();
@@ -24664,7 +24704,7 @@ var AttachmentRuleSettings = class {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.nameTemplate")).setDesc(t2("settings.rules.fields.nameTemplateDesc")).addText((text) => text.setPlaceholder("{{basename}}").setValue(rule.nameTemplate).onChange(async (value) => {
+    new import_obsidian12.Setting(body).setName(t2("settings.rules.fields.nameTemplate")).setDesc(t2("settings.rules.fields.nameTemplateDesc")).addText((text) => text.setPlaceholder("{{basename}}").setValue(rule.nameTemplate).onChange(async (value) => {
       rule.nameTemplate = value.trim() || "{{basename}}";
       await this.plugin.saveSettings();
     }));
@@ -24689,10 +24729,10 @@ var AttachmentRuleSettings = class {
 function confirmModal(app, message) {
   return new Promise((resolve) => {
     let answered = false;
-    class ConfirmModal extends import_obsidian12.Modal {
+    class ConfirmModal extends import_obsidian13.Modal {
       onOpen() {
         this.contentEl.createEl("p", { text: message });
-        new import_obsidian12.Setting(this.contentEl).addButton((btn) => btn.setButtonText(t2("common.confirm")).setCta().onClick(() => {
+        new import_obsidian13.Setting(this.contentEl).addButton((btn) => btn.setButtonText(t2("common.confirm")).setCta().onClick(() => {
           answered = true;
           resolve(true);
           this.close();
@@ -24711,15 +24751,67 @@ function confirmModal(app, message) {
   });
 }
 var KIND_ORDER = ["vault", "pdf", "lookup"];
-var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
+var SEARCHABLE_SETTING_KEYS = [
+  "settings.language.name",
+  "settings.templateFolders.name",
+  "settings.sections.mapping",
+  "settings.rules.title",
+  "settings.group.name",
+  "settings.group.layout.name",
+  "settings.group.createNoteFile.name",
+  "settings.group.auxiliaryPrefix.name",
+  "settings.group.collectionFolder.name",
+  "settings.group.attachmentDepth.name",
+  "settings.group.resourceFolder.name",
+  "settings.group.noteFolder.name",
+  "settings.group.extensions.name",
+  "settings.group.template.name",
+  "settings.group.mirror.name",
+  "settings.group.noteName.name",
+  "settings.group.linkTemplate.name",
+  "settings.group.embed.name",
+  "settings.group.syncUpdated.name",
+  "settings.group.pdfExtraction.name",
+  "settings.group.doiLookup.name",
+  "settings.group.sanitize.name",
+  "settings.group.backfill.name",
+  "settings.group.upgrade.name"
+];
+var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
     this.activeTab = "general";
     this.tabButtons = /* @__PURE__ */ new Map();
+    this.declarativeHost = null;
+  }
+  /**
+   * Obsidian 1.13+ search bridge. The custom render keeps the established
+   * tabbed, collapsible UI intact while aliases make every setting discoverable.
+   * Older Obsidian versions ignore this method and use display().
+   */
+  getSettingDefinitions() {
+    return [{
+      name: "Att Meta Map",
+      desc: t2("settings.groups.desc"),
+      aliases: this.searchAliases(),
+      render: (setting) => {
+        const host = setting.settingEl;
+        setting.setClass("amm-settings-host");
+        host.empty();
+        this.declarativeHost = host;
+        this.renderSettings(host);
+        return () => {
+          if (this.declarativeHost === host) this.declarativeHost = null;
+        };
+      }
+    }];
   }
   display() {
-    const { containerEl } = this;
+    this.declarativeHost = null;
+    this.renderSettings(this.containerEl);
+  }
+  renderSettings(containerEl) {
     containerEl.empty();
     containerEl.addClass("amm-settings");
     this.plugin.registry.invalidate();
@@ -24743,14 +24835,24 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
   /** A settings change on the active tab: rebuild but keep the scroll spot. */
   redisplay() {
     const top = this.containerEl.scrollTop;
-    this.display();
+    if (this.declarativeHost) {
+      this.update();
+    } else this.renderSettings(this.containerEl);
     window.requestAnimationFrame(() => {
       this.containerEl.scrollTop = top;
     });
   }
   switchTab(id) {
     this.activeTab = id;
-    this.display();
+    this.redisplay();
+  }
+  searchAliases() {
+    const names = [
+      ...SEARCHABLE_SETTING_KEYS.map((key) => t2(key)),
+      ...SOURCE_DEFS.map((def) => t2(`sources.${def.id}.name`)),
+      ...this.plugin.settings.groups.map((group) => group.name).filter(Boolean)
+    ];
+    return Array.from(new Set(names));
   }
   /** Renaming a group shouldn't rebuild the whole page and drop focus mid-keystroke. */
   updateTabLabel(id, label) {
@@ -24780,26 +24882,24 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
       cls: "amm-tab-add",
       attr: { "aria-label": t2("settings.groups.add") }
     });
-    addBtn.addEventListener("click", () => {
-      void (async () => {
-        const group = createGroup({ name: t2("settings.groups.newName") });
-        this.plugin.settings.groups.push(group);
-        await this.plugin.saveSettings();
-        this.switchTab(group.id);
-      })();
-    });
+    addBtn.addEventListener("click", () => runInBackground(async () => {
+      const group = createGroup({ name: t2("settings.groups.newName") });
+      this.plugin.settings.groups.push(group);
+      await this.plugin.saveSettings();
+      this.switchTab(group.id);
+    }, "Could not add mapping group"));
   }
   // --- general -----------------------------------------------------------
   renderGeneral(containerEl) {
-    new import_obsidian12.Setting(containerEl).setName(t2("settings.sections.general")).setHeading();
-    new import_obsidian12.Setting(containerEl).setName(t2("settings.language.name")).addDropdown((drop) => drop.addOption("auto", t2("settings.language.auto")).addOption("zh", "\u4E2D\u6587").addOption("en", "English").setValue(this.plugin.settings.language).onChange(async (value) => {
+    new import_obsidian13.Setting(containerEl).setName(t2("settings.sections.general")).setHeading();
+    new import_obsidian13.Setting(containerEl).setName(t2("settings.language.name")).addDropdown((drop) => drop.addOption("auto", t2("settings.language.auto")).addOption("zh", "\u4E2D\u6587").addOption("en", "English").setValue(this.plugin.settings.language).onChange(async (value) => {
       this.plugin.settings.language = value;
       await this.plugin.saveSettings();
       await this.plugin.applyLanguage();
       this.redisplay();
     }));
     const detected = this.plugin.registry.detectedFolders();
-    new import_obsidian12.Setting(containerEl).setName(t2("settings.templateFolders.name")).setDesc(detected.length ? t2("settings.templateFolders.detected", { folders: detected.join("\u3001") }) : t2("settings.templateFolders.none")).addText((text) => text.setPlaceholder(t2("settings.templateFolders.placeholder")).setValue(this.plugin.settings.extraTemplateFolders.join(", ")).onChange(async (value) => {
+    new import_obsidian13.Setting(containerEl).setName(t2("settings.templateFolders.name")).setDesc(detected.length ? t2("settings.templateFolders.detected", { folders: detected.join("\u3001") }) : t2("settings.templateFolders.none")).addText((text) => text.setPlaceholder(t2("settings.templateFolders.placeholder")).setValue(this.plugin.settings.extraTemplateFolders.join(", ")).onChange(async (value) => {
       this.plugin.settings.extraTemplateFolders = value.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
       this.plugin.registry.invalidate();
       await this.plugin.saveSettings();
@@ -24807,13 +24907,13 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
   }
   // --- field mappings ----------------------------------------------------
   renderMapping(containerEl) {
-    new import_obsidian12.Setting(containerEl).setName(t2("settings.sections.mapping")).setDesc(t2("settings.mapping.desc")).setHeading();
+    new import_obsidian13.Setting(containerEl).setName(t2("settings.sections.mapping")).setDesc(t2("settings.mapping.desc")).setHeading();
     for (const kind of KIND_ORDER) {
       const defs = SOURCE_DEFS.filter((def) => def.kind === kind);
       if (defs.length === 0) continue;
       this.section(containerEl, t2(`settings.kinds.${kind}`), false, (sectionEl) => {
         for (const def of defs) {
-          new import_obsidian12.Setting(sectionEl).setClass("amm-field-row").setName(t2(`sources.${def.id}.name`)).setDesc(t2(`sources.${def.id}.desc`)).addText((text) => {
+          new import_obsidian13.Setting(sectionEl).setClass("amm-field-row").setName(t2(`sources.${def.id}.name`)).setDesc(t2(`sources.${def.id}.desc`)).addText((text) => {
             var _a;
             text.setPlaceholder(t2("settings.mapping.unmapped")).setValue((_a = this.plugin.settings.mapping[def.id]) != null ? _a : "").onChange(async (value) => {
               this.plugin.settings.mapping[def.id] = value.trim();
@@ -24843,20 +24943,18 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
   }
   renderGroup(body, group) {
     const createsNotes = groupCreatesNotes(group);
-    new import_obsidian12.Setting(body).setName(t2("settings.group.name")).addText((text) => text.setValue(group.name).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2("settings.group.name")).addText((text) => text.setValue(group.name).onChange(async (value) => {
       group.name = value;
       await this.plugin.saveSettings();
       this.updateTabLabel(group.id, value || t2("settings.groups.newName"));
-    })).addExtraButton((btn) => btn.setIcon("trash").setTooltip(t2("settings.group.remove")).onClick(() => {
-      void (async () => {
-        const ok = await confirmModal(this.app, t2("settings.group.removeConfirm", { name: group.name }));
-        if (!ok) return;
-        this.plugin.settings.groups = this.plugin.settings.groups.filter((g) => g.id !== group.id);
-        await this.plugin.saveSettings();
-        this.switchTab("general");
-      })();
-    }));
-    new import_obsidian12.Setting(body).setName(t2("settings.group.layout.name")).setDesc(t2(`settings.group.layout.desc.${group.layout}`)).addDropdown((drop) => drop.addOption("sidecar", t2("settings.group.layout.sidecar")).addOption("folder", t2("settings.group.layout.folder")).setValue(group.layout).onChange(async (value) => {
+    })).addExtraButton((btn) => btn.setIcon("trash").setTooltip(t2("settings.group.remove")).onClick(() => runInBackground(async () => {
+      const ok = await confirmModal(this.app, t2("settings.group.removeConfirm", { name: group.name }));
+      if (!ok) return;
+      this.plugin.settings.groups = this.plugin.settings.groups.filter((g) => g.id !== group.id);
+      await this.plugin.saveSettings();
+      this.switchTab("general");
+    }, "Could not remove mapping group")));
+    new import_obsidian13.Setting(body).setName(t2("settings.group.layout.name")).setDesc(t2(`settings.group.layout.desc.${group.layout}`)).addDropdown((drop) => drop.addOption("sidecar", t2("settings.group.layout.sidecar")).addOption("folder", t2("settings.group.layout.folder")).setValue(group.layout).onChange(async (value) => {
       const next = value === "folder" ? createGroup({
         ...group,
         layout: "folder",
@@ -24872,21 +24970,21 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
       this.redisplay();
     }));
     if (group.layout === "folder") {
-      new import_obsidian12.Setting(body).setName(t2("settings.group.createNoteFile.name")).setDesc(t2("settings.group.createNoteFile.desc")).addToggle((toggle) => toggle.setValue(group.createNoteFile).onChange(async (value) => {
+      new import_obsidian13.Setting(body).setName(t2("settings.group.createNoteFile.name")).setDesc(t2("settings.group.createNoteFile.desc")).addToggle((toggle) => toggle.setValue(group.createNoteFile).onChange(async (value) => {
         group.createNoteFile = value;
         await this.plugin.saveSettings();
         this.redisplay();
       }));
     }
     if (group.layout === "folder" && group.createNoteFile) {
-      new import_obsidian12.Setting(body).setName(t2("settings.group.auxiliaryPrefix.name")).setDesc(t2("settings.group.auxiliaryPrefix.desc")).addText((text) => text.setPlaceholder(t2("settings.group.auxiliaryPrefix.placeholder")).setValue(group.auxiliaryPrefix).onChange(async (value) => {
+      new import_obsidian13.Setting(body).setName(t2("settings.group.auxiliaryPrefix.name")).setDesc(t2("settings.group.auxiliaryPrefix.desc")).addText((text) => text.setPlaceholder(t2("settings.group.auxiliaryPrefix.placeholder")).setValue(group.auxiliaryPrefix).onChange(async (value) => {
         group.auxiliaryPrefix = value.trim();
         await this.plugin.saveSettings();
       }));
     }
     this.section(body, t2("settings.group.sections.paths"), true, (el) => {
       if (group.layout === "folder") {
-        new import_obsidian12.Setting(el).setName(t2("settings.group.collectionFolder.name")).setDesc(t2("settings.group.collectionFolder.desc")).addText((text) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.collectionFolder.name")).setDesc(t2("settings.group.collectionFolder.desc")).addText((text) => {
           text.setPlaceholder("Library").setValue(group.collectionFolder).onChange(async (value) => {
             group.collectionFolder = value.trim();
             await this.plugin.saveSettings();
@@ -24896,7 +24994,7 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
             await this.plugin.saveSettings();
           });
         });
-        new import_obsidian12.Setting(el).setName(t2("settings.group.attachmentDepth.name")).setDesc(t2("settings.group.attachmentDepth.desc")).addText((text) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.attachmentDepth.name")).setDesc(t2("settings.group.attachmentDepth.desc")).addText((text) => {
           text.inputEl.type = "number";
           text.inputEl.min = "0";
           text.inputEl.step = "1";
@@ -24908,7 +25006,7 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
           });
         });
       } else {
-        new import_obsidian12.Setting(el).setName(t2("settings.group.resourceFolder.name")).setDesc(t2("settings.group.resourceFolder.desc")).addText((text) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.resourceFolder.name")).setDesc(t2("settings.group.resourceFolder.desc")).addText((text) => {
           text.setPlaceholder("Attachments").setValue(group.resourceFolder).onChange(async (value) => {
             group.resourceFolder = value.trim();
             await this.plugin.saveSettings();
@@ -24918,7 +25016,7 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
             await this.plugin.saveSettings();
           });
         });
-        new import_obsidian12.Setting(el).setName(t2("settings.group.noteFolder.name")).setDesc(t2("settings.group.noteFolder.desc")).addText((text) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.noteFolder.name")).setDesc(t2("settings.group.noteFolder.desc")).addText((text) => {
           text.setPlaceholder("Library").setValue(group.noteFolder).onChange(async (value) => {
             group.noteFolder = value.trim();
             await this.plugin.saveSettings();
@@ -24929,29 +25027,29 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
           });
         });
       }
-      new import_obsidian12.Setting(el).setName(t2("settings.group.extensions.name")).setDesc(t2("settings.group.extensions.desc")).addText((text) => text.setPlaceholder(".pdf, .epub").setValue(group.watchedExtensions.join(", ")).onChange(async (value) => {
+      new import_obsidian13.Setting(el).setName(t2("settings.group.extensions.name")).setDesc(t2("settings.group.extensions.desc")).addText((text) => text.setPlaceholder(".pdf, .epub").setValue(group.watchedExtensions.join(", ")).onChange(async (value) => {
         group.watchedExtensions = value.split(",").map((part) => part.trim().toLowerCase()).filter((part) => part.length > 0).map((part) => part.startsWith(".") ? part : `.${part}`);
         await this.plugin.saveSettings();
       }));
       if (createsNotes) this.renderTemplatePicker(el, group);
       if (group.layout === "sidecar") {
-        new import_obsidian12.Setting(el).setName(t2("settings.group.mirror.name")).setDesc(t2("settings.group.mirror.desc")).addToggle((toggle) => toggle.setValue(group.mirrorFolderStructure).onChange(async (value) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.mirror.name")).setDesc(t2("settings.group.mirror.desc")).addToggle((toggle) => toggle.setValue(group.mirrorFolderStructure).onChange(async (value) => {
           group.mirrorFolderStructure = value;
           await this.plugin.saveSettings();
         }));
       }
     });
     this.section(body, t2("settings.group.sections.naming"), false, (el) => {
-      new import_obsidian12.Setting(el).setName(t2("settings.group.noteName.name")).setDesc(t2("settings.group.noteName.desc")).addText((text) => text.setPlaceholder("{{basename}}").setValue(group.noteNameTemplate).onChange(async (value) => {
+      new import_obsidian13.Setting(el).setName(t2("settings.group.noteName.name")).setDesc(t2("settings.group.noteName.desc")).addText((text) => text.setPlaceholder("{{basename}}").setValue(group.noteNameTemplate).onChange(async (value) => {
         group.noteNameTemplate = value.trim() || "{{basename}}";
         await this.plugin.saveSettings();
       }));
       if (createsNotes) {
-        new import_obsidian12.Setting(el).setName(t2("settings.group.linkTemplate.name")).setDesc(t2("settings.group.linkTemplate.desc")).addText((text) => text.setPlaceholder("[[{{name}}]]").setValue(group.linkTemplate).onChange(async (value) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.linkTemplate.name")).setDesc(t2("settings.group.linkTemplate.desc")).addText((text) => text.setPlaceholder("[[{{name}}]]").setValue(group.linkTemplate).onChange(async (value) => {
           group.linkTemplate = value.trim() || "[[{{name}}]]";
           await this.plugin.saveSettings();
         }));
-        new import_obsidian12.Setting(el).setName(t2("settings.group.embed.name")).setDesc(t2("settings.group.embed.desc")).addToggle((toggle) => toggle.setValue(group.embedAttachment).onChange(async (value) => {
+        new import_obsidian13.Setting(el).setName(t2("settings.group.embed.name")).setDesc(t2("settings.group.embed.desc")).addToggle((toggle) => toggle.setValue(group.embedAttachment).onChange(async (value) => {
           group.embedAttachment = value;
           await this.plugin.saveSettings();
         }));
@@ -24961,10 +25059,10 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
     this.section(body, t2("settings.group.sections.actions"), false, (el) => this.renderActions(el, group));
   }
   renderTemplatePicker(body, group) {
-    const setting = new import_obsidian12.Setting(body).setName(t2("settings.group.template.name")).setDesc(t2("settings.group.template.desc"));
+    const setting = new import_obsidian13.Setting(body).setName(t2("settings.group.template.name")).setDesc(t2("settings.group.template.desc"));
     const preview = body.createEl("div", { cls: "amm-template-preview" });
     const showKeys = (path) => {
-      void (async () => {
+      runInBackground(async () => {
         if (!path) {
           preview.setText(t2("settings.group.template.builtin"));
           return;
@@ -24977,7 +25075,7 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
         const mapped = new Set(Object.values(this.plugin.settings.mapping).filter(Boolean));
         const keys = parsed.keys.map((key) => mapped.has(key) ? `${key} \u2713` : key);
         preview.setText(keys.length ? t2("settings.group.template.keys", { keys: keys.join("  \xB7  ") }) : t2("settings.group.template.noKeys"));
-      })();
+      }, "Could not preview template");
     };
     setting.addText((text) => {
       text.setPlaceholder(t2("settings.group.template.placeholder")).setValue(group.templatePath).onChange(async (value) => {
@@ -24999,43 +25097,49 @@ var AttMetaMapSettingTab = class extends import_obsidian12.PluginSettingTab {
     showKeys(group.templatePath);
   }
   renderBehavior(body, group) {
-    new import_obsidian12.Setting(body).setName(t2(`settings.group.autoCreate.name.${group.layout}`)).setDesc(t2(`settings.group.autoCreate.desc.${group.layout}`)).addToggle((toggle) => toggle.setValue(group.autoCreateOnNew).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2(`settings.group.autoCreate.name.${group.layout}`)).setDesc(t2(`settings.group.autoCreate.desc.${group.layout}`)).addToggle((toggle) => toggle.setValue(group.autoCreateOnNew).onChange(async (value) => {
       group.autoCreateOnNew = value;
       await this.plugin.saveSettings();
     }));
     if (!groupCreatesNotes(group)) return;
-    new import_obsidian12.Setting(body).setName(t2("settings.group.syncUpdated.name")).setDesc(t2("settings.group.syncUpdated.desc")).addToggle((toggle) => toggle.setValue(group.syncUpdatedOnModify).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2("settings.group.syncUpdated.name")).setDesc(t2("settings.group.syncUpdated.desc")).addToggle((toggle) => toggle.setValue(group.syncUpdatedOnModify).onChange(async (value) => {
       group.syncUpdatedOnModify = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian12.Setting(body).setName(t2("settings.group.pdfExtraction.name")).setDesc(t2("settings.group.pdfExtraction.desc")).addToggle((toggle) => toggle.setValue(group.enablePdfMetadataExtraction).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2("settings.group.pdfExtraction.name")).setDesc(t2("settings.group.pdfExtraction.desc")).addToggle((toggle) => toggle.setValue(group.enablePdfMetadataExtraction).onChange(async (value) => {
       group.enablePdfMetadataExtraction = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian12.Setting(body).setName(t2("settings.group.doiLookup.name")).setDesc(t2("settings.group.doiLookup.desc")).addToggle((toggle) => toggle.setValue(group.enableDoiIsbnLookup).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2("settings.group.doiLookup.name")).setDesc(t2("settings.group.doiLookup.desc")).addToggle((toggle) => toggle.setValue(group.enableDoiIsbnLookup).onChange(async (value) => {
       group.enableDoiIsbnLookup = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian12.Setting(body).setName(t2("settings.group.sanitize.name")).setDesc(t2("settings.group.sanitize.desc")).addToggle((toggle) => toggle.setValue(group.sanitizeListValues).onChange(async (value) => {
+    new import_obsidian13.Setting(body).setName(t2("settings.group.sanitize.name")).setDesc(t2("settings.group.sanitize.desc")).addToggle((toggle) => toggle.setValue(group.sanitizeListValues).onChange(async (value) => {
       group.sanitizeListValues = value;
       await this.plugin.saveSettings();
     }));
   }
   renderActions(body, group) {
-    new import_obsidian12.Setting(body).setName(t2("settings.group.backfill.name")).setDesc(t2("settings.group.backfill.desc")).addButton((btn) => btn.setButtonText(t2("settings.group.backfill.run")).setCta().onClick(() => {
-      void this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups);
+    new import_obsidian13.Setting(body).setName(t2("settings.group.backfill.name")).setDesc(t2("settings.group.backfill.desc")).addButton((btn) => btn.setButtonText(t2("settings.group.backfill.run")).setCta().onClick(() => {
+      runInBackground(
+        () => this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups),
+        "Could not backfill mapping group"
+      );
     }));
     if (!groupCreatesNotes(group)) return;
-    new import_obsidian12.Setting(body).setName(t2("settings.group.upgrade.name")).setDesc(t2("settings.group.upgrade.desc")).addButton((btn) => btn.setButtonText(t2("settings.group.upgrade.run")).onClick(() => {
-      void this.plugin.upgradeManager.runForGroup(group);
+    new import_obsidian13.Setting(body).setName(t2("settings.group.upgrade.name")).setDesc(t2("settings.group.upgrade.desc")).addButton((btn) => btn.setButtonText(t2("settings.group.upgrade.run")).onClick(() => {
+      runInBackground(
+        () => this.plugin.upgradeManager.runForGroup(group),
+        "Could not align mapping group"
+      );
     }));
   }
 };
 
 // src/relations-view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var RESOURCE_RELATIONS_VIEW = "att-meta-map-relations";
-var ResourceRelationsView = class extends import_obsidian13.ItemView {
+var ResourceRelationsView = class extends import_obsidian14.ItemView {
   constructor(leaf, noteManager, groups, requestUnbind) {
     super(leaf);
     this.noteManager = noteManager;
@@ -25110,7 +25214,7 @@ var ResourceRelationsView = class extends import_obsidian13.ItemView {
         cls: "clickable-icon amm-relation-unlink",
         attr: { type: "button", "aria-label": t2("relations.unbind"), title: t2("relations.unbind") }
       });
-      (0, import_obsidian13.setIcon)(unlink, "unlink");
+      (0, import_obsidian14.setIcon)(unlink, "unlink");
       unlink.addEventListener("click", () => this.requestUnbind(context, relation.target));
     }
   }
@@ -25120,18 +25224,18 @@ var ResourceRelationsView = class extends import_obsidian13.ItemView {
   openFile(file) {
     const leaf = this.app.workspace.getLeaf(false);
     if (!leaf) {
-      new import_obsidian13.Notice(t2("relations.openFailed"));
+      new import_obsidian14.Notice(t2("relations.openFailed"));
       return;
     }
-    leaf.openFile(file).catch(() => new import_obsidian13.Notice(t2("relations.openFailed")));
+    leaf.openFile(file).catch(() => new import_obsidian14.Notice(t2("relations.openFailed")));
   }
 };
 
 // src/attachment-organizer.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 
 // src/organizer-modal.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 function renderTree2(parent, nodes) {
   const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
   for (const node of nodes) {
@@ -25145,7 +25249,7 @@ function renderTree2(parent, nodes) {
     if (node.children.length > 0) renderTree2(row, node.children);
   }
 }
-var OrganizerPreviewModal = class extends import_obsidian14.Modal {
+var OrganizerPreviewModal = class extends import_obsidian15.Modal {
   constructor(app, moves, managedCount, unmatchedCount, onConfirm) {
     super(app);
     this.moves = moves;
@@ -25171,9 +25275,9 @@ var OrganizerPreviewModal = class extends import_obsidian14.Modal {
     const tree = buildChangeTree(changes);
     const viewport = this.contentEl.createEl("div", { cls: "amm-change-tree-viewport" });
     renderTree2(viewport, tree.children);
-    new import_obsidian14.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("organizer.confirm")).setCta().onClick(() => {
+    new import_obsidian15.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("organizer.confirm")).setCta().onClick(() => {
       this.close();
-      void this.onConfirm();
+      runInBackground(() => this.onConfirm(), "Could not apply attachment plan");
     }));
   }
   onClose() {
@@ -25195,7 +25299,7 @@ var AttachmentOrganizer = class {
     this.pendingMoves = /* @__PURE__ */ new Set();
   }
   isPendingMove(oldPath) {
-    return this.pendingMoves.has((0, import_obsidian15.normalizePath)(oldPath));
+    return this.pendingMoves.has((0, import_obsidian16.normalizePath)(oldPath));
   }
   organizeAttachment(file) {
     this.preview([{ path: file.path }]);
@@ -25206,7 +25310,7 @@ var AttachmentOrganizer = class {
     const candidates = [];
     for (const path of Object.keys(links)) {
       const linked = this.app.vault.getAbstractFileByPath(path);
-      if (!(linked instanceof import_obsidian15.TFile) || linked.extension === "md" || linked.extension === "canvas") continue;
+      if (!(linked instanceof import_obsidian16.TFile) || linked.extension === "md" || linked.extension === "canvas") continue;
       candidates.push({ path: linked.path, noteBasename: note.basename });
     }
     this.preview(candidates);
@@ -25222,7 +25326,7 @@ var AttachmentOrganizer = class {
   }
   preview(candidates) {
     if (candidates.length === 0) {
-      new import_obsidian15.Notice(t2("organizer.nothingFound"));
+      new import_obsidian16.Notice(t2("organizer.nothingFound"));
       return;
     }
     const result = planAttachmentMoves(
@@ -25232,7 +25336,7 @@ var AttachmentOrganizer = class {
       this.app.vault.getFiles().map((file) => file.path)
     );
     if (result.moves.length === 0) {
-      new import_obsidian15.Notice(result.managed.length > 0 ? t2("organizer.onlyManaged", { count: result.managed.length }) : t2("organizer.nothingToChange"));
+      new import_obsidian16.Notice(result.managed.length > 0 ? t2("organizer.onlyManaged", { count: result.managed.length }) : t2("organizer.nothingToChange"));
       return;
     }
     new OrganizerPreviewModal(
@@ -25249,20 +25353,20 @@ var AttachmentOrganizer = class {
     for (let index = 0; index < result.moves.length; index++) {
       const plan = result.moves[index];
       const file = this.app.vault.getAbstractFileByPath(plan.from);
-      if (!(file instanceof import_obsidian15.TFile)) {
-        new import_obsidian15.Notice(t2("organizer.changedSincePreview"));
+      if (!(file instanceof import_obsidian16.TFile)) {
+        new import_obsidian16.Notice(t2("organizer.changedSincePreview"));
         return;
       }
       const occupied = this.app.vault.getAbstractFileByPath(plan.to);
       if (occupied && !moving.has(plan.to.toLowerCase())) {
-        new import_obsidian15.Notice(t2("organizer.changedSincePreview"));
+        new import_obsidian16.Notice(t2("organizer.changedSincePreview"));
         return;
       }
       const parent = parentOf2(plan.from);
       const tempName = `.amm-tmp-${Date.now()}-${index}-${file.name}`;
-      const temp = (0, import_obsidian15.normalizePath)([parent, tempName].filter(Boolean).join("/"));
+      const temp = (0, import_obsidian16.normalizePath)([parent, tempName].filter(Boolean).join("/"));
       if (this.app.vault.getAbstractFileByPath(temp)) {
-        new import_obsidian15.Notice(t2("organizer.changedSincePreview"));
+        new import_obsidian16.Notice(t2("organizer.changedSincePreview"));
         return;
       }
       resolved.push({ file, plan, original: plan.from, temp });
@@ -25276,18 +25380,18 @@ var AttachmentOrganizer = class {
         }
         await this.move(item.file, item.plan.to);
       }
-      new import_obsidian15.Notice(t2("organizer.complete", { count: resolved.length }));
+      new import_obsidian16.Notice(t2("organizer.complete", { count: resolved.length }));
     } catch (error2) {
       console.error("Att Meta Map: attachment organizer failed", error2);
       await this.rollback(resolved);
-      new import_obsidian15.Notice(t2("organizer.failed"));
+      new import_obsidian16.Notice(t2("organizer.failed"));
     }
   }
   async move(file, to) {
-    const oldPath = (0, import_obsidian15.normalizePath)(file.path);
+    const oldPath = (0, import_obsidian16.normalizePath)(file.path);
     this.pendingMoves.add(oldPath);
     try {
-      await this.app.fileManager.renameFile(file, (0, import_obsidian15.normalizePath)(to));
+      await this.app.fileManager.renameFile(file, (0, import_obsidian16.normalizePath)(to));
     } finally {
       this.pendingMoves.delete(oldPath);
     }
@@ -25298,7 +25402,7 @@ var AttachmentOrganizer = class {
       const item = items[index];
       if (item.file.path === item.original) continue;
       const parent = parentOf2(item.file.path);
-      const temp = (0, import_obsidian15.normalizePath)([parent, `.amm-rollback-${Date.now()}-${index}-${item.file.name}`].filter(Boolean).join("/"));
+      const temp = (0, import_obsidian16.normalizePath)([parent, `.amm-rollback-${Date.now()}-${index}-${item.file.name}`].filter(Boolean).join("/"));
       try {
         await this.move(item.file, temp);
         staged.push({ ...item, temp });
@@ -25319,7 +25423,7 @@ var AttachmentOrganizer = class {
 };
 
 // src/main.ts
-var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
+var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
   async onload() {
     await this.loadSettings();
     await this.applyLanguage();
@@ -25349,7 +25453,10 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
         const file = this.app.workspace.getActiveFile();
         if (!file) return false;
         if (checking) return this.pairOpener.resolvePair(file, this.settings.groups) !== null;
-        void this.pairOpener.openPair(file, this.settings.groups);
+        runInBackground(
+          () => this.pairOpener.openPair(file, this.settings.groups),
+          "Could not open resource pair"
+        );
         return true;
       }
     });
@@ -25360,7 +25467,7 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
         const file = this.app.workspace.getActiveFile();
         if (!file) return false;
         if (checking) return this.pairOpener.resolvePair(file, this.settings.groups) !== null;
-        void this.refreshMetadata(file);
+        runInBackground(() => this.refreshMetadata(file), "Could not refresh metadata");
         return true;
       }
     });
@@ -25380,19 +25487,21 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
     this.addCommand({
       id: "open-relations-panel",
       name: t2("commands.openRelationsPanel"),
-      callback: () => {
-        void this.openRelationsPanel();
-      }
+      callback: () => runInBackground(
+        () => this.openRelationsPanel(),
+        "Could not open relations panel"
+      )
     });
     this.addRibbonIcon("links", t2("commands.openRelationsPanel"), () => {
-      void this.openRelationsPanel();
+      runInBackground(() => this.openRelationsPanel(), "Could not open relations panel");
     });
     this.addCommand({
       id: "backfill-all",
       name: t2("commands.backfill"),
-      callback: () => {
-        void this.backfillManager.runForAll(this.settings.groups);
-      }
+      callback: () => runInBackground(
+        () => this.backfillManager.runForAll(this.settings.groups),
+        "Could not backfill notes"
+      )
     });
     this.addCommand({
       id: "organize-active-note-attachments",
@@ -25418,7 +25527,7 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
       preselected,
       async (selected) => {
         const count = await this.noteManager.unbindSources(note, selected);
-        new import_obsidian16.Notice(t2("notices.unbound", { count }));
+        new import_obsidian17.Notice(t2("notices.unbound", { count }));
       }
     ).open();
   }
@@ -25434,15 +25543,23 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
   }
   registerOrganizerMenus() {
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
-      if (file instanceof import_obsidian16.TFile) {
+      if (file instanceof import_obsidian17.TFile) {
         if (file.extension === "md") {
-          menu.addItem((item) => item.setTitle(t2("commands.organizeNoteAttachments")).setIcon("folder-input").onClick(() => this.attachmentOrganizer.organizeNote(file)));
+          menu.addItem((item) => item.setTitle(t2("commands.organizeNoteAttachments")).setIcon("folder-input").onClick(() => {
+            this.attachmentOrganizer.organizeNote(file);
+          }));
         } else if (file.extension !== "canvas") {
-          menu.addItem((item) => item.setTitle(t2("commands.organizeAttachment")).setIcon("folder-input").onClick(() => this.attachmentOrganizer.organizeAttachment(file)));
+          menu.addItem((item) => item.setTitle(t2("commands.organizeAttachment")).setIcon("folder-input").onClick(() => {
+            this.attachmentOrganizer.organizeAttachment(file);
+          }));
         }
-      } else if (file instanceof import_obsidian16.TFolder) {
-        menu.addItem((item) => item.setTitle(t2("commands.organizeFolder")).setIcon("folder-input").onClick(() => this.attachmentOrganizer.organizeFolder(file, false)));
-        menu.addItem((item) => item.setTitle(t2("commands.organizeFolderRecursive")).setIcon("folders").onClick(() => this.attachmentOrganizer.organizeFolder(file, true)));
+      } else if (file instanceof import_obsidian17.TFolder) {
+        menu.addItem((item) => item.setTitle(t2("commands.organizeFolder")).setIcon("folder-input").onClick(() => {
+          this.attachmentOrganizer.organizeFolder(file, false);
+        }));
+        menu.addItem((item) => item.setTitle(t2("commands.organizeFolderRecursive")).setIcon("folders").onClick(() => {
+          this.attachmentOrganizer.organizeFolder(file, true);
+        }));
       }
     }));
   }
@@ -25451,23 +25568,23 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
     var _a;
     const pair = this.pairOpener.resolvePair(file, this.settings.groups);
     if (!pair) {
-      new import_obsidian16.Notice(t2("notices.noGroup", { file: file.name }));
+      new import_obsidian17.Notice(t2("notices.noGroup", { file: file.name }));
       return;
     }
     let note = pair.note;
     if (!note && pair.attachment) {
       note = await this.noteManager.createNote(pair.attachment, pair.group);
       if (note) {
-        new import_obsidian16.Notice(t2("notices.noteReady", { note: note.basename }));
+        new import_obsidian17.Notice(t2("notices.noteReady", { note: note.basename }));
         return;
       }
     }
     if (!pair.attachment) {
-      new import_obsidian16.Notice(t2("notices.noAttachment", { file: file.name }));
+      new import_obsidian17.Notice(t2("notices.noAttachment", { file: file.name }));
       return;
     }
     if (!note) {
-      new import_obsidian16.Notice(t2("notices.noNote", { group: pair.group.name }));
+      new import_obsidian17.Notice(t2("notices.noNote", { group: pair.group.name }));
       return;
     }
     const resolvedNote = note;
@@ -25475,7 +25592,7 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
     const { template } = await this.noteManager.templateFor(pair.group);
     const keys = Array.from(/* @__PURE__ */ new Set([...Object.keys(frontmatter != null ? frontmatter : {}), ...template.keys]));
     if (keys.length === 0) {
-      new import_obsidian16.Notice(t2("notices.noProperties", { note: resolvedNote.basename }));
+      new import_obsidian17.Notice(t2("notices.noProperties", { note: resolvedNote.basename }));
       return;
     }
     const rows = await this.noteManager.resolveFor(
@@ -25487,44 +25604,48 @@ var AttMetaMapPlugin = class extends import_obsidian16.Plugin {
     const diff = buildDiffRows(rows, frontmatter);
     new RefreshModal(this.app, resolvedNote, diff, async (accepted) => {
       if (accepted.length === 0) {
-        new import_obsidian16.Notice(t2("notices.nothingApplied"));
+        new import_obsidian17.Notice(t2("notices.nothingApplied"));
         return;
       }
       for (const row of accepted) {
         await this.noteManager.setProperty(resolvedNote, row.property, row.incoming);
       }
-      new import_obsidian16.Notice(t2("notices.applied", { count: accepted.length }));
+      new import_obsidian17.Notice(t2("notices.applied", { count: accepted.length }));
     }).open();
   }
   registerVaultEvents() {
     this.registerEvent(this.app.vault.on("create", (file) => {
-      if (!(file instanceof import_obsidian16.TFile)) return;
+      if (!(file instanceof import_obsidian17.TFile)) return;
       const group = this.groupFor(file);
       if (!(group == null ? void 0 : group.autoCreateOnNew)) return;
-      window.setTimeout(() => {
-        void this.noteManager.createNote(file, group);
-      }, 500);
+      window.setTimeout(() => runInBackground(
+        () => this.noteManager.createNote(file, group),
+        "Could not create note for new resource"
+      ), 500);
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       var _a, _b;
-      if (!(file instanceof import_obsidian16.TFile)) return;
+      if (!(file instanceof import_obsidian17.TFile)) return;
       if (this.noteManager.isPendingMove(oldPath) || this.attachmentOrganizer.isPendingMove(oldPath)) return;
       const oldExt = (_b = ((_a = oldPath.split("/").pop()) != null ? _a : "").split(".").pop()) != null ? _b : "";
       const before = groupForAttachment(this.settings.groups, oldPath, oldExt);
       const after = this.groupFor(file);
-      void (async () => {
+      runInBackground(async () => {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
         } else {
           if (after == null ? void 0 : after.autoCreateOnNew) await this.noteManager.createNote(file, after);
         }
-      })();
+      }, "Could not synchronize renamed resource");
     }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (!(file instanceof import_obsidian16.TFile)) return;
+      if (!(file instanceof import_obsidian17.TFile)) return;
       const group = this.groupFor(file);
       if (!(group == null ? void 0 : group.syncUpdatedOnModify)) return;
-      void this.noteManager.touchUpdated(file, group);
+      runInBackground(
+        () => this.noteManager.touchUpdated(file, group),
+        "Could not synchronize resource timestamp"
+      );
     }));
     this.registerEvent(this.app.metadataCache.on("changed", () => this.registry.invalidate()));
   }

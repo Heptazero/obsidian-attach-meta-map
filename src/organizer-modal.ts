@@ -2,6 +2,7 @@ import { App, Modal, Setting } from 'obsidian';
 import { AttachmentMovePlan } from './attachment-rules';
 import { buildChangeTree, ChangeTreeNode } from './change-tree';
 import { t } from './i18n/i18n';
+import { runInBackground } from './background-task';
 
 function renderTree(parent: HTMLElement, nodes: ChangeTreeNode[]): void {
   const list = parent.createEl('ul', { cls: 'amm-change-tree' });
@@ -58,7 +59,7 @@ export class OrganizerPreviewModal extends Modal {
         .setCta()
         .onClick(() => {
           this.close();
-          void this.onConfirm();
+          runInBackground(() => this.onConfirm(), 'Could not apply attachment plan');
         }));
   }
 

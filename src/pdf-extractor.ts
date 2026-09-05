@@ -116,49 +116,68 @@ export interface LookupResult {
 
 export const EMPTY_LOOKUP: LookupResult = { title: '', author: '', year: '' };
 
-interface CrossRefAuthor { family?: string; given?: string; name?: string }
-interface CrossRefWork {
-  title?: string[];
-  author?: CrossRefAuthor[];
-  issued?: { 'date-parts'?: number[][] };
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
-interface CrossRefResponse { message: CrossRefWork }
+
+function optionalString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+export function parseCrossRefLookup(value: unknown): LookupResult {
+  const work = record(record(value)?.message);
+  if (!work) return { ...EMPTY_LOOKUP };
+
+  const titles = Array.isArray(work.title) ? work.title : [];
+  const authors = Array.isArray(work.author)
+    ? work.author.flatMap(value => {
+      const author = record(value);
+      if (!author) return [];
+      const name = optionalString(author.name);
+      if (name) return [name];
+      const combined = [optionalString(author.family), optionalString(author.given)]
+        .filter(Boolean).join(', ');
+      return combined ? [combined] : [];
+    })
+    : [];
+  const issued = record(work.issued);
+  const dateParts = issued && Array.isArray(issued['date-parts']) ? issued['date-parts'] : [];
+  const firstDate = Array.isArray(dateParts[0]) ? dateParts[0] : [];
+  const year = typeof firstDate[0] === 'number' ? String(firstDate[0]) : '';
+
+  return {
+    title: optionalString(titles[0]),
+    author: authors.join('; '),
+    year,
+  };
+}
 
 export async function lookupDoi(doi: string): Promise<LookupResult> {
   try {
     const response = await requestUrl(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
-    const work = (response.json as CrossRefResponse).message;
-    const authors = (work.author ?? [])
-      .map(a => a.name ?? [a.family, a.given].filter(Boolean).join(', '))
-      .filter(a => a.length > 0);
-    const year = work.issued?.['date-parts']?.[0]?.[0];
-    return {
-      title: work.title?.[0] ?? '',
-      author: authors.join('; '),
-      year: year ? String(year) : '',
-    };
+    return parseCrossRefLookup(response.json);
   } catch {
     return { ...EMPTY_LOOKUP };
   }
 }
 
-interface OpenLibraryBook {
-  title?: string;
-  authors?: { key?: string }[];
-  by_statement?: string;
-  publish_date?: string;
+export function parseOpenLibraryLookup(value: unknown): LookupResult {
+  const data = record(value);
+  if (!data) return { ...EMPTY_LOOKUP };
+  const publishDate = optionalString(data.publish_date);
+  return {
+    title: optionalString(data.title),
+    author: optionalString(data.by_statement),
+    year: /\b(1[5-9]\d{2}|20\d{2})\b/.exec(publishDate)?.[1] ?? '',
+  };
 }
 
 export async function lookupIsbn(isbn: string): Promise<LookupResult> {
   try {
     const response = await requestUrl(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`);
-    const data = response.json as OpenLibraryBook;
-    const year = /\b(1[5-9]\d{2}|20\d{2})\b/.exec(data.publish_date ?? '')?.[1] ?? '';
-    return {
-      title: data.title ?? '',
-      author: data.by_statement ?? '',
-      year,
-    };
+    return parseOpenLibraryLookup(response.json);
   } catch {
     return { ...EMPTY_LOOKUP };
   }

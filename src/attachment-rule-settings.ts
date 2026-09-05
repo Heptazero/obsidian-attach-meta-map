@@ -4,6 +4,7 @@ import { AttachmentRule } from './types';
 import { createAttachmentRule, isCatchAllRule } from './attachment-rules';
 import { ExtensionSuggest, FolderListSuggest, FolderSuggest } from './suggesters';
 import { t } from './i18n/i18n';
+import { runInBackground } from './background-task';
 
 function folders(value: string): string[] {
   return value.split(',').map(part => part.trim().replace(/^\/+|\/+$/g, '')).filter(Boolean);
@@ -117,12 +118,12 @@ export class AttachmentRuleSettings {
         this.renderActions(el, rule);
       }, summaryActions => {
         summaryButton(summaryActions, 'arrow-up', t('settings.rules.moveUp'), index === 0,
-          () => { void this.move(index, -1); });
+          () => runInBackground(() => this.move(index, -1), 'Could not move attachment rule'));
         summaryButton(summaryActions, 'arrow-down', t('settings.rules.moveDown'),
           index === this.plugin.settings.attachmentRules.length - 1,
-          () => { void this.move(index, 1); });
+          () => runInBackground(() => this.move(index, 1), 'Could not move attachment rule'));
         summaryButton(summaryActions, 'trash', t('settings.rules.remove'), false,
-          () => { void this.remove(rule); });
+          () => runInBackground(() => this.remove(rule), 'Could not remove attachment rule'));
       });
     });
 
@@ -130,14 +131,14 @@ export class AttachmentRuleSettings {
       .addButton(button => button
         .setButtonText(t('settings.rules.add'))
         .setCta()
-        .onClick(() => { void (async () => {
+        .onClick(() => runInBackground(async () => {
           const index = this.plugin.settings.attachmentRules.length + 1;
           this.plugin.settings.attachmentRules.push(createAttachmentRule({
             name: t('settings.rules.defaultName', { index }),
           }));
           await this.plugin.saveSettings();
           this.redisplay();
-        })(); }));
+        }, 'Could not add attachment rule')));
   }
 
   private renderConditions(body: HTMLElement, rule: AttachmentRule): void {
@@ -152,10 +153,13 @@ export class AttachmentRuleSettings {
       .setDesc(t('settings.rules.fields.sourceFoldersDesc'))
       .addText(text => {
         text.setValue(rule.sourceFolders.join(', ')).onChange(value => {
-          void updateSourceFolders(value, includeSubfoldersSetting);
+          runInBackground(
+            () => updateSourceFolders(value, includeSubfoldersSetting),
+            'Could not update source folders',
+          );
         });
         new FolderListSuggest(this.app, text.inputEl, value => {
-          void updateSourceFolders(value, includeSubfoldersSetting);
+          return updateSourceFolders(value, includeSubfoldersSetting);
         });
       });
 
@@ -178,7 +182,7 @@ export class AttachmentRuleSettings {
         });
         new FolderListSuggest(this.app, text.inputEl, value => {
           rule.excludedFolders = folders(value);
-          void this.plugin.saveSettings();
+          return this.plugin.saveSettings();
         });
       });
 
@@ -198,7 +202,7 @@ export class AttachmentRuleSettings {
         });
         new ExtensionSuggest(this.app, text.inputEl, value => {
           rule[key] = extensions(value);
-          void this.plugin.saveSettings();
+          return this.plugin.saveSettings();
         });
       });
   }

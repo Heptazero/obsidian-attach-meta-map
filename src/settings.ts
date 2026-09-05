@@ -1,4 +1,5 @@
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
+import type { SettingDefinitionItem } from 'obsidian';
 import type AttMetaMapPlugin from './main';
 import { SOURCE_DEFS } from './sources';
 import { createGroup, groupCreatesNotes } from './settings-model';
@@ -6,6 +7,7 @@ import { MappingGroup, SourceKind, UiLanguage } from './types';
 import { FolderSuggest, PropertySuggest, TemplateFileSuggest } from './suggesters';
 import { t } from './i18n/i18n';
 import { AttachmentRuleSettings } from './attachment-rule-settings';
+import { runInBackground } from './background-task';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,19 +32,74 @@ function confirmModal(app: App, message: string): Promise<boolean> {
 
 const KIND_ORDER: SourceKind[] = ['vault', 'pdf', 'lookup'];
 
+const SEARCHABLE_SETTING_KEYS = [
+  'settings.language.name',
+  'settings.templateFolders.name',
+  'settings.sections.mapping',
+  'settings.rules.title',
+  'settings.group.name',
+  'settings.group.layout.name',
+  'settings.group.createNoteFile.name',
+  'settings.group.auxiliaryPrefix.name',
+  'settings.group.collectionFolder.name',
+  'settings.group.attachmentDepth.name',
+  'settings.group.resourceFolder.name',
+  'settings.group.noteFolder.name',
+  'settings.group.extensions.name',
+  'settings.group.template.name',
+  'settings.group.mirror.name',
+  'settings.group.noteName.name',
+  'settings.group.linkTemplate.name',
+  'settings.group.embed.name',
+  'settings.group.syncUpdated.name',
+  'settings.group.pdfExtraction.name',
+  'settings.group.doiLookup.name',
+  'settings.group.sanitize.name',
+  'settings.group.backfill.name',
+  'settings.group.upgrade.name',
+] as const;
+
 /** 'general' | 'mapping' | 'rules' | a group's id. */
 type TabId = string;
 
 export class AttMetaMapSettingTab extends PluginSettingTab {
   private activeTab: TabId = 'general';
   private tabButtons = new Map<TabId, HTMLButtonElement>();
+  private declarativeHost: HTMLElement | null = null;
 
   constructor(app: App, private plugin: AttMetaMapPlugin) {
     super(app, plugin);
   }
 
+  /**
+   * Obsidian 1.13+ search bridge. The custom render keeps the established
+   * tabbed, collapsible UI intact while aliases make every setting discoverable.
+   * Older Obsidian versions ignore this method and use display().
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [{
+      name: 'Att Meta Map',
+      desc: t('settings.groups.desc'),
+      aliases: this.searchAliases(),
+      render: setting => {
+        const host = setting.settingEl;
+        setting.setClass('amm-settings-host');
+        host.empty();
+        this.declarativeHost = host;
+        this.renderSettings(host);
+        return () => {
+          if (this.declarativeHost === host) this.declarativeHost = null;
+        };
+      },
+    }];
+  }
+
   display(): void {
-    const { containerEl } = this;
+    this.declarativeHost = null;
+    this.renderSettings(this.containerEl);
+  }
+
+  private renderSettings(containerEl: HTMLElement): void {
     containerEl.empty();
     containerEl.addClass('amm-settings');
     this.plugin.registry.invalidate();
@@ -66,13 +123,27 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
   /** A settings change on the active tab: rebuild but keep the scroll spot. */
   private redisplay(): void {
     const top = this.containerEl.scrollTop;
-    this.display();
+    if (this.declarativeHost) {
+      // This host exists only when Obsidian 1.13+ invoked the declarative render.
+      // eslint-disable-next-line obsidianmd/no-unsupported-api
+      this.update();
+    }
+    else this.renderSettings(this.containerEl);
     window.requestAnimationFrame(() => { this.containerEl.scrollTop = top; });
   }
 
   private switchTab(id: TabId): void {
     this.activeTab = id;
-    this.display();
+    this.redisplay();
+  }
+
+  private searchAliases(): string[] {
+    const names = [
+      ...SEARCHABLE_SETTING_KEYS.map(key => t(key)),
+      ...SOURCE_DEFS.map(def => t(`sources.${def.id}.name`)),
+      ...this.plugin.settings.groups.map(group => group.name).filter(Boolean),
+    ];
+    return Array.from(new Set(names));
   }
 
   /** Renaming a group shouldn't rebuild the whole page and drop focus mid-keystroke. */
@@ -108,12 +179,12 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       cls: 'amm-tab-add',
       attr: { 'aria-label': t('settings.groups.add') },
     });
-    addBtn.addEventListener('click', () => { void (async () => {
+    addBtn.addEventListener('click', () => runInBackground(async () => {
       const group = createGroup({ name: t('settings.groups.newName') });
       this.plugin.settings.groups.push(group);
       await this.plugin.saveSettings();
       this.switchTab(group.id);
-    })(); });
+    }, 'Could not add mapping group'));
   }
 
   // --- general -----------------------------------------------------------
@@ -218,13 +289,13 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       .addExtraButton(btn => btn
         .setIcon('trash')
         .setTooltip(t('settings.group.remove'))
-        .onClick(() => { void (async () => {
+        .onClick(() => runInBackground(async () => {
           const ok = await confirmModal(this.app, t('settings.group.removeConfirm', { name: group.name }));
           if (!ok) return;
           this.plugin.settings.groups = this.plugin.settings.groups.filter(g => g.id !== group.id);
           await this.plugin.saveSettings();
           this.switchTab('general');
-        })(); }));
+        }, 'Could not remove mapping group')));
 
     new Setting(body)
       .setName(t('settings.group.layout.name'))
@@ -425,7 +496,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     const preview = body.createEl('div', { cls: 'amm-template-preview' });
 
     const showKeys = (path: string): void => {
-      void (async () => {
+      runInBackground(async () => {
         if (!path) {
           preview.setText(t('settings.group.template.builtin'));
           return;
@@ -440,7 +511,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         preview.setText(keys.length
           ? t('settings.group.template.keys', { keys: keys.join('  ·  ') })
           : t('settings.group.template.noKeys'));
-      })();
+      }, 'Could not preview template');
     };
 
     setting.addText(text => {
@@ -531,7 +602,10 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .setButtonText(t('settings.group.backfill.run'))
         .setCta()
         .onClick(() => {
-          void this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups);
+          runInBackground(
+            () => this.plugin.backfillManager.runForGroup(group, this.plugin.settings.groups),
+            'Could not backfill mapping group',
+          );
         }));
 
     if (!groupCreatesNotes(group)) return;
@@ -542,7 +616,10 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       .addButton(btn => btn
         .setButtonText(t('settings.group.upgrade.run'))
         .onClick(() => {
-          void this.plugin.upgradeManager.runForGroup(group);
+          runInBackground(
+            () => this.plugin.upgradeManager.runForGroup(group),
+            'Could not align mapping group',
+          );
         }));
   }
 }

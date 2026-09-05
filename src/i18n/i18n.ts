@@ -1,11 +1,12 @@
 import i18next from 'i18next';
+import { getLanguage } from 'obsidian';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
 import { UiLanguage } from '../types';
 
 function resolveLanguage(preference: UiLanguage): string {
   if (preference !== 'auto') return preference;
-  const appLanguage = window.localStorage.getItem('language') ?? 'en';
+  const appLanguage = getLanguage();
   return appLanguage.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
 

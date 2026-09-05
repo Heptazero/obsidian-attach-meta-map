@@ -2,6 +2,7 @@ import { App, Modal, Setting } from 'obsidian';
 import type { CreatePlan } from './creation-plan';
 import { t } from './i18n/i18n';
 import { buildChangeTree, ChangeTreeNode } from './change-tree';
+import { runInBackground } from './background-task';
 
 function renderTree(parent: HTMLElement, nodes: ChangeTreeNode[]): void {
   const list = parent.createEl('ul', { cls: 'amm-change-tree' });
@@ -54,7 +55,7 @@ export class BackfillPreviewModal extends Modal {
         .onClick(() => {
           this.confirmed = true;
           this.close();
-          void this.onConfirm();
+          runInBackground(() => this.onConfirm(), 'Could not apply backfill plan');
         }));
   }
 

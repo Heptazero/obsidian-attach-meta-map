@@ -1,4 +1,5 @@
 import { AbstractInputSuggest, App, TFile, prepareFuzzySearch } from 'obsidian';
+import { runInBackground } from './background-task';
 
 function rank(query: string, items: string[], limit = 20): string[] {
   const trimmed = query.trim();
@@ -21,7 +22,7 @@ abstract class CsvSuggest extends AbstractInputSuggest<string> {
   constructor(
     app: App,
     private input: HTMLInputElement,
-    private onPickList: (value: string) => void,
+    private onPickList: (value: string) => void | Promise<void>,
   ) {
     super(app, input);
   }
@@ -36,7 +37,7 @@ abstract class CsvSuggest extends AbstractInputSuggest<string> {
     else parts[parts.length - 1] = value;
     const next = Array.from(new Set(parts)).join(', ');
     this.setValue(next);
-    this.onPickList(next);
+    runInBackground(() => this.onPickList(next), 'Could not apply suggested list');
     this.close();
   }
 }
@@ -47,7 +48,7 @@ export class PropertySuggest extends AbstractInputSuggest<string> {
     app: App,
     input: HTMLInputElement,
     private items: () => Promise<string[]>,
-    private onPick: (value: string) => void,
+    private onPick: (value: string) => void | Promise<void>,
   ) {
     super(app, input);
   }
@@ -62,7 +63,7 @@ export class PropertySuggest extends AbstractInputSuggest<string> {
 
   selectSuggestion(value: string): void {
     this.setValue(value);
-    this.onPick(value);
+    runInBackground(() => this.onPick(value), 'Could not apply suggested property');
     this.close();
   }
 }
@@ -72,7 +73,7 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
   constructor(
     app: App,
     input: HTMLInputElement,
-    private onPick: (path: string) => void,
+    private onPick: (path: string) => void | Promise<void>,
   ) {
     super(app, input);
   }
@@ -88,7 +89,10 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
 
   selectSuggestion(value: string): void {
     this.setValue(value === '/' ? '' : value);
-    this.onPick(value === '/' ? '' : value);
+    runInBackground(
+      () => this.onPick(value === '/' ? '' : value),
+      'Could not apply suggested folder',
+    );
     this.close();
   }
 }
@@ -135,7 +139,7 @@ export class TemplateFileSuggest extends AbstractInputSuggest<string> {
     app: App,
     input: HTMLInputElement,
     private files: () => TFile[],
-    private onPick: (path: string) => void,
+    private onPick: (path: string) => void | Promise<void>,
   ) {
     super(app, input);
   }
@@ -150,7 +154,7 @@ export class TemplateFileSuggest extends AbstractInputSuggest<string> {
 
   selectSuggestion(value: string): void {
     this.setValue(value);
-    this.onPick(value);
+    runInBackground(() => this.onPick(value), 'Could not apply suggested template');
     this.close();
   }
 }

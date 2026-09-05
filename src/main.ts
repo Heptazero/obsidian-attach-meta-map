@@ -14,6 +14,7 @@ import { groupForAttachment } from './paths';
 import { initI18n, t } from './i18n/i18n';
 import { RESOURCE_RELATIONS_VIEW, ResourceRelationsView } from './relations-view';
 import { AttachmentOrganizer } from './attachment-organizer';
+import { runInBackground } from './background-task';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -57,7 +58,10 @@ export default class AttMetaMapPlugin extends Plugin {
         const file = this.app.workspace.getActiveFile();
         if (!file) return false;
         if (checking) return this.pairOpener.resolvePair(file, this.settings.groups) !== null;
-        void this.pairOpener.openPair(file, this.settings.groups);
+        runInBackground(
+          () => this.pairOpener.openPair(file, this.settings.groups),
+          'Could not open resource pair',
+        );
         return true;
       },
     });
@@ -69,7 +73,7 @@ export default class AttMetaMapPlugin extends Plugin {
         const file = this.app.workspace.getActiveFile();
         if (!file) return false;
         if (checking) return this.pairOpener.resolvePair(file, this.settings.groups) !== null;
-        void this.refreshMetadata(file);
+        runInBackground(() => this.refreshMetadata(file), 'Could not refresh metadata');
         return true;
       },
     });
@@ -92,16 +96,22 @@ export default class AttMetaMapPlugin extends Plugin {
     this.addCommand({
       id: 'open-relations-panel',
       name: t('commands.openRelationsPanel'),
-      callback: () => { void this.openRelationsPanel(); },
+      callback: () => runInBackground(
+        () => this.openRelationsPanel(),
+        'Could not open relations panel',
+      ),
     });
     this.addRibbonIcon('links', t('commands.openRelationsPanel'), () => {
-      void this.openRelationsPanel();
+      runInBackground(() => this.openRelationsPanel(), 'Could not open relations panel');
     });
 
     this.addCommand({
       id: 'backfill-all',
       name: t('commands.backfill'),
-      callback: () => { void this.backfillManager.runForAll(this.settings.groups); },
+      callback: () => runInBackground(
+        () => this.backfillManager.runForAll(this.settings.groups),
+        'Could not backfill notes',
+      ),
     });
 
     this.addCommand({
@@ -151,22 +161,22 @@ export default class AttMetaMapPlugin extends Plugin {
           menu.addItem(item => item
             .setTitle(t('commands.organizeNoteAttachments'))
             .setIcon('folder-input')
-            .onClick(() => this.attachmentOrganizer.organizeNote(file)));
+            .onClick(() => { this.attachmentOrganizer.organizeNote(file); }));
         } else if (file.extension !== 'canvas') {
           menu.addItem(item => item
             .setTitle(t('commands.organizeAttachment'))
             .setIcon('folder-input')
-            .onClick(() => this.attachmentOrganizer.organizeAttachment(file)));
+            .onClick(() => { this.attachmentOrganizer.organizeAttachment(file); }));
         }
       } else if (file instanceof TFolder) {
         menu.addItem(item => item
           .setTitle(t('commands.organizeFolder'))
           .setIcon('folder-input')
-          .onClick(() => this.attachmentOrganizer.organizeFolder(file, false)));
+          .onClick(() => { this.attachmentOrganizer.organizeFolder(file, false); }));
         menu.addItem(item => item
           .setTitle(t('commands.organizeFolderRecursive'))
           .setIcon('folders')
-          .onClick(() => this.attachmentOrganizer.organizeFolder(file, true)));
+          .onClick(() => { this.attachmentOrganizer.organizeFolder(file, true); }));
       }
     }));
   }
@@ -232,7 +242,10 @@ export default class AttMetaMapPlugin extends Plugin {
       const group = this.groupFor(file);
       if (!group?.autoCreateOnNew) return;
       // Give Obsidian a moment to finish writing the file before reading it.
-      window.setTimeout(() => { void this.noteManager.createNote(file, group); }, 500);
+      window.setTimeout(() => runInBackground(
+        () => this.noteManager.createNote(file, group),
+        'Could not create note for new resource',
+      ), 500);
     }));
 
     this.registerEvent(this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
@@ -245,20 +258,23 @@ export default class AttMetaMapPlugin extends Plugin {
       const before = groupForAttachment(this.settings.groups, oldPath, oldExt);
       const after = this.groupFor(file);
 
-      void (async () => {
+      runInBackground(async () => {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
         } else {
           if (after?.autoCreateOnNew) await this.noteManager.createNote(file, after);
         }
-      })();
+      }, 'Could not synchronize renamed resource');
     }));
 
     this.registerEvent(this.app.vault.on('modify', (file: TAbstractFile) => {
       if (!(file instanceof TFile)) return;
       const group = this.groupFor(file);
       if (!group?.syncUpdatedOnModify) return;
-      void this.noteManager.touchUpdated(file, group);
+      runInBackground(
+        () => this.noteManager.touchUpdated(file, group),
+        'Could not synchronize resource timestamp',
+      );
     }));
 
     // Templates change; the suggestion list should not go stale.

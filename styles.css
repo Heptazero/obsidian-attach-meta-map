@@ -1,5 +1,10 @@
 /* Att Meta Map */
 
+.amm-settings-host {
+  display: block;
+  padding: 0;
+}
+
 .amm-tab-bar {
   display: flex;
   flex-wrap: wrap;

@@ -1,6 +1,7 @@
 import { App, Modal, Setting, TFile } from 'obsidian';
 import { DiffRow, formatValue } from './metadata-diff';
 import { t } from './i18n/i18n';
+import { runInBackground } from './background-task';
 
 export class RefreshModal extends Modal {
   constructor(
@@ -64,7 +65,7 @@ export class RefreshModal extends Modal {
       .addButton(btn => btn.setButtonText(t('refresh.apply')).setCta().onClick(() => {
         const accepted = changed.filter(r => r.takeIncoming);
         this.close();
-        void this.onApply(accepted);
+        runInBackground(() => this.onApply(accepted), 'Could not apply metadata changes');
       }));
   }
 
