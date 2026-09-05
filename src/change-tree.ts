@@ -1,4 +1,4 @@
-import type { CreateChange } from './note-manager';
+import type { CreateChange } from './creation-plan';
 
 export type ChangeTone = 'removed' | 'added' | 'neutral';
 export type ChangeNodeKind = 'folder' | 'file' | 'property';

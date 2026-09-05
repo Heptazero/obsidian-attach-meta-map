@@ -1,7 +1,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import { MappingGroup } from './types';
 import { NoteManager } from './note-manager';
-import type { CreatePlan } from './note-manager';
+import type { CreatePlan } from './creation-plan';
 import { groupForAttachment, resourceRoot } from './paths';
 import { t } from './i18n/i18n';
 import { BackfillPreviewModal } from './backfill-modal';

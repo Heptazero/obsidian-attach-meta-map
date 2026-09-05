@@ -1,4 +1,4 @@
-import { FieldValue, ResolvedField } from './sources';
+import type { FieldValue, ResolvedField } from './metadata-types';
 
 /** `<% ... %>` / `<%* ... %>` — Templater syntax we deliberately do not run. */
 const TEMPLATER_BLOCK = /<%[\s\S]*?%>/g;

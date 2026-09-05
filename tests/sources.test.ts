@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUILTIN_TEMPLATE_KEYS, SOURCE_DEFS, createGroup, defaultMapping, groupCreatesNotes,
-  normalizeSettings, resolveFields, sanitizeListValue,
+  BUILTIN_TEMPLATE_KEYS, SOURCE_DEFS, resolveFields, sanitizeListValue,
 } from '../src/sources';
+import {
+  createGroup, defaultMapping, groupCreatesNotes, normalizeSettings,
+} from '../src/settings-model';
 import { SourceValues } from '../src/types';
 
 const values: SourceValues = {

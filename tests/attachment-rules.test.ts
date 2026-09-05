@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createAttachmentRule, isCatchAllRule, matchesAttachmentRule, owningGroup, planAttachmentMoves,
 } from '../src/attachment-rules';
-import { createGroup } from '../src/sources';
+import { createGroup } from '../src/settings-model';
 
 const papers = createGroup({
   id: 'papers', name: 'Papers', layout: 'folder', collectionFolder: 'Library',

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { App, TFile } from 'obsidian';
 import { NoteManager } from '../src/note-manager';
-import { createGroup, defaultSettings } from '../src/sources';
+import { createGroup, defaultSettings } from '../src/settings-model';
 import { TemplateRegistry } from '../src/template-registry';
 
 function makeFile(path: string): TFile {

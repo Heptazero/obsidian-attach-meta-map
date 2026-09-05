@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGroup } from '../src/sources';
+import { createGroup } from '../src/settings-model';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
   folderDepth, isAtFolderDepth, isDirectChild, linkFor, normalizeForMatch, notePathCandidates,

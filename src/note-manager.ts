@@ -1,13 +1,17 @@
 import { App, Notice, TFile, normalizePath } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
-import { BUILTIN_TEMPLATE_KEYS, FieldValue, ResolvedField, resolveFields } from './sources';
+import { BUILTIN_TEMPLATE_KEYS, resolveFields } from './sources';
+import type { FieldValue, ResolvedField } from './metadata-types';
 import {
   folderItemCandidates, isAtFolderDepth, isInFolder, linkFor,
   normalizeForMatch, notePathCandidates, noteRoot, resourceRoot, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
-import { autoFillableRows, buildDiffRows } from './refresh-modal';
+import { autoFillableRows, buildDiffRows } from './metadata-diff';
+import {
+  CreateChange, CreatePlan, planWithChanges, sameChanges,
+} from './creation-plan';
 import {
   EMPTY_LOOKUP, EMPTY_PDF_METADATA, LookupResult, PdfMetadataExtractor,
   lookupDoi, lookupIsbn,
@@ -18,18 +22,6 @@ import {
 } from './resource-links';
 
 const toDate = (ms: number): string => new Date(ms).toISOString().split('T')[0];
-
-export type CreateChange =
-  | { kind: 'move'; from: string; to: string }
-  | { kind: 'create-note'; path: string }
-  | { kind: 'update-source'; notePath: string; link: string };
-
-export interface CreatePlan {
-  attachment: TFile;
-  group: MappingGroup;
-  mode: 'create' | 'auxiliary';
-  changes: CreateChange[];
-}
 
 export interface UnbindContext {
   note: TFile;
@@ -391,9 +383,7 @@ export class NoteManager {
       if (!this.noteHasSourceLink(note, link)) {
         changes.push({ kind: 'update-source', notePath: note.path, link });
       }
-      return changes.length > 0
-        ? { attachment, group, mode: 'auxiliary', changes }
-        : null;
+      return planWithChanges(attachment, group, 'auxiliary', changes);
     }
 
     if (this.findNote(group, attachment.path)) return null;
@@ -401,10 +391,9 @@ export class NoteManager {
     if (group.layout === 'sidecar') {
       const notePath = this.targetNotePath(group, attachment.path);
       if (this.app.vault.getFileByPath(notePath)) return null;
-      return {
-        attachment, group, mode: 'create',
-        changes: [{ kind: 'create-note', path: notePath }],
-      };
+      return planWithChanges(attachment, group, 'create', [
+        { kind: 'create-note', path: notePath },
+      ]);
     }
 
     const item = this.folderItemFor(attachment, group);
@@ -413,13 +402,13 @@ export class NoteManager {
     const to = normalizePath(item.attachmentPath);
     const changes: CreateChange[] = from === to ? [] : [{ kind: 'move', from, to }];
     if (group.createNoteFile) changes.push({ kind: 'create-note', path: normalizePath(item.notePath) });
-    return changes.length > 0 ? { attachment, group, mode: 'create', changes } : null;
+    return planWithChanges(attachment, group, 'create', changes);
   }
 
   /** Apply one previously previewed item; the mutating path rechecks safety. */
   async applyCreatePlan(plan: CreatePlan): Promise<void> {
     const fresh = this.planCreate(plan.attachment, plan.group);
-    if (!fresh || JSON.stringify(fresh.changes) !== JSON.stringify(plan.changes)) {
+    if (!fresh || !sameChanges(fresh.changes, plan.changes)) {
       throw new Error('Batch plan changed before apply');
     }
     await this.createNote(fresh.attachment, fresh.group);

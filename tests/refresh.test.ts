@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { autoFillableRows, buildDiffRows, formatValue } from '../src/refresh-modal';
-import { ResolvedField } from '../src/sources';
+import { autoFillableRows, buildDiffRows, formatValue } from '../src/metadata-diff';
+import type { ResolvedField } from '../src/metadata-types';
 
 const row = (property: string, value: ResolvedField['value']): ResolvedField =>
   ({ id: property, property, kind: 'pdf', value });

@@ -1,6 +1,7 @@
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import type AttMetaMapPlugin from './main';
-import { SOURCE_DEFS, createGroup, groupCreatesNotes } from './sources';
+import { SOURCE_DEFS } from './sources';
+import { createGroup, groupCreatesNotes } from './settings-model';
 import { MappingGroup, SourceKind, UiLanguage } from './types';
 import { FolderSuggest, PropertySuggest, TemplateFileSuggest } from './suggesters';
 import { t } from './i18n/i18n';

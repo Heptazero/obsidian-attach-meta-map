@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { builtinTemplate, parseTemplate, renderNote, serializeValue } from '../src/template';
-import { ResolvedField } from '../src/sources';
+import type { ResolvedField } from '../src/metadata-types';
 
 const row = (property: string, value: ResolvedField['value']): ResolvedField =>
   ({ id: property, property, kind: 'pdf', value });

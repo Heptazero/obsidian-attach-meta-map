@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from 'obsidian';
-import type { CreatePlan } from './note-manager';
+import type { CreatePlan } from './creation-plan';
 import { t } from './i18n/i18n';
 import { buildChangeTree, ChangeTreeNode } from './change-tree';
 

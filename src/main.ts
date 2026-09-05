@@ -1,12 +1,13 @@
 import { Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { AttMetaMapSettings, MappingGroup } from './types';
-import { normalizeSettings } from './sources';
+import { normalizeSettings } from './settings-model';
 import { NoteManager } from './note-manager';
 import { TemplateRegistry } from './template-registry';
 import { BackfillManager } from './backfill';
 import { UpgradeManager } from './upgrade';
 import { PairOpener } from './pair-opener';
-import { RefreshModal, buildDiffRows } from './refresh-modal';
+import { RefreshModal } from './refresh-modal';
+import { buildDiffRows } from './metadata-diff';
 import { UnbindModal } from './unbind-modal';
 import { AttMetaMapSettingTab } from './settings';
 import { groupForAttachment } from './paths';
