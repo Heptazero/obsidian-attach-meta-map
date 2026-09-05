@@ -1,139 +1,177 @@
 # Att Meta Map
 
-把资源集合映射成一篇索引笔记：**`source` 决定关系，模板决定字段，映射决定其他值从哪来**。
+[简体中文](./README.zh-CN.md)
 
-Fork 自 [Attachments Library](https://github.com/compadrejunior/attachments-library)（José Compadre Junior，MIT）。
+Att Meta Map turns resource collections into index notes in Obsidian. The model is deliberately simple: **`source` defines the relationship, the template defines the fields, and the mapping defines where other values come from.**
 
-## 核心模型
+Forked from [Attachments Library](https://github.com/compadrejunior/attachments-library) by José Compadre Junior (MIT).
 
-三句话：
+## What it does
 
-1. **`source` 是固定关系字段**：一个双链或双链列表，决定哪些资源属于这篇索引笔记；不经过字段映射。
-2. **每组指一个模板文件**（比如 `99_assets/template/tmp_paper.md`）。模板 frontmatter 里有哪些键，这一组的笔记就有哪些元数据字段。
-3. **全局一张元数据映射表**：映射表说了「PDF 作者 → author」，但模板里没有 `author`，就不写。
+### Keep one explicit relationship
 
-所以元数据字段不需要开关——模板本身就是开关；`source` 由插件始终维护。
+Every managed note has a fixed `source` property containing one wikilink or a list of wikilinks. That property is the only authority for deciding which resources belong to the note.
 
-## 和上游的差别
+- Same names, folders, and file sizes never create an existing relationship by themselves.
+- One note can point to an original PDF, a translation, slides, data, or other companion material.
+- From either the note or any linked resource, **Open paired view** opens the resources on the left and reuses one note tab on the right.
+- The **Resource relations** side panel lists every `source` entry and lets you open or explicitly unbind it. Unbinding never deletes a file.
 
-| | 上游 | 本 fork |
-|---|---|---|
-| 字段 | 15 个写死 | 模板决定，映射表只管来源 |
-| 自定义字段 | 改代码 | 往模板加一行 |
-| 映射配置 | 无 | 全局一份，输入框模糊匹配已有模板的键 |
-| 映射 | 一个附件夹 → 一个笔记夹 | 任意多组；聚合模式一个集合根目录，分离模式两条根目录 |
-| 布局 | 只有镜像 sidecar | sidecar 或 folder（附件搬进新建的文件夹和笔记放一起）|
-| 笔记名 | `a.pdf.md` | 模板可配，默认 `a.md`，撞名自动退回带扩展名 |
-| 链接 | 写死全路径 | 模板可配，默认 `[[a.pdf]]` |
-| 重新抽取 | 无 | 左右两列对比，逐行二选一 |
-| 打开 | 无 | 分屏左右显示（附件左/笔记右），复用同一标签，双向可触发 |
-| DOI/ISBN | 有开关没接线 | 真接上了 |
-| 语言 | en / pt-BR | 中文 / English，可选跟随 Obsidian |
+### Choose a sidecar or folder layout
 
-## 布局：sidecar / folder
+- **Sidecar** keeps resources and notes under separate roots. Resources stay in place; notes can mirror the resource folder structure.
+- **Folder** uses one collection root. You select the exact attachment depth: root files are depth `0`, the next level is depth `1`, and so on.
 
-每组选一种布局，创建组时定：
+At folder depth `0`, a loose resource is folded into a new item folder and, when enabled, gets a note beside it. At depth `1` or deeper, its current parent is already the final item folder, so Att Meta Map creates the note in place and never adds another nested folder.
 
-- **sidecar**（默认）：资源文件夹和笔记文件夹分开配置。资源原地不动，笔记建在另一个根目录下，两者靠 `source` 互相认识。
-- **folder**：只配置一个**资源集合文件夹**，再选择附件所在的精确层级。资源和笔记始终在同一个条目文件夹里。
+Folder groups can recognize several companion prefixes such as `cn_`, `zh_`, or `slides_`. A companion whose remaining name matches an existing item joins that item folder and is appended to the note's `source` list.
 
-folder 布局不再有“附件文件夹 / 笔记文件夹”两个字段，也没有“镜像子文件夹”。“附件所在层级”中，`0` 表示集合根目录里的直接文件，`1` 表示下一层文件夹里的文件，依此类推；只处理选中的精确层级。`0` 级资源会新建条目文件夹并搬进去；`1` 级及以上视为已经位于最终文件夹，只在原目录创建笔记，绝不继续嵌套。文件夹可以随意改名，不参与关系判断。插件不监听 `delete`；已有配对只由笔记中的 `source` 决定。
+### Let templates control metadata
 
-**触发方式**：和 sidecar 模式共用同一个开关（"附件新增时自动…"）。`0` 级时自动创建条目文件夹并搬入；更深层级只在附件所在目录建笔记。关掉后只能靠命令手动触发。
+Each group selects one Markdown template. Its frontmatter keys are the allow-list for the note; a global mapping says which source may fill each key.
 
-**已有关系只认 `source`**：同名、同目录和文件尺寸都不构成绑定。结构只能帮助批量补齐发现“可能需要补写 source”的候选；写入关系前必须出现在预览中并由用户确认。
+Available sources include:
 
-**只要文件夹，不要笔记**：folder 布局组里有一个"为新附件建笔记"开关，关掉之后，折叠这件事照常发生——同名文件夹照建、附件照样搬进去——但不再生成 `.md`，模板、映射和 PDF/DOI 抽取跟着一起停用。适合"就是想把某个资料的所有文件归到一个文件夹里"，不需要一篇带 frontmatter 的笔记的情况。
+- vault and filename values: path, name, extension, size, dates, and parsed year/title
+- PDF metadata: title, author, subject, keywords, dates, creator, producer, and page count
+- optional online lookup: DOI or ISBN, title, author, and year
 
-**资源关系**：笔记的 `source` 属性是关系来源。它可以是一个双链，也可以是双链列表；从列表里的任意资源执行「成对打开」都能回到同一篇笔记，从笔记打开时默认使用第一项。folder 布局还可以配置多个附属文件前缀（逗号分隔，如 `cn_, zh_, slides_`）：前缀不同、主体名相同的文件会自动进入同一个资源文件夹，并追加到 `source`。
+Several sources may map to the same property. The first non-empty value wins, so filename or PDF metadata is not overwritten by a later network result. Re-extraction shows the current and incoming values side by side; nothing is overwritten without the selected row.
 
-左侧功能区的链接按钮可打开右侧「资源关系」面板。它跟随当前笔记或已绑定资源，逐项列出 `source`；点击名称打开文件，点击解绑按钮后仍会弹出确认。无法解析的断链也会保留在列表中，方便单独解绑。面板没有删除文件入口。
+### Organize unmanaged attachments with ordered rules
 
-## 模板
+Attachment rules move and rename files that are outside every mapping-group resource root.
 
-- 模板文件夹**自动检测**：Templater 的 `templates_folder`、核心 Templates 插件的目录，设置里还能再补。
-- 模板正文照抄进新笔记，**但 Templater 语法不执行**：`<% ... %>` 段落会被剥掉并提示。像 `tp.file.move()` 这种会把刚建好的笔记挪出映射目录，跟自动映射直接冲突，所以宁可不执行。要 Templater 的动态能力就手动对笔记跑一次 Templater。
-- 模板自带的值原样保留：`type: paper`、`status: active` 这种照抄，只有映射表指到的键才被填。
-- 不选模板则用内置最小字段：`source / title / author / created / updated`，且空值的键不写。
+- Rules run from top to bottom and stop after the first match.
+- Multiple values in one field are OR; different fields are AND; exclusions are NOT; an empty field means unrestricted.
+- Source folders and extensions use fuzzy suggestions from the current vault.
+- Naming supports `{{basename}}`, `{{parent}}`, `{{note}}`, and `{{index}}`.
+- `{{index}}` is recalculated from a complete target snapshot and uses the smallest available positive integers, so a folder containing `1` and `82` can be compacted to `1` and `2`.
 
-## 映射表
+Mapping-group roots are a hard protection boundary. General rules never touch files already owned by a group. Rules are manual only and always show the complete change tree before confirmation.
 
-三类来源：
+## Install
 
-- **库和文件**：路径、文件名、类型、大小、创建/修改日期、**文件名解析出的年份/标题**
-- **PDF 自带**：标题、作者、主题、关键词、内部创建/修改日期、creator、producer、页数
-- **联网查询**：DOI、ISBN、标题、作者、年份
+### Obsidian Community plugins
 
-属性名留空 = 不映射。两个来源可以共用一个属性名（`title` 默认同时是 PDF 标题和 CrossRef 标题的落点，`year` 默认同时是文件名解析和 CrossRef 查询的落点），按目录顺序**先非空者胜**——文件名/PDF 有值时不会被联网结果覆盖，联网只是文件名不符合「作者-年份-标题」格式时的兜底。
+After Att Meta Map is accepted into the Obsidian Community directory, install it from *Settings → Community plugins → Browse*.
 
-## 通用附件规则
+### BRAT or manual installation
 
-“附件规则”页负责组外附件的移动和重命名。规则从上到下匹配，第一条命中后停止；同一栏里的多个文件夹或后缀是“或”，不同条件栏之间是“且”，排除栏是“非”，留空表示不限制。后缀和文件夹输入都支持从当前库模糊选择。
+Until then, add `Heptazero/obsidian-attach-meta-map` in [BRAT](https://obsidian.md/plugins?id=obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/Heptazero/obsidian-attach-meta-map/releases/latest) into:
 
-映射组的资源根目录是硬保护区，优先级高于所有通用规则。无论是整理单个附件还是递归扫描父目录，只要文件已经位于任一组的资源根目录下，通用规则就会跳过；保护不依赖文件后缀。通用规则目前只通过命令或右键手动运行，不注册新的自动搬运监听。
+```text
+<vault>/.obsidian/plugins/att-meta-map/
+```
 
-附件命名保留原扩展名，支持 `{{basename}}`、`{{parent}}`、`{{note}}` 和 `{{index}}`。`{{index}}` 每次根据整个目标目录重新规划，从最小可用正整数开始，不使用“现有最大编号 + 1”；整理整个文件夹时可以把 `1、82` 重新压成连续的 `1、2`。所有变化先显示完整文件夹树，确认后才执行。
+Then reload Obsidian and enable **Att Meta Map** under *Community plugins*.
 
-## 笔记文件名 / 链接模板变量
+## Quick start
 
-`{{basename}}`（不带扩展名）、`{{name}}`（带扩展名）、`{{ext}}`、`{{path}}`、`{{folder}}` 之外，还有 `{{year}}` / `{{title}}`：从文件名里按 Zotero 常见的「作者 - 年份 - 标题」格式拆出来（纯字符串解析，不读文件、不查元数据，附件建笔记前就能算出来）。想要「年份-标题」就写 `{{year}}-{{title}}`。不符合这个格式的文件 `{{year}}` 为空、`{{title}}` 退回完整文件名——不会报错，但结果会带个多余的短横线。
+1. Open *Settings → Att Meta Map* and choose Chinese, English, or *Follow Obsidian* as the interface language.
+2. Add a mapping group and choose **Sidecar** or **Folder**.
+3. Select its resource folder, template, watched extensions, and creation behavior.
+4. Right-click one resource and choose **Open paired view**. If no note exists, the planned note or folder is created according to the group.
+5. Before a large backfill, inspect the complete red/green folder tree and confirm only when every target is correct.
 
-## 命令
+## Relationship model
 
-| 命令 | 作用 |
+The model has three rules:
+
+1. **`source` is fixed.** It is not part of the configurable metadata mapping.
+2. **The template decides which metadata fields exist.** Adding a frontmatter key to the template enables that field for the group.
+3. **The global mapping decides where values come from.** If `PDF author → author` is configured but the template has no `author` key, nothing is written.
+
+The template is therefore the field switch. Att Meta Map always maintains `source`; every other property must be accepted by both the template and the mapping.
+
+## Layout details
+
+### Sidecar
+
+Sidecar groups configure a resource root and a note root separately. Resources are never moved by the mapping feature. Notes may mirror the resource subfolder structure or remain flat.
+
+### Folder
+
+Folder groups configure only one collection root and an exact attachment depth.
+
+- Depth `0`: create an item folder, move the attachment into it, and optionally create the note.
+- Depth `1+`: treat the current parent as the item folder; create the note beside the resource without moving it.
+- Shallower and deeper files are ignored instead of being guessed into the group.
+- Folder names may be changed freely because they do not define the relationship.
+
+Disable **Create a note for new attachments** when you only want folder organization. The item folder is still created at depth `0`, but templates, metadata extraction, and note maintenance are disabled for that group.
+
+## Templates and mappings
+
+Att Meta Map automatically discovers the Templater `templates_folder` and the core Templates folder. Additional template folders can be added in settings.
+
+The template body is copied to each new note. Existing frontmatter values such as `type: paper` or `status: active` are preserved. Templater `<% ... %>` blocks are removed rather than executed, because commands such as `tp.file.move()` can move the new note outside the configured relationship boundary. Run Templater manually afterward when dynamic template behavior is needed.
+
+With no selected template, Att Meta Map uses a minimal built-in set: `source`, `title`, `author`, `created`, and `updated`. Empty properties are omitted.
+
+Note and link templates support:
+
+- `{{basename}}`, `{{name}}`, `{{ext}}`, `{{path}}`, and `{{folder}}`
+- `{{year}}` and `{{title}}`, parsed from common `Author - Year - Title` filenames
+
+If a note-name template requires `{{year}}` but the filename has no year, the whole template falls back to the safe filename instead of producing a malformed partial name. Ambiguous extensionless links are automatically rewritten so `[[paper]]` does not resolve to `paper.md` instead of `paper.pdf`.
+
+## Commands and file menus
+
+| Command | Action |
 |---|---|
-| 成对打开 | 主区域左右分屏，附件左、笔记右；没有笔记就创建。从两边都能触发 |
-| 重新抽取元数据 | 弹对比表：每行「当前值 / 抽取值」二选一，没选的行不动；模板要求但笔记还没有的字段也会列出来 |
-| 解绑当前资源 | 弹出当前笔记的 source 列表；确认后只移除选中的关系，不改标题、正文或文件位置 |
-| 打开资源关系面板 | 在右侧栏列出当前笔记的全部 source，可打开资源或逐项确认解绑 |
-| 补齐缺失的笔记 | 所有组扫一遍，只建没有笔记的附件 |
-| 按规则整理当前笔记的附件 | 找出当前 Markdown 链接的附件，跳过映射组已接管的文件，预览后执行通用规则 |
+| Open paired view | Opens resources on the left and reuses one note tab on the right; creates a missing note when allowed |
+| Re-extract metadata | Shows current and incoming values side by side and applies only selected rows |
+| Unbind current resource | Removes selected `source` relationships after confirmation without moving or deleting files |
+| Open resource relations | Opens the side panel for all `source` entries of the current note or resource |
+| Backfill missing notes | Scans groups, previews every move/note/source change, then applies only after confirmation |
+| Organize attachments linked by current note | Applies general attachment rules to unmanaged links from the active note |
 
-文件列表右键还提供“整理此笔记的附件”“整理此附件”“整理此文件夹”和“整理此文件夹及子文件夹”。四个入口共用同一套规则、预览和执行器。
+File-menu actions also organize one note's attachments, one attachment, one folder, or one folder recursively. Every entry uses the same planner, preview, and guarded executor.
 
-批量补齐会先显示一棵受影响的文件夹树。红色 `−` 表示文件将从旧位置移出（不是删除磁盘文件），绿色 `+` 表示确认后出现的新位置、新笔记或新增的 `source`。取消时不会写入任何内容。
+In change previews, red `−` means a file leaves its old path; it does not mean deletion. Green `+` means a new path, note, or `source` value will appear. Cancelling performs zero writes.
 
-笔记一侧始终复用同一个标签页，不固定（pin）——固定过的叶子会拒绝下一个文件，那正是「每次都新开一个标签」的原因。命令触发时若当前活动标签正好是这篇笔记，附件不会借用它（借用会把笔记标签页顶掉），而是另开一个。
+## Automation and safety
 
-**分屏比例没有公开 API**：Obsidian 没有给插件暴露设置分屏宽度比例的接口，所以左右两栏初始是对半分。手动拖一次分隔线，Obsidian 会记住这个布局，之后同一会话里都维持你调过的比例。
+Mapping groups register `create`, `rename`, and `modify` listeners while the plugin is enabled. Scripts, sync tools, and Git operations may therefore trigger the same events as changes made in Obsidian. General attachment rules do not register automatic listeners.
 
-对比表的范围是**笔记已有的属性 ∪ 模板要求的属性**，默认勾选规则：当前为空 → 选新值；已有内容 → 保留当前；新值为空 → 绝不建议覆盖。设置面板里每组还有一个「对齐所有笔记到当前模板」按钮，做的是同一件事的批量版——自动应用"默认会选中"的那部分，不弹逐篇确认。
+Att Meta Map never listens for `delete` and never automatically deletes notes. If a resource disappears, the note and its inspectable broken `source` link remain.
 
-## DOI / ISBN
+Additional boundaries:
 
-上游导出了 `lookupDoi`/`lookupIsbn` 却从未调用。这里接上了：先在文件名和 PDF 元数据里正则找标识符，找不到再尝试读前两页正文——那步依赖 Obsidian 自带的 `window.pdfjsLib`，拿不到就静默降级。命中后查 CrossRef（DOI）或 Open Library（ISBN）。默认关闭，因为联网。
+- Only properties accepted by both the template and mapping are written.
+- Modified-time sync updates a property only when the note already contains it.
+- Occupied note names fall back to an extension-qualified name; existing files are never overwritten.
+- Batch moves use a pre-execution snapshot and temporary names. If state changes after preview, the entire batch is rejected; failed moves attempt to restore their original paths.
+- Folder layout moves only depth-`0` resources and marks its own moves so the rename listener does not process them again.
 
-## 什么时候会自动触发
+Changes to `data.json` are loaded only when the plugin starts. Disable and re-enable the plugin, use *View → Force Reload*, or restart Obsidian after editing that file externally.
 
-`create` / `rename` / `modify` 三个库事件监听在插件加载时注册一次，此后整个会话期间常驻——不是只在 Obsidian 启动那一刻起作用，也不需要手动执行命令。任何触碰到受监听文件夹的文件系统变化都会触发它们，包括脚本、同步工具、Git 拉取带来的文件变化，不限于在 Obsidian 界面里的操作。插件不监听 `delete`：资源消失时保留笔记和 `source`，避免同步、Git 或临时文件变化级联删除正文。
+## Language and architecture
 
-这些常驻监听只服务映射组。通用附件规则第一版完全手动，不会因为 Markdown 改名或移动而自行整理附件。
+The interface can follow Obsidian or be switched directly between Chinese and English. Translation keys are kept in `src/i18n/locales/en.json` and `src/i18n/locales/zh.json`; UI code does not contain parallel hard-coded copies.
 
-**通过 Obsidian 自身 API 之外的方式改名（比如 shell `mv`）不会触发干净的 `rename` 事件**——Obsidian 的文件系统监听通常把这种外部改动看成旧路径消失 + 新路径出现，也就是各自独立的 `delete` + `create`，批量操作时会在一次重扫描里集中触发。
+The implementation keeps deterministic policy separate from Obsidian mutations:
 
-**改 `data.json` 不会让正在运行的插件立刻生效**：`this.settings` 只在插件加载时从磁盘读一次，运行中不会监视这个文件。想让改动生效，去"第三方插件"里禁用再启用这个插件，或者重启 Obsidian。
+- `settings-model.ts` owns defaults and persisted-setting normalization.
+- `sources.ts` resolves metadata; `metadata-types.ts` contains its shared data model.
+- `metadata-diff.ts` defines refresh and safe-fill decisions without depending on a modal.
+- `paths.ts` owns deterministic folder, name, and link policy.
+- `creation-plan.ts` defines previewable note/folder changes.
+- `attachment-rules.ts` plans general attachment moves; `attachment-organizer.ts` executes confirmed plans.
+- `note-manager.ts` is the Obsidian-facing service that resolves relationships and performs guarded note operations.
 
-## 安全边界
-
-- 只写映射表和模板共同认可的属性，笔记里其他 frontmatter 不动。
-- 「同步更新时间」只刷新笔记本来就有的属性，不会凭空加。
-- 目标笔记名被别的附件占用 → 退回 `a.pdf.md`，不覆盖。
-- 链接不会指向笔记自己：笔记名去掉扩展名时 `[[a]]` 会被 Obsidian 解析成 `a.md`，也就是笔记本身，所以链接默认带扩展名 `[[a.pdf]]`，检测到歧义还会自动补回来。
-- 笔记命名模板引用了 `{{year}}` 但这个附件解析不出年份时，整个模板放弃、退回纯文件名——不产出带残留分隔符（比如开头一个孤立的 `-`）的半成品名字，也不会因为附件改名后不再匹配格式而把一篇已经正确命名的笔记误改名。
-- 插件永不自动删除笔记；删除资源只会留下可检查、可修复的 `source` 断链。
-- 通用附件规则永远先排除映射组资源根目录；组内文件不会被通用兜底规则再次搬走。
-- 附件批量移动采用执行前快照和两阶段临时名；状态在预览后发生变化就整批拒绝执行，失败时尝试恢复原路径。
-- folder 布局只会移动 `0` 级附件；移动本身会触发一次 `rename` 事件，插件在移动期间把这个路径标记为“自己正在处理”，rename 监听器会跳过它。
-
-## 开发
+## Development
 
 ```bash
 npm install
-npm run pipeline   # lint + 测试覆盖率 + 构建
+npm run pipeline
 ```
 
-`src/sources.ts`、`src/paths.ts`、`src/template.ts`、`src/attachment-rules.ts` 是纯逻辑，测试集中在这些边界。
+The pipeline runs the Obsidian lint rules, unit tests with coverage, TypeScript checking, and the production bundle. Obsidian releases contain `main.js`, `manifest.json`, and `styles.css`.
 
-## 许可
+Issues and contributions are welcome in the [GitHub repository](https://github.com/Heptazero/obsidian-attach-meta-map).
 
-MIT，见 [LICENSE](LICENSE)。上游版权归 José Compadre Junior。
+## License
+
+MIT. See [LICENSE](LICENSE). Original Attachments Library copyright belongs to José Compadre Junior.
