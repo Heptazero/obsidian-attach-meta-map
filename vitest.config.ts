@@ -15,8 +15,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       include: [
-        'src/attachment-rules.ts', 'src/sources.ts', 'src/paths.ts',
-        'src/template.ts', 'src/resource-links.ts',
+        'src/attachment-rules.ts', 'src/creation-plan.ts', 'src/metadata-diff.ts',
+        'src/paths.ts', 'src/resource-links.ts', 'src/settings-model.ts',
+        'src/sources.ts', 'src/template.ts',
       ],
       thresholds: {
         lines: 90,
