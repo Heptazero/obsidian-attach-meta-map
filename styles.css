@@ -57,7 +57,10 @@
 }
 
 .amm-accordion-summary {
+  align-items: center;
   cursor: pointer;
+  display: flex;
+  gap: 0.35em;
   padding: 0.6em 0;
   font-weight: var(--font-semibold);
   color: var(--text-normal);
@@ -71,13 +74,41 @@
 .amm-accordion-summary::before {
   content: "▸";
   display: inline-block;
-  width: 1em;
+  flex: 0 0 1em;
   color: var(--text-muted);
   transition: transform 0.1s ease;
 }
 
 .amm-accordion[open] > .amm-accordion-summary::before {
   transform: rotate(90deg);
+}
+
+.amm-accordion-summary-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amm-accordion-summary-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.15em;
+  margin-left: auto;
+}
+
+.amm-accordion-summary-action {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.amm-accordion-summary-action:hover:not(:disabled) {
+  color: var(--text-normal);
+}
+
+.amm-accordion-summary-action:disabled {
+  cursor: default;
+  opacity: 0.35;
 }
 
 .amm-accordion-body {

@@ -24481,10 +24481,27 @@ function confirmRemoval(app, name) {
     new ConfirmModal(app).open();
   });
 }
-function section(body, title, render) {
+function section(body, title, render, renderActions) {
   const details = body.createEl("details", { cls: "amm-accordion" });
-  details.createEl("summary", { text: title, cls: "amm-accordion-summary" });
+  const summary = details.createEl("summary", { cls: "amm-accordion-summary" });
+  summary.createSpan({ text: title, cls: "amm-accordion-summary-title" });
+  if (renderActions) {
+    renderActions(summary.createSpan({ cls: "amm-accordion-summary-actions" }));
+  }
   render(details.createEl("div", { cls: "amm-accordion-body" }));
+}
+function summaryButton(parent, icon, tooltip, disabled, onClick) {
+  const button = parent.createEl("button", {
+    cls: "amm-accordion-summary-action clickable-icon",
+    attr: { "aria-label": tooltip, title: tooltip, type: "button" }
+  });
+  (0, import_obsidian11.setIcon)(button, icon);
+  button.disabled = disabled;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!disabled) onClick();
+  });
 }
 var AttachmentRuleSettings = class {
   constructor(app, plugin, redisplay) {
@@ -24514,13 +24531,34 @@ var AttachmentRuleSettings = class {
         }));
         this.renderConditions(el, rule);
         this.renderActions(el, rule);
-        new import_obsidian11.Setting(el).setName(t2("settings.rules.fields.order")).addExtraButton((button) => button.setIcon("arrow-up").setTooltip(t2("settings.rules.moveUp")).setDisabled(index === 0).onClick(() => {
-          void this.move(index, -1);
-        })).addExtraButton((button) => button.setIcon("arrow-down").setTooltip(t2("settings.rules.moveDown")).setDisabled(index === this.plugin.settings.attachmentRules.length - 1).onClick(() => {
-          void this.move(index, 1);
-        })).addExtraButton((button) => button.setIcon("trash").setTooltip(t2("settings.rules.remove")).onClick(() => {
-          void this.remove(rule);
-        }));
+      }, (summaryActions) => {
+        summaryButton(
+          summaryActions,
+          "arrow-up",
+          t2("settings.rules.moveUp"),
+          index === 0,
+          () => {
+            void this.move(index, -1);
+          }
+        );
+        summaryButton(
+          summaryActions,
+          "arrow-down",
+          t2("settings.rules.moveDown"),
+          index === this.plugin.settings.attachmentRules.length - 1,
+          () => {
+            void this.move(index, 1);
+          }
+        );
+        summaryButton(
+          summaryActions,
+          "trash",
+          t2("settings.rules.remove"),
+          false,
+          () => {
+            void this.remove(rule);
+          }
+        );
       });
     });
     new import_obsidian11.Setting(containerEl).addButton((button) => button.setButtonText(t2("settings.rules.add")).setCta().onClick(() => {
@@ -24535,17 +24573,20 @@ var AttachmentRuleSettings = class {
     }));
   }
   renderConditions(body, rule) {
+    const updateSourceFolders = async (value, includeSubfoldersSetting2) => {
+      rule.sourceFolders = folders(value);
+      includeSubfoldersSetting2.setDisabled(rule.sourceFolders.length === 0);
+      await this.plugin.saveSettings();
+    };
     new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.sourceFolders")).setDesc(t2("settings.rules.fields.sourceFoldersDesc")).addText((text) => {
-      text.setValue(rule.sourceFolders.join(", ")).onChange(async (value) => {
-        rule.sourceFolders = folders(value);
-        await this.plugin.saveSettings();
+      text.setValue(rule.sourceFolders.join(", ")).onChange((value) => {
+        void updateSourceFolders(value, includeSubfoldersSetting);
       });
       new FolderListSuggest(this.app, text.inputEl, (value) => {
-        rule.sourceFolders = folders(value);
-        void this.plugin.saveSettings();
+        void updateSourceFolders(value, includeSubfoldersSetting);
       });
     });
-    new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
+    const includeSubfoldersSetting = new import_obsidian11.Setting(body).setName(t2("settings.rules.fields.includeSubfolders")).setDisabled(rule.sourceFolders.length === 0).addToggle((toggle) => toggle.setValue(rule.includeSubfolders).onChange(async (value) => {
       rule.includeSubfolders = value;
       await this.plugin.saveSettings();
     }));

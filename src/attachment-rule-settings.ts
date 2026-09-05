@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, Setting, setIcon } from 'obsidian';
 import type AttMetaMapPlugin from './main';
 import { AttachmentRule } from './types';
 import { createAttachmentRule, isCatchAllRule } from './attachment-rules';
@@ -37,10 +37,39 @@ function confirmRemoval(app: App, name: string): Promise<boolean> {
   });
 }
 
-function section(body: HTMLElement, title: string, render: (el: HTMLElement) => void): void {
+function section(
+  body: HTMLElement,
+  title: string,
+  render: (el: HTMLElement) => void,
+  renderActions?: (el: HTMLElement) => void,
+): void {
   const details = body.createEl('details', { cls: 'amm-accordion' });
-  details.createEl('summary', { text: title, cls: 'amm-accordion-summary' });
+  const summary = details.createEl('summary', { cls: 'amm-accordion-summary' });
+  summary.createSpan({ text: title, cls: 'amm-accordion-summary-title' });
+  if (renderActions) {
+    renderActions(summary.createSpan({ cls: 'amm-accordion-summary-actions' }));
+  }
   render(details.createEl('div', { cls: 'amm-accordion-body' }));
+}
+
+function summaryButton(
+  parent: HTMLElement,
+  icon: 'arrow-up' | 'arrow-down' | 'trash',
+  tooltip: string,
+  disabled: boolean,
+  onClick: () => void,
+): void {
+  const button = parent.createEl('button', {
+    cls: 'amm-accordion-summary-action clickable-icon',
+    attr: { 'aria-label': tooltip, title: tooltip, type: 'button' },
+  });
+  setIcon(button, icon);
+  button.disabled = disabled;
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!disabled) onClick();
+  });
 }
 
 export class AttachmentRuleSettings {
@@ -86,23 +115,14 @@ export class AttachmentRuleSettings {
 
         this.renderConditions(el, rule);
         this.renderActions(el, rule);
-
-        new Setting(el)
-          .setName(t('settings.rules.fields.order'))
-          .addExtraButton(button => button
-            .setIcon('arrow-up')
-            .setTooltip(t('settings.rules.moveUp'))
-            .setDisabled(index === 0)
-            .onClick(() => { void this.move(index, -1); }))
-          .addExtraButton(button => button
-            .setIcon('arrow-down')
-            .setTooltip(t('settings.rules.moveDown'))
-            .setDisabled(index === this.plugin.settings.attachmentRules.length - 1)
-            .onClick(() => { void this.move(index, 1); }))
-          .addExtraButton(button => button
-            .setIcon('trash')
-            .setTooltip(t('settings.rules.remove'))
-            .onClick(() => { void this.remove(rule); }));
+      }, summaryActions => {
+        summaryButton(summaryActions, 'arrow-up', t('settings.rules.moveUp'), index === 0,
+          () => { void this.move(index, -1); });
+        summaryButton(summaryActions, 'arrow-down', t('settings.rules.moveDown'),
+          index === this.plugin.settings.attachmentRules.length - 1,
+          () => { void this.move(index, 1); });
+        summaryButton(summaryActions, 'trash', t('settings.rules.remove'), false,
+          () => { void this.remove(rule); });
       });
     });
 
@@ -121,22 +141,27 @@ export class AttachmentRuleSettings {
   }
 
   private renderConditions(body: HTMLElement, rule: AttachmentRule): void {
+    const updateSourceFolders = async (value: string, includeSubfoldersSetting: Setting): Promise<void> => {
+      rule.sourceFolders = folders(value);
+      includeSubfoldersSetting.setDisabled(rule.sourceFolders.length === 0);
+      await this.plugin.saveSettings();
+    };
+
     new Setting(body)
       .setName(t('settings.rules.fields.sourceFolders'))
       .setDesc(t('settings.rules.fields.sourceFoldersDesc'))
       .addText(text => {
-        text.setValue(rule.sourceFolders.join(', ')).onChange(async value => {
-          rule.sourceFolders = folders(value);
-          await this.plugin.saveSettings();
+        text.setValue(rule.sourceFolders.join(', ')).onChange(value => {
+          void updateSourceFolders(value, includeSubfoldersSetting);
         });
         new FolderListSuggest(this.app, text.inputEl, value => {
-          rule.sourceFolders = folders(value);
-          void this.plugin.saveSettings();
+          void updateSourceFolders(value, includeSubfoldersSetting);
         });
       });
 
-    new Setting(body)
+    const includeSubfoldersSetting = new Setting(body)
       .setName(t('settings.rules.fields.includeSubfolders'))
+      .setDisabled(rule.sourceFolders.length === 0)
       .addToggle(toggle => toggle
         .setValue(rule.includeSubfolders)
         .onChange(async value => {
