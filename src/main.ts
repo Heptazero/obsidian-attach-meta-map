@@ -15,6 +15,7 @@ import { initI18n, t } from './i18n/i18n';
 import { RESOURCE_RELATIONS_VIEW, ResourceRelationsView } from './relations-view';
 import { AttachmentOrganizer } from './attachment-organizer';
 import { runInBackground } from './background-task';
+import { routeAttachment } from './attachment-rules';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -125,6 +126,17 @@ export default class AttMetaMapPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: 'process-active-attachment',
+      name: t('commands.processActiveAttachment'),
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension === 'md' || file.extension === 'canvas') return false;
+        if (!checking) this.processAttachment(file);
+        return true;
+      },
+    });
+
     this.registerOrganizerMenus();
 
     this.addSettingTab(new AttMetaMapSettingTab(this.app, this));
@@ -166,7 +178,7 @@ export default class AttMetaMapPlugin extends Plugin {
           menu.addItem(item => item
             .setTitle(t('commands.organizeAttachment'))
             .setIcon('folder-input')
-            .onClick(() => { this.attachmentOrganizer.organizeAttachment(file); }));
+            .onClick(() => { this.processAttachment(file); }));
         }
       } else if (file instanceof TFolder) {
         menu.addItem(item => item
@@ -179,6 +191,25 @@ export default class AttMetaMapPlugin extends Plugin {
           .onClick(() => { this.attachmentOrganizer.organizeFolder(file, true); }));
       }
     }));
+  }
+
+  private processAttachment(file: TFile): void {
+    const route = routeAttachment(this.settings.groups, file.path, file.extension);
+    if (route.kind === 'mapping') {
+      runInBackground(
+        () => this.backfillManager.runForAttachment(file, route.group),
+        'Could not process mapped attachment',
+      );
+      return;
+    }
+    if (route.kind === 'protected') {
+      new Notice(t('organizer.protectedNoMatch', {
+        file: file.name,
+        group: route.group.name,
+      }));
+      return;
+    }
+    this.attachmentOrganizer.organizeAttachment(file);
   }
 
   /** Re-extract, then let the user pick a side per property. */

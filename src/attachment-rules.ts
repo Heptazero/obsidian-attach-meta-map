@@ -1,7 +1,9 @@
 import {
   AttachmentRule, AttachmentRuleInput, MappingGroup,
 } from './types';
-import { cleanFolder, isInFolder, resourceRoot, splitName } from './paths';
+import {
+  cleanFolder, groupForAttachment, isInFolder, resourceRoot, splitName,
+} from './paths';
 
 let ruleCounter = 0;
 
@@ -42,6 +44,21 @@ export function owningGroup(groups: MappingGroup[], path: string): MappingGroup 
     length = root.length;
   }
   return owner;
+}
+
+export type AttachmentHandlingRoute =
+  | { kind: 'mapping'; group: MappingGroup }
+  | { kind: 'protected'; group: MappingGroup }
+  | { kind: 'generic' };
+
+/** Route one explicit attachment action without weakening mapping-root protection. */
+export function routeAttachment(
+  groups: MappingGroup[], path: string, extension: string,
+): AttachmentHandlingRoute {
+  const group = groupForAttachment(groups, path, extension);
+  if (group) return { kind: 'mapping', group };
+  const owner = owningGroup(groups, path);
+  return owner ? { kind: 'protected', group: owner } : { kind: 'generic' };
 }
 
 function extensionOf(path: string): string {

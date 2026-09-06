@@ -34,10 +34,18 @@ export class BackfillManager {
     return this.previewAndRun([group], allGroups);
   }
 
+  async runForAttachment(attachment: TFile, group: MappingGroup): Promise<BackfillResult> {
+    const plan = this.noteManager.planCreate(attachment, group);
+    return this.previewPlans(plan ? [plan] : []);
+  }
+
   private async previewAndRun(
     groups: MappingGroup[], allGroups: MappingGroup[],
   ): Promise<BackfillResult> {
-    const plans = this.plansFor(groups, allGroups);
+    return this.previewPlans(this.plansFor(groups, allGroups));
+  }
+
+  private async previewPlans(plans: CreatePlan[]): Promise<BackfillResult> {
     if (plans.length === 0) {
       new Notice(t('backfill.nothingToChange'));
       return { created: 0, skipped: 0 };

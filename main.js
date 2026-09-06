@@ -4584,6 +4584,12 @@ function owningGroup(groups, path) {
   }
   return owner;
 }
+function routeAttachment(groups, path, extension) {
+  const group = groupForAttachment(groups, path, extension);
+  if (group) return { kind: "mapping", group };
+  const owner = owningGroup(groups, path);
+  return owner ? { kind: "protected", group: owner } : { kind: "generic" };
+}
 function extensionOf(path) {
   var _a;
   const name = (_a = path.split("/").pop()) != null ? _a : path;
@@ -22733,8 +22739,9 @@ var en_default = {
     openRelationsPanel: "Open resource relations panel",
     backfill: "Create missing notes for all groups",
     organizeActiveNoteAttachments: "Organize attachments for the active note",
+    processActiveAttachment: "Process the active attachment",
     organizeNoteAttachments: "Organize this note's attachments\u2026",
-    organizeAttachment: "Organize this attachment\u2026",
+    organizeAttachment: "Process this attachment\u2026",
     organizeFolder: "Organize this folder\u2026",
     organizeFolderRecursive: "Organize this folder and subfolders\u2026"
   },
@@ -22772,6 +22779,7 @@ var en_default = {
     confirm: "Confirm and apply",
     nothingFound: "No attachments found.",
     onlyManaged: "${count} attachment(s) are owned by mapping groups; generic rules skipped them.",
+    protectedNoMatch: '"${file}" is inside mapping group "${group}", but its extension or folder depth is not handled by that group.',
     nothingToChange: "No matching changes.",
     changedSincePreview: "Files changed after preview; nothing was applied.",
     complete: "Organized ${count} attachment(s).",
@@ -23026,8 +23034,9 @@ var zh_default = {
     openRelationsPanel: "\u6253\u5F00\u8D44\u6E90\u5173\u7CFB\u9762\u677F",
     backfill: "\u7ED9\u6240\u6709\u7EC4\u8865\u9F50\u7F3A\u5931\u7684\u7B14\u8BB0",
     organizeActiveNoteAttachments: "\u6309\u89C4\u5219\u6574\u7406\u5F53\u524D\u7B14\u8BB0\u7684\u9644\u4EF6",
+    processActiveAttachment: "\u5904\u7406\u5F53\u524D\u9644\u4EF6",
     organizeNoteAttachments: "\u6574\u7406\u6B64\u7B14\u8BB0\u7684\u9644\u4EF6\u2026",
-    organizeAttachment: "\u6574\u7406\u6B64\u9644\u4EF6\u2026",
+    organizeAttachment: "\u5904\u7406\u6B64\u9644\u4EF6\u2026",
     organizeFolder: "\u6574\u7406\u6B64\u6587\u4EF6\u5939\u2026",
     organizeFolderRecursive: "\u6574\u7406\u6B64\u6587\u4EF6\u5939\u53CA\u5B50\u6587\u4EF6\u5939\u2026"
   },
@@ -23065,6 +23074,7 @@ var zh_default = {
     confirm: "\u786E\u8BA4\u5E76\u6267\u884C",
     nothingFound: "\u6CA1\u6709\u627E\u5230\u9644\u4EF6\u3002",
     onlyManaged: "${count} \u4E2A\u9644\u4EF6\u7531\u6620\u5C04\u7EC4\u63A5\u7BA1\uFF0C\u901A\u7528\u89C4\u5219\u672A\u5904\u7406\u3002",
+    protectedNoMatch: "\u300C${file}\u300D\u4F4D\u4E8E\u6620\u5C04\u7EC4\u300C${group}\u300D\u7684\u4FDD\u62A4\u76EE\u5F55\uFF0C\u4F46\u4E0D\u5339\u914D\u8BE5\u7EC4\u8BBE\u7F6E\u7684\u540E\u7F00\u6216\u6587\u4EF6\u5939\u5C42\u7EA7\u3002",
     nothingToChange: "\u6CA1\u6709\u5339\u914D\u7684\u6539\u52A8\u3002",
     changedSincePreview: "\u6587\u4EF6\u72B6\u6001\u5DF2\u53D8\u5316\uFF0C\u672C\u6B21\u672A\u6267\u884C\u3002",
     complete: "\u5DF2\u6574\u7406 ${count} \u4E2A\u9644\u4EF6\u3002",
@@ -24096,8 +24106,14 @@ var BackfillManager = class {
   async runForGroup(group, allGroups) {
     return this.previewAndRun([group], allGroups);
   }
+  async runForAttachment(attachment, group) {
+    const plan = this.noteManager.planCreate(attachment, group);
+    return this.previewPlans(plan ? [plan] : []);
+  }
   async previewAndRun(groups, allGroups) {
-    const plans = this.plansFor(groups, allGroups);
+    return this.previewPlans(this.plansFor(groups, allGroups));
+  }
+  async previewPlans(plans) {
     if (plans.length === 0) {
       new import_obsidian6.Notice(t2("backfill.nothingToChange"));
       return { created: 0, skipped: 0 };
@@ -25513,6 +25529,16 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
         return true;
       }
     });
+    this.addCommand({
+      id: "process-active-attachment",
+      name: t2("commands.processActiveAttachment"),
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension === "md" || file.extension === "canvas") return false;
+        if (!checking) this.processAttachment(file);
+        return true;
+      }
+    });
     this.registerOrganizerMenus();
     this.addSettingTab(new AttMetaMapSettingTab(this.app, this));
   }
@@ -25550,7 +25576,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
           }));
         } else if (file.extension !== "canvas") {
           menu.addItem((item) => item.setTitle(t2("commands.organizeAttachment")).setIcon("folder-input").onClick(() => {
-            this.attachmentOrganizer.organizeAttachment(file);
+            this.processAttachment(file);
           }));
         }
       } else if (file instanceof import_obsidian17.TFolder) {
@@ -25562,6 +25588,24 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
         }));
       }
     }));
+  }
+  processAttachment(file) {
+    const route = routeAttachment(this.settings.groups, file.path, file.extension);
+    if (route.kind === "mapping") {
+      runInBackground(
+        () => this.backfillManager.runForAttachment(file, route.group),
+        "Could not process mapped attachment"
+      );
+      return;
+    }
+    if (route.kind === "protected") {
+      new import_obsidian17.Notice(t2("organizer.protectedNoMatch", {
+        file: file.name,
+        group: route.group.name
+      }));
+      return;
+    }
+    this.attachmentOrganizer.organizeAttachment(file);
   }
   /** Re-extract, then let the user pick a side per property. */
   async refreshMetadata(file) {

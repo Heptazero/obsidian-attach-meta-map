@@ -11,8 +11,9 @@
     "openRelationsPanel": "打开资源关系面板",
     "backfill": "给所有组补齐缺失的笔记",
     "organizeActiveNoteAttachments": "按规则整理当前笔记的附件",
+    "processActiveAttachment": "处理当前附件",
     "organizeNoteAttachments": "整理此笔记的附件…",
-    "organizeAttachment": "整理此附件…",
+    "organizeAttachment": "处理此附件…",
     "organizeFolder": "整理此文件夹…",
     "organizeFolderRecursive": "整理此文件夹及子文件夹…"
   },
@@ -50,6 +51,7 @@
     "confirm": "确认并执行",
     "nothingFound": "没有找到附件。",
     "onlyManaged": "${count} 个附件由映射组接管，通用规则未处理。",
+    "protectedNoMatch": "「${file}」位于映射组「${group}」的保护目录，但不匹配该组设置的后缀或文件夹层级。",
     "nothingToChange": "没有匹配的改动。",
     "changedSincePreview": "文件状态已变化，本次未执行。",
     "complete": "已整理 ${count} 个附件。",

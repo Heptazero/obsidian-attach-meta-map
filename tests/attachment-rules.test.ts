@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createAttachmentRule, isCatchAllRule, matchesAttachmentRule, owningGroup, planAttachmentMoves,
+  routeAttachment,
 } from '../src/attachment-rules';
 import { createGroup } from '../src/settings-model';
 
@@ -59,6 +60,16 @@ describe('mapping-group ownership', () => {
       id: 'nested', name: 'Nested', resourceFolder: 'Library/Special', noteFolder: 'Notes',
     });
     expect(owningGroup([papers, nested], 'Library/Special/a.pdf')).toBe(nested);
+  });
+
+  it('routes eligible files to their mapping group and keeps the whole root protected', () => {
+    expect(routeAttachment([papers], 'Library/a.pdf', 'pdf'))
+      .toEqual({ kind: 'mapping', group: papers });
+    expect(routeAttachment([papers], 'Library/Item/a.pdf', 'pdf'))
+      .toEqual({ kind: 'protected', group: papers });
+    expect(routeAttachment([papers], 'Library/a.png', 'png'))
+      .toEqual({ kind: 'protected', group: papers });
+    expect(routeAttachment([papers], 'Inbox/a.pdf', 'pdf')).toEqual({ kind: 'generic' });
   });
 });
 

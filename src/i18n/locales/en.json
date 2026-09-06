@@ -11,8 +11,9 @@
     "openRelationsPanel": "Open resource relations panel",
     "backfill": "Create missing notes for all groups",
     "organizeActiveNoteAttachments": "Organize attachments for the active note",
+    "processActiveAttachment": "Process the active attachment",
     "organizeNoteAttachments": "Organize this note's attachments…",
-    "organizeAttachment": "Organize this attachment…",
+    "organizeAttachment": "Process this attachment…",
     "organizeFolder": "Organize this folder…",
     "organizeFolderRecursive": "Organize this folder and subfolders…"
   },
@@ -50,6 +51,7 @@
     "confirm": "Confirm and apply",
     "nothingFound": "No attachments found.",
     "onlyManaged": "${count} attachment(s) are owned by mapping groups; generic rules skipped them.",
+    "protectedNoMatch": "\"${file}\" is inside mapping group \"${group}\", but its extension or folder depth is not handled by that group.",
     "nothingToChange": "No matching changes.",
     "changedSincePreview": "Files changed after preview; nothing was applied.",
     "complete": "Organized ${count} attachment(s).",
