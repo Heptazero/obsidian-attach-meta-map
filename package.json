@@ -1,6 +1,6 @@
 {
   "name": "att-meta-map",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Resource collections mapped to index notes through the source property",
   "author": "Hzero",
   "main": "main.js",
@@ -19,7 +19,7 @@
     "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "^0.28.1",
     "eslint": "^10.6.0",
-    "eslint-plugin-obsidianmd": "^0.3.0",
+    "eslint-plugin-obsidianmd": "^0.4.2",
     "obsidian": "latest",
     "tslib": "2.4.0",
     "typescript": "^5.9.3",

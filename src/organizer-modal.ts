@@ -8,7 +8,7 @@ function renderTree(parent: HTMLElement, nodes: ChangeTreeNode[]): void {
   const list = parent.createEl('ul', { cls: 'amm-change-tree' });
   for (const node of nodes) {
     const row = list.createEl('li');
-    const line = row.createEl('div', {
+    const line = row.createDiv({
       cls: `amm-change-line is-${node.kind} is-${node.tone}`,
     });
     if (node.tone === 'removed') line.createSpan({ text: '−', cls: 'amm-change-marker' });
@@ -41,13 +41,13 @@ export class OrganizerPreviewModal extends Modal {
       }),
     });
 
-    const legend = this.contentEl.createEl('div', { cls: 'amm-change-legend' });
+    const legend = this.contentEl.createDiv({ cls: 'amm-change-legend' });
     legend.createSpan({ text: t('backfill.legend.removed'), cls: 'is-removed' });
     legend.createSpan({ text: t('backfill.legend.added'), cls: 'is-added' });
 
     const changes = this.moves.map(move => ({ kind: 'move' as const, from: move.from, to: move.to }));
     const tree = buildChangeTree(changes);
-    const viewport = this.contentEl.createEl('div', { cls: 'amm-change-tree-viewport' });
+    const viewport = this.contentEl.createDiv({ cls: 'amm-change-tree-viewport' });
     renderTree(viewport, tree.children);
 
     new Setting(this.contentEl)

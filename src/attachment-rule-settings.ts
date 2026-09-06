@@ -50,7 +50,7 @@ function section(
   if (renderActions) {
     renderActions(summary.createSpan({ cls: 'amm-accordion-summary-actions' }));
   }
-  render(details.createEl('div', { cls: 'amm-accordion-body' }));
+  render(details.createDiv({ cls: 'amm-accordion-body' }));
 }
 
 function summaryButton(
@@ -93,7 +93,7 @@ export class AttachmentRuleSettings {
     this.plugin.settings.attachmentRules.forEach((rule, index) => {
       section(containerEl, `${index + 1}. ${rule.name}`, el => {
         if (isCatchAllRule(rule) && index < this.plugin.settings.attachmentRules.length - 1) {
-          el.createEl('div', {
+          el.createDiv({
             text: t('settings.rules.catchAllWarning'),
             cls: 'amm-rule-warning',
           });

@@ -76,7 +76,7 @@ export class RefreshModal extends Modal {
     const label = td.createEl('label');
     const input = label.createEl('input', { attr: { type: 'radio', name } });
     input.checked = checked;
-    label.createEl('span', {
+    label.createSpan({
       text: text || t('refresh.emptyValue'),
       cls: text ? 'amm-diff-text' : 'amm-diff-text amm-diff-empty',
     });

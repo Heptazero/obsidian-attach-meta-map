@@ -1,4 +1,4 @@
-import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, PluginSettingTab, requireApiVersion, Setting } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import type AttMetaMapPlugin from './main';
 import { SOURCE_DEFS } from './sources';
@@ -105,7 +105,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     this.plugin.registry.invalidate();
 
     this.renderTabBar(containerEl);
-    const content = containerEl.createEl('div', { cls: 'amm-tab-content' });
+    const content = containerEl.createDiv({ cls: 'amm-tab-content' });
 
     if (this.activeTab === 'general') {
       this.renderGeneral(content);
@@ -123,9 +123,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
   /** A settings change on the active tab: rebuild but keep the scroll spot. */
   private redisplay(): void {
     const top = this.containerEl.scrollTop;
-    if (this.declarativeHost) {
-      // This host exists only when Obsidian 1.13+ invoked the declarative render.
-      // eslint-disable-next-line obsidianmd/no-unsupported-api
+    if (requireApiVersion('1.13.0') && this.declarativeHost) {
       this.update();
     }
     else this.renderSettings(this.containerEl);
@@ -155,7 +153,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
   // --- tab bar -------------------------------------------------------------
 
   private renderTabBar(containerEl: HTMLElement): void {
-    const bar = containerEl.createEl('div', { cls: 'amm-tab-bar' });
+    const bar = containerEl.createDiv({ cls: 'amm-tab-bar' });
     this.tabButtons.clear();
 
     const addTab = (id: TabId, label: string): void => {
@@ -272,7 +270,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
     const details = body.createEl('details', { cls: 'amm-accordion' });
     if (defaultOpen) details.setAttr('open', '');
     details.createEl('summary', { text: title, cls: 'amm-accordion-summary' });
-    render(details.createEl('div', { cls: 'amm-accordion-body' }));
+    render(details.createDiv({ cls: 'amm-accordion-body' }));
   }
 
   private renderGroup(body: HTMLElement, group: MappingGroup): void {
@@ -493,7 +491,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       .setName(t('settings.group.template.name'))
       .setDesc(t('settings.group.template.desc'));
 
-    const preview = body.createEl('div', { cls: 'amm-template-preview' });
+    const preview = body.createDiv({ cls: 'amm-template-preview' });
 
     const showKeys = (path: string): void => {
       runInBackground(async () => {

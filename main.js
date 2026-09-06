@@ -24041,7 +24041,7 @@ function renderTree(parent, nodes) {
   const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
   for (const node of nodes) {
     const row = list2.createEl("li");
-    const line = row.createEl("div", {
+    const line = row.createDiv({
       cls: `amm-change-line is-${node.kind} is-${node.tone}`
     });
     if (node.tone === "removed") line.createSpan({ text: "\u2212", cls: "amm-change-marker" });
@@ -24067,11 +24067,11 @@ var BackfillPreviewModal = class extends import_obsidian5.Modal {
     contentEl.createEl("p", {
       text: t2("backfill.previewSubtitle", { items: this.plans.length, changes: changeCount })
     });
-    const legend = contentEl.createEl("div", { cls: "amm-change-legend" });
+    const legend = contentEl.createDiv({ cls: "amm-change-legend" });
     legend.createSpan({ text: t2("backfill.legend.removed"), cls: "is-removed" });
     legend.createSpan({ text: t2("backfill.legend.added"), cls: "is-added" });
     const tree = buildChangeTree(this.plans.flatMap((plan) => plan.changes));
-    const treeViewport = contentEl.createEl("div", { cls: "amm-change-tree-viewport" });
+    const treeViewport = contentEl.createDiv({ cls: "amm-change-tree-viewport" });
     renderTree(treeViewport, tree.children);
     new import_obsidian5.Setting(contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("backfill.confirm")).setCta().onClick(() => {
       this.confirmed = true;
@@ -24372,7 +24372,7 @@ var RefreshModal = class extends import_obsidian9.Modal {
     const label = td.createEl("label");
     const input = label.createEl("input", { attr: { type: "radio", name } });
     input.checked = checked;
-    label.createEl("span", {
+    label.createSpan({
       text: text || t2("refresh.emptyValue"),
       cls: text ? "amm-diff-text" : "amm-diff-text amm-diff-empty"
     });
@@ -24586,7 +24586,7 @@ function section(body, title, render, renderActions) {
   if (renderActions) {
     renderActions(summary.createSpan({ cls: "amm-accordion-summary-actions" }));
   }
-  render(details.createEl("div", { cls: "amm-accordion-body" }));
+  render(details.createDiv({ cls: "amm-accordion-body" }));
 }
 function summaryButton(parent, icon, tooltip, disabled, onClick) {
   const button = parent.createEl("button", {
@@ -24615,7 +24615,7 @@ var AttachmentRuleSettings = class {
     this.plugin.settings.attachmentRules.forEach((rule, index) => {
       section(containerEl, `${index + 1}. ${rule.name}`, (el) => {
         if (isCatchAllRule(rule) && index < this.plugin.settings.attachmentRules.length - 1) {
-          el.createEl("div", {
+          el.createDiv({
             text: t2("settings.rules.catchAllWarning"),
             cls: "amm-rule-warning"
           });
@@ -24832,7 +24832,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
     containerEl.addClass("amm-settings");
     this.plugin.registry.invalidate();
     this.renderTabBar(containerEl);
-    const content = containerEl.createEl("div", { cls: "amm-tab-content" });
+    const content = containerEl.createDiv({ cls: "amm-tab-content" });
     if (this.activeTab === "general") {
       this.renderGeneral(content);
     } else if (this.activeTab === "mapping") {
@@ -24851,7 +24851,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
   /** A settings change on the active tab: rebuild but keep the scroll spot. */
   redisplay() {
     const top = this.containerEl.scrollTop;
-    if (this.declarativeHost) {
+    if ((0, import_obsidian13.requireApiVersion)("1.13.0") && this.declarativeHost) {
       this.update();
     } else this.renderSettings(this.containerEl);
     window.requestAnimationFrame(() => {
@@ -24877,7 +24877,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
   }
   // --- tab bar -------------------------------------------------------------
   renderTabBar(containerEl) {
-    const bar = containerEl.createEl("div", { cls: "amm-tab-bar" });
+    const bar = containerEl.createDiv({ cls: "amm-tab-bar" });
     this.tabButtons.clear();
     const addTab = (id, label) => {
       const btn = bar.createEl("button", {
@@ -24955,7 +24955,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
     const details = body.createEl("details", { cls: "amm-accordion" });
     if (defaultOpen) details.setAttr("open", "");
     details.createEl("summary", { text: title, cls: "amm-accordion-summary" });
-    render(details.createEl("div", { cls: "amm-accordion-body" }));
+    render(details.createDiv({ cls: "amm-accordion-body" }));
   }
   renderGroup(body, group) {
     const createsNotes = groupCreatesNotes(group);
@@ -25076,7 +25076,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
   }
   renderTemplatePicker(body, group) {
     const setting = new import_obsidian13.Setting(body).setName(t2("settings.group.template.name")).setDesc(t2("settings.group.template.desc"));
-    const preview = body.createEl("div", { cls: "amm-template-preview" });
+    const preview = body.createDiv({ cls: "amm-template-preview" });
     const showKeys = (path) => {
       runInBackground(async () => {
         if (!path) {
@@ -25256,7 +25256,7 @@ function renderTree2(parent, nodes) {
   const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
   for (const node of nodes) {
     const row = list2.createEl("li");
-    const line = row.createEl("div", {
+    const line = row.createDiv({
       cls: `amm-change-line is-${node.kind} is-${node.tone}`
     });
     if (node.tone === "removed") line.createSpan({ text: "\u2212", cls: "amm-change-marker" });
@@ -25284,12 +25284,12 @@ var OrganizerPreviewModal = class extends import_obsidian15.Modal {
         unmatched: this.unmatchedCount
       })
     });
-    const legend = this.contentEl.createEl("div", { cls: "amm-change-legend" });
+    const legend = this.contentEl.createDiv({ cls: "amm-change-legend" });
     legend.createSpan({ text: t2("backfill.legend.removed"), cls: "is-removed" });
     legend.createSpan({ text: t2("backfill.legend.added"), cls: "is-added" });
     const changes = this.moves.map((move) => ({ kind: "move", from: move.from, to: move.to }));
     const tree = buildChangeTree(changes);
-    const viewport = this.contentEl.createEl("div", { cls: "amm-change-tree-viewport" });
+    const viewport = this.contentEl.createDiv({ cls: "amm-change-tree-viewport" });
     renderTree2(viewport, tree.children);
     new import_obsidian15.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("organizer.confirm")).setCta().onClick(() => {
       this.close();
