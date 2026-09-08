@@ -3,8 +3,8 @@ import { AttMetaMapSettings, MappingGroup, SourceValues } from './types';
 import { BUILTIN_TEMPLATE_KEYS, resolveFields } from './sources';
 import type { FieldValue, ResolvedField } from './metadata-types';
 import {
-  folderItemCandidates, isAtFolderDepth, isInFolder, linkFor,
-  normalizeForMatch, notePathCandidates, noteRoot, resourceRoot, templateVars,
+  folderItemCandidates, isFolderAttachmentCandidate, isInFolder, linkFor,
+  normalizeForMatch, notePathCandidates, noteRoot, templateVars,
 } from './paths';
 import { ParsedTemplate, RenderedNote, builtinTemplate, renderNote } from './template';
 import { TemplateRegistry } from './template-registry';
@@ -344,10 +344,9 @@ export class NoteManager {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
-    // Folder layout handles one exact configured depth. Deeper or shallower
-    // resources stay untouched rather than being guessed into this group.
-    if (group.layout === 'folder' &&
-        !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
+    // Folder layout handles loose resources at one exact configured depth,
+    // plus the matching item folder one level below for missing-note recovery.
+    if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
     }
 
@@ -362,11 +361,10 @@ export class NoteManager {
 
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
-    // A source hit is authoritative; otherwise only the configured exact
-    // attachment depth is eligible for creation.
+    // A source hit is authoritative. Otherwise accept the configured loose
+    // depth, or one matching item-folder depth for missing-note recovery.
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-    if (group.layout === 'folder' &&
-        !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
+    if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
     }
 

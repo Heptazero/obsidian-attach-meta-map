@@ -20,9 +20,9 @@ Every managed note has a fixed `source` property containing one wikilink or a li
 ### Choose a sidecar or folder layout
 
 - **Sidecar** keeps resources and notes under separate roots. Resources stay in place; notes can mirror the resource folder structure.
-- **Folder** uses one collection root. You select the exact attachment depth: root files are depth `0`, the next level is depth `1`, and so on.
+- **Folder** uses one collection root. You select the exact depth where loose attachments may appear: root files are depth `0`, the next level is depth `1`, and so on.
 
-At folder depth `0`, a loose resource is folded into a new item folder and, when enabled, gets a note beside it. At depth `1` or deeper, its current parent is already the final item folder, so Att Meta Map creates the note in place and never adds another nested folder.
+At any configured depth, a loose resource is folded into its matching item folder and, when enabled, gets a note beside it. If its current parent already matches the item name, that folder is reused and only the note is created. Existing `source` relations remain authoritative and are never folded again.
 
 Folder groups can recognize several companion prefixes such as `cn_`, `zh_`, or `slides_`. A companion whose remaining name matches an existing item joins that item folder and is appended to the note's `source` list.
 
@@ -92,14 +92,14 @@ Sidecar groups configure a resource root and a note root separately. Resources a
 
 ### Folder
 
-Folder groups configure only one collection root and an exact attachment depth.
+Folder groups configure only one collection root and the exact depth where loose attachments may appear.
 
-- Depth `0`: create an item folder, move the attachment into it, and optionally create the note.
-- Depth `1+`: treat the current parent as the item folder; create the note beside the resource without moving it.
+- At any depth, create or reuse the matching item folder, move the attachment when needed, and optionally create the note.
+- A current parent whose name matches the rendered item name is reused, so an already placed attachment only receives its missing note.
 - Shallower and deeper files are ignored instead of being guessed into the group.
-- Folder names may be changed freely because they do not define the relationship.
+- After a `source` relation exists, folder names may be changed freely because they do not define the relationship.
 
-Disable **Create a note for new attachments** when you only want folder organization. The item folder is still created at depth `0`, but templates, metadata extraction, and note maintenance are disabled for that group.
+Disable **Create a note for new attachments** when you only want folder organization. The item folder is still created or reused, but templates, metadata extraction, and note maintenance are disabled for that group.
 
 ## Templates and mappings
 
@@ -143,7 +143,7 @@ Additional boundaries:
 - Modified-time sync updates a property only when the note already contains it.
 - Occupied note names fall back to an extension-qualified name; existing files are never overwritten.
 - Batch moves use a pre-execution snapshot and temporary names. If state changes after preview, the entire batch is rejected; failed moves attempt to restore their original paths.
-- Folder layout moves only depth-`0` resources and marks its own moves so the rename listener does not process them again.
+- Folder layout moves only resources at the configured loose-attachment depth and marks its own moves so the rename listener does not process them again.
 
 Changes to `data.json` are loaded only when the plugin starts. Disable and re-enable the plugin, use *View → Force Reload*, or restart Obsidian after editing that file externally.
 

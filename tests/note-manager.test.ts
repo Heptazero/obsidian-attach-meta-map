@@ -169,7 +169,7 @@ describe('source-based resource relation', () => {
     expect(manager.planCreate(attachment, group)).toBeNull();
   });
 
-  it('never repairs or nests a resource inside a child folder, even when names match', () => {
+  it('creates a fallback source note without nesting when a matching folder has an unrelated note', () => {
     const note = makeFile('Library/Paper/Paper.md');
     const attachment = makeFile('Library/Paper/Paper.pdf');
     const folder = { path: 'Library/Paper', name: 'Paper', children: [note, attachment] };
@@ -181,7 +181,9 @@ describe('source-based resource relation', () => {
       noteNameTemplate: '{{basename}}',
     });
 
-    expect(manager.planCreate(attachment, group)).toBeNull();
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'create-note', path: 'Library/Paper/Paper.pdf.md' },
+    ]);
   });
 
   it('skips an already folded resource when note creation is disabled', () => {
@@ -211,7 +213,7 @@ describe('source-based resource relation', () => {
     expect(attachment.path).toBe('Library/Renamed/Paper.pdf');
   });
 
-  it('creates a note beside an attachment at the configured child depth without moving it', async () => {
+  it('reuses a matching item folder at the configured child depth and only creates its note', async () => {
     const attachment = makeFile('Library/Paper/paper.pdf');
     const { created, manager } = harness([attachment], {});
     const group = createGroup({
@@ -226,6 +228,37 @@ describe('source-based resource relation', () => {
     await manager.createNote(attachment, group);
     expect(attachment.path).toBe('Library/Paper/paper.pdf');
     expect(created.get('Library/Paper/paper.md')).toContain('source: "[[paper.pdf]]"');
+  });
+
+  it('creates an item folder when the configured child depth is only a category', async () => {
+    const attachment = makeFile('Library/Topic/paper.pdf');
+    const { created, manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+      enablePdfMetadataExtraction: false,
+    });
+
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'move', from: 'Library/Topic/paper.pdf', to: 'Library/Topic/paper/paper.pdf' },
+      { kind: 'create-note', path: 'Library/Topic/paper/paper.md' },
+    ]);
+
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Topic/paper/paper.pdf');
+    expect(created.get('Library/Topic/paper/paper.md')).toContain('source: "[[paper.pdf]]"');
+  });
+
+  it('recovers a missing note inside an item folder one level below the loose depth', () => {
+    const attachment = makeFile('Library/Topic/paper/paper.pdf');
+    const { manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+      enablePdfMetadataExtraction: false,
+    });
+
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'create-note', path: 'Library/Topic/paper/paper.md' },
+    ]);
   });
 
   it('does not manage attachments above or below the configured exact depth', () => {

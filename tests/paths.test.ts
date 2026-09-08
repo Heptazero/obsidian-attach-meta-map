@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createGroup } from '../src/settings-model';
 import {
   attachmentCandidates, cleanFolder, folderItemCandidates, groupForAttachment, groupForNote,
-  folderDepth, isAtFolderDepth, isDirectChild, linkFor, normalizeForMatch, notePathCandidates,
+  folderDepth, isAtFolderDepth, isDirectChild, isFolderAttachmentCandidate, linkFor,
+  normalizeForMatch, notePathCandidates,
   relativeTo, renderTemplate, stripPrefix, templateVars,
 } from '../src/paths';
 
@@ -114,21 +115,30 @@ describe('group resolution', () => {
     expect(groupForNote([papers, clips], '98_clip/notes/x.md')?.id).toBe(clips.id);
   });
 
-  it('lets folder layout own only direct files at the collection root', () => {
+  it('owns root-level loose files and matching item folders one level below', () => {
     const collection = createGroup({
       layout: 'folder', collectionFolder: 'Library', watchedExtensions: ['.pdf'],
     });
     expect(groupForAttachment([collection], 'Library/paper.pdf', 'pdf')).toBe(collection);
-    expect(groupForAttachment([collection], 'Library/Paper/paper.pdf', 'pdf')).toBeNull();
+    expect(groupForAttachment([collection], 'Library/Paper/paper.pdf', 'pdf')).toBe(collection);
   });
 
-  it('lets a folder group own one configured child depth only', () => {
+  it('owns loose files at the configured child depth', () => {
     const collection = createGroup({
       layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, watchedExtensions: ['.pdf'],
     });
     expect(groupForAttachment([collection], 'Library/paper.pdf', 'pdf')).toBeNull();
     expect(groupForAttachment([collection], 'Library/Paper/paper.pdf', 'pdf')).toBe(collection);
-    expect(groupForAttachment([collection], 'Library/Topic/Paper/paper.pdf', 'pdf')).toBeNull();
+    expect(groupForAttachment([collection], 'Library/Topic/Other/paper.pdf', 'pdf')).toBeNull();
+  });
+
+  it('also owns a matching item folder one level below the loose depth', () => {
+    const collection = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, watchedExtensions: ['.pdf'],
+    });
+    expect(isFolderAttachmentCandidate(collection, 'Library/Topic/paper/paper.pdf')).toBe(true);
+    expect(groupForAttachment([collection], 'Library/Topic/paper/paper.pdf', 'pdf')).toBe(collection);
+    expect(isFolderAttachmentCandidate(collection, 'Library/Topic/Other/paper.pdf')).toBe(false);
   });
 
   it('ignores groups with an empty folder', () => {
@@ -212,7 +222,7 @@ describe('folderItemCandidates', () => {
     expect(primary.folder).toBe('70_research/random-notes');
   });
 
-  it('keeps an attachment in place above depth zero and creates the note beside it', () => {
+  it('reuses a matching item folder at the configured loose depth', () => {
     const nested = createGroup({
       ...folderPapers, attachmentDepth: 1, noteNameTemplate: '{{basename}}',
     });
@@ -221,6 +231,18 @@ describe('folderItemCandidates', () => {
       folder: '70_research/Paper',
       notePath: '70_research/Paper/paper.md',
       attachmentPath: '70_research/Paper/paper.pdf',
+    });
+  });
+
+  it('creates an item folder inside a non-matching category folder', () => {
+    const nested = createGroup({
+      ...folderPapers, attachmentDepth: 1, noteNameTemplate: '{{basename}}',
+    });
+    const { primary } = folderItemCandidates(nested, '70_research/Topic/paper.pdf');
+    expect(primary).toEqual({
+      folder: '70_research/Topic/paper',
+      notePath: '70_research/Topic/paper/paper.md',
+      attachmentPath: '70_research/Topic/paper/paper.pdf',
     });
   });
 

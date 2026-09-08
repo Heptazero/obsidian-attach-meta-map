@@ -74,7 +74,7 @@ export interface SidecarGroup extends MappingGroupCommon {
 export interface FolderGroup extends MappingGroupCommon {
   layout: 'folder';
   collectionFolder: string;
-  /** Exact folder depth of incoming attachments. Root files are depth 0. */
+  /** Exact folder depth of loose attachments to organize. Root files are depth 0. */
   attachmentDepth: number;
 }
 

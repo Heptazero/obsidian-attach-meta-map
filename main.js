@@ -4411,9 +4411,6 @@ function folderDepth(path, folder) {
   if (!relative) return null;
   return relative.split("/").filter(Boolean).length - 1;
 }
-function isAtFolderDepth(path, folder, depth) {
-  return folderDepth(path, folder) === Math.max(0, Math.floor(depth));
-}
 function splitName(fileName) {
   const dot = fileName.lastIndexOf(".");
   if (dot <= 0) return { basename: fileName, ext: "" };
@@ -4448,7 +4445,7 @@ function groupForAttachment(groups, path, extension) {
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
-    if (group.layout === "folder" && !isAtFolderDepth(path, folder, group.attachmentDepth)) continue;
+    if (group.layout === "folder" && !isFolderAttachmentCandidate(group, path)) continue;
     if (!group.watchedExtensions.map((e) => e.toLowerCase()).includes("." + extension.toLowerCase())) continue;
     if (folder.length > bestLen) {
       best = group;
@@ -4502,6 +4499,21 @@ function folderItemNames(group, attachmentPath) {
   const fileName = (_a = attachmentPath.split("/").pop()) != null ? _a : attachmentPath;
   return Array.from(/* @__PURE__ */ new Set([safeItemName(group, attachmentPath), fileName]));
 }
+function isInMatchingItemFolder(group, attachmentPath) {
+  var _a;
+  if (group.layout !== "folder") return false;
+  const root = resourceRoot(group);
+  const parent = attachmentPath.split("/").slice(0, -1).join("/");
+  if (!parent || cleanFolder(parent) === root) return false;
+  const parentName = (_a = parent.split("/").pop()) != null ? _a : "";
+  return folderItemNames(group, attachmentPath).some((name) => sameFolderName(parentName, name));
+}
+function isFolderAttachmentCandidate(group, attachmentPath) {
+  if (group.layout !== "folder") return false;
+  const depth = folderDepth(attachmentPath, resourceRoot(group));
+  if (depth === group.attachmentDepth) return true;
+  return depth === group.attachmentDepth + 1 && isInMatchingItemFolder(group, attachmentPath);
+}
 function notePathCandidates(group, attachmentPath) {
   var _a;
   const relative = relativeTo(attachmentPath, resourceRoot(group));
@@ -4519,22 +4531,32 @@ function buildFolderItem(dir2, folderName, fileName) {
   const folder = [dir2, folderName].filter(Boolean).join("/");
   return { folder, notePath: `${folder}/${folderName}.md`, attachmentPath: `${folder}/${fileName}` };
 }
+function itemInCurrentFolder(folder, noteName, attachmentPath) {
+  return { folder, notePath: `${folder}/${noteName}.md`, attachmentPath };
+}
+function sameFolderName(actual, expected) {
+  return actual.normalize("NFC").toLowerCase() === expected.normalize("NFC").toLowerCase();
+}
 function folderItemCandidates(group, attachmentPath) {
-  var _a;
+  var _a, _b;
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = (_a = relative.split("/").pop()) != null ? _a : relative;
   const safe = safeItemName(group, attachmentPath);
-  const notes = noteRoot(group);
-  if (group.layout === "folder" && group.attachmentDepth > 0) {
-    const folder = attachmentPath.split("/").slice(0, -1).join("/");
-    return {
-      primary: { folder, notePath: `${folder}/${safe}.md`, attachmentPath },
-      fallback: { folder, notePath: `${folder}/${fileName}.md`, attachmentPath }
-    };
+  const parent = attachmentPath.split("/").slice(0, -1).join("/");
+  const parentName = (_b = parent.split("/").pop()) != null ? _b : "";
+  if (group.layout === "folder" && isInMatchingItemFolder(group, attachmentPath)) {
+    const safeItem = itemInCurrentFolder(parent, safe, attachmentPath);
+    const fileNameItem = itemInCurrentFolder(parent, fileName, attachmentPath);
+    if (sameFolderName(parentName, safe)) {
+      return { primary: safeItem, fallback: fileNameItem };
+    }
+    if (sameFolderName(parentName, fileName)) {
+      return { primary: fileNameItem, fallback: safeItem };
+    }
   }
   return {
-    primary: buildFolderItem(notes, safe, fileName),
-    fallback: buildFolderItem(notes, fileName, fileName)
+    primary: buildFolderItem(parent, safe, fileName),
+    fallback: buildFolderItem(parent, fileName, fileName)
   };
 }
 function linkFor(group, attachmentPath) {
@@ -22924,8 +22946,8 @@ var en_default = {
         desc: "Shared root for the folder layout."
       },
       attachmentDepth: {
-        name: "Attachment depth",
-        desc: "0 is the root, 1 is one level down; only that depth is managed."
+        name: "Loose attachment depth",
+        desc: "0 is the root, 1 is one level down. A matching item folder is reused; otherwise one is created here."
       },
       extensions: {
         name: "Watched extensions",
@@ -23219,8 +23241,8 @@ var zh_default = {
         desc: "\u805A\u5408\u6A21\u5F0F\u7684\u5171\u540C\u6839\u76EE\u5F55\u3002"
       },
       attachmentDepth: {
-        name: "\u9644\u4EF6\u6240\u5728\u5C42\u7EA7",
-        desc: "0 \u662F\u6839\u76EE\u5F55\uFF0C1 \u662F\u4E0B\u4E00\u5C42\uFF1B\u53EA\u5904\u7406\u8FD9\u4E00\u5C42\u3002"
+        name: "\u5F85\u6574\u7406\u9644\u4EF6\u6240\u5728\u5C42\u7EA7",
+        desc: "0 \u662F\u6839\u76EE\u5F55\uFF0C1 \u662F\u4E0B\u4E00\u5C42\u3002\u5DF2\u6709\u5BF9\u5E94\u6761\u76EE\u6587\u4EF6\u5939\u5C31\u590D\u7528\uFF0C\u5426\u5219\u5728\u8FD9\u4E00\u5C42\u5EFA\u7ACB\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
@@ -23654,7 +23676,7 @@ var NoteManager = class {
   async createNote(attachment, group) {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
-    if (group.layout === "folder" && !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
+    if (group.layout === "folder" && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
     }
     if (this.isAuxiliaryFile(attachment, group)) {
@@ -23665,7 +23687,7 @@ var NoteManager = class {
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment, group) {
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
-    if (group.layout === "folder" && !isAtFolderDepth(attachment.path, resourceRoot(group), group.attachmentDepth)) {
+    if (group.layout === "folder" && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
     }
     if (this.isAuxiliaryFile(attachment, group)) {

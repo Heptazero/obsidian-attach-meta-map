@@ -196,8 +196,8 @@
         "desc": "Shared root for the folder layout."
       },
       "attachmentDepth": {
-        "name": "Attachment depth",
-        "desc": "0 is the root, 1 is one level down; only that depth is managed."
+        "name": "Loose attachment depth",
+        "desc": "0 is the root, 1 is one level down. A matching item folder is reused; otherwise one is created here."
       },
       "extensions": {
         "name": "Watched extensions",

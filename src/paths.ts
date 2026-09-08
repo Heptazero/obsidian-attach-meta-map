@@ -79,9 +79,9 @@ export function templateVars(attachmentPath: string): Record<string, string> {
 }
 
 /**
- * A group owns an attachment when the file sits under its resource root
- * with a watched extension. The most specific folder wins, so nested groups
- * (70_research/PDF inside 70_research) resolve predictably.
+ * A group owns a loose attachment at the configured depth, or an attachment
+ * one level deeper whose parent is already its matching item folder. The most
+ * specific root wins, so nested groups resolve predictably.
  */
 export function groupForAttachment(
   groups: MappingGroup[], path: string, extension: string,
@@ -92,7 +92,7 @@ export function groupForAttachment(
     const folder = resourceRoot(group);
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
-    if (group.layout === 'folder' && !isAtFolderDepth(path, folder, group.attachmentDepth)) continue;
+    if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, path)) continue;
     if (!group.watchedExtensions.map(e => e.toLowerCase()).includes('.' + extension.toLowerCase())) continue;
     if (folder.length > bestLen) { best = group; bestLen = folder.length; }
   }
@@ -172,6 +172,24 @@ export function folderItemNames(group: MappingGroup, attachmentPath: string): st
   return Array.from(new Set([safeItemName(group, attachmentPath), fileName]));
 }
 
+/** True when the attachment's current parent is its name-derived item folder. */
+export function isInMatchingItemFolder(group: MappingGroup, attachmentPath: string): boolean {
+  if (group.layout !== 'folder') return false;
+  const root = resourceRoot(group);
+  const parent = attachmentPath.split('/').slice(0, -1).join('/');
+  if (!parent || cleanFolder(parent) === root) return false;
+  const parentName = parent.split('/').pop() ?? '';
+  return folderItemNames(group, attachmentPath).some(name => sameFolderName(parentName, name));
+}
+
+/** Loose input depth plus one recoverable, already-created item-folder depth. */
+export function isFolderAttachmentCandidate(group: MappingGroup, attachmentPath: string): boolean {
+  if (group.layout !== 'folder') return false;
+  const depth = folderDepth(attachmentPath, resourceRoot(group));
+  if (depth === group.attachmentDepth) return true;
+  return depth === group.attachmentDepth + 1 && isInMatchingItemFolder(group, attachmentPath);
+}
+
 export function notePathCandidates(group: MappingGroup, attachmentPath: string): NotePathCandidates {
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
@@ -194,7 +212,7 @@ export interface FolderItem {
   folder: string;
   /** The note inside it. */
   notePath: string;
-  /** Final attachment path; unchanged when the configured depth is above 0. */
+  /** Final attachment path; unchanged when the current parent is already the item folder. */
   attachmentPath: string;
 }
 
@@ -210,6 +228,14 @@ function buildFolderItem(dir: string, folderName: string, fileName: string): Fol
   return { folder, notePath: `${folder}/${folderName}.md`, attachmentPath: `${folder}/${fileName}` };
 }
 
+function itemInCurrentFolder(folder: string, noteName: string, attachmentPath: string): FolderItem {
+  return { folder, notePath: `${folder}/${noteName}.md`, attachmentPath };
+}
+
+function sameFolderName(actual: string, expected: string): boolean {
+  return actual.normalize('NFC').toLowerCase() === expected.normalize('NFC').toLowerCase();
+}
+
 /**
  * Folder layout: attachment and note become siblings inside one new folder,
  * named from the same template as sidecar mode's note name. The attachment
@@ -221,19 +247,23 @@ export function folderItemCandidates(group: MappingGroup, attachmentPath: string
   const relative = relativeTo(attachmentPath, resourceRoot(group));
   const fileName = relative.split('/').pop() ?? relative;
   const safe = safeItemName(group, attachmentPath);
-  const notes = noteRoot(group);
+  const parent = attachmentPath.split('/').slice(0, -1).join('/');
+  const parentName = parent.split('/').pop() ?? '';
 
-  if (group.layout === 'folder' && group.attachmentDepth > 0) {
-    const folder = attachmentPath.split('/').slice(0, -1).join('/');
-    return {
-      primary: { folder, notePath: `${folder}/${safe}.md`, attachmentPath },
-      fallback: { folder, notePath: `${folder}/${fileName}.md`, attachmentPath },
-    };
+  if (group.layout === 'folder' && isInMatchingItemFolder(group, attachmentPath)) {
+    const safeItem = itemInCurrentFolder(parent, safe, attachmentPath);
+    const fileNameItem = itemInCurrentFolder(parent, fileName, attachmentPath);
+    if (sameFolderName(parentName, safe)) {
+      return { primary: safeItem, fallback: fileNameItem };
+    }
+    if (sameFolderName(parentName, fileName)) {
+      return { primary: fileNameItem, fallback: safeItem };
+    }
   }
 
   return {
-    primary: buildFolderItem(notes, safe, fileName),
-    fallback: buildFolderItem(notes, fileName, fileName),
+    primary: buildFolderItem(parent, safe, fileName),
+    fallback: buildFolderItem(parent, fileName, fileName),
   };
 }
 
