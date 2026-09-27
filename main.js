@@ -25177,6 +25177,7 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
 // src/relations-view.ts
 var import_obsidian14 = require("obsidian");
 var RESOURCE_RELATIONS_VIEW = "att-meta-map-relations";
+var RESOURCE_RELATIONS_ICON = "link-2";
 var ResourceRelationsView = class extends import_obsidian14.ItemView {
   constructor(leaf, noteManager, groups, requestUnbind) {
     super(leaf);
@@ -25192,7 +25193,7 @@ var ResourceRelationsView = class extends import_obsidian14.ItemView {
     return t2("relations.title");
   }
   getIcon() {
-    return "links";
+    return RESOURCE_RELATIONS_ICON;
   }
   onOpen() {
     this.contextFile = this.app.workspace.getActiveFile();
@@ -25530,7 +25531,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
         "Could not open relations panel"
       )
     });
-    this.addRibbonIcon("links", t2("commands.openRelationsPanel"), () => {
+    this.addRibbonIcon(RESOURCE_RELATIONS_ICON, t2("commands.openRelationsPanel"), () => {
       runInBackground(() => this.openRelationsPanel(), "Could not open relations panel");
     });
     this.addCommand({

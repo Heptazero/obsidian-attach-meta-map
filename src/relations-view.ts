@@ -4,6 +4,7 @@ import { NoteManager, RelationContext } from './note-manager';
 import { t } from './i18n/i18n';
 
 export const RESOURCE_RELATIONS_VIEW = 'att-meta-map-relations';
+export const RESOURCE_RELATIONS_ICON = 'link-2';
 
 export class ResourceRelationsView extends ItemView {
   private contextFile: TFile | null = null;
@@ -26,7 +27,7 @@ export class ResourceRelationsView extends ItemView {
   }
 
   getIcon(): string {
-    return 'links';
+    return RESOURCE_RELATIONS_ICON;
   }
 
   onOpen(): Promise<void> {

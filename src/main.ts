@@ -12,7 +12,11 @@ import { UnbindModal } from './unbind-modal';
 import { AttMetaMapSettingTab } from './settings';
 import { groupForAttachment } from './paths';
 import { initI18n, t } from './i18n/i18n';
-import { RESOURCE_RELATIONS_VIEW, ResourceRelationsView } from './relations-view';
+import {
+  RESOURCE_RELATIONS_ICON,
+  RESOURCE_RELATIONS_VIEW,
+  ResourceRelationsView,
+} from './relations-view';
 import { AttachmentOrganizer } from './attachment-organizer';
 import { runInBackground } from './background-task';
 import { routeAttachment } from './attachment-rules';
@@ -102,7 +106,7 @@ export default class AttMetaMapPlugin extends Plugin {
         'Could not open relations panel',
       ),
     });
-    this.addRibbonIcon('links', t('commands.openRelationsPanel'), () => {
+    this.addRibbonIcon(RESOURCE_RELATIONS_ICON, t('commands.openRelationsPanel'), () => {
       runInBackground(() => this.openRelationsPanel(), 'Could not open relations panel');
     });
 
