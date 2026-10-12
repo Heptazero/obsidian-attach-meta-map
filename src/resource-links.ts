@@ -42,9 +42,9 @@ export function removeSourceLinks(value: unknown, targets: string[]): string | s
 
   const entries = (Array.isArray(value) ? value : [value])
     .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
-  const remaining = entries.filter(entry =>
-    !sourceLinkTargets(entry).some(target => selected.has(target)),
-  );
+  const remaining = entries.map(entry => entry.replace(WIKI_LINK_RE, (match, target: string) =>
+    selected.has(target.trim()) ? '' : match,
+  ).trim()).filter(Boolean);
 
   if (remaining.length === 0) return undefined;
   return remaining.length === 1 ? remaining[0] : remaining;

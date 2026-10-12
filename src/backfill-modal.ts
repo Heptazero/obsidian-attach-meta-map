@@ -1,22 +1,9 @@
 import { App, Modal, Setting } from 'obsidian';
 import type { CreatePlan } from './creation-plan';
 import { t } from './i18n/i18n';
-import { buildChangeTree, ChangeTreeNode } from './change-tree';
+import { buildChangeTree } from './change-tree';
+import { renderTree } from './change-tree-view';
 import { runInBackground } from './background-task';
-
-function renderTree(parent: HTMLElement, nodes: ChangeTreeNode[]): void {
-  const list = parent.createEl('ul', { cls: 'amm-change-tree' });
-  for (const node of nodes) {
-    const row = list.createEl('li');
-    const line = row.createDiv({
-      cls: `amm-change-line is-${node.kind} is-${node.tone}`,
-    });
-    if (node.tone === 'removed') line.createSpan({ text: '−', cls: 'amm-change-marker' });
-    if (node.tone === 'added') line.createSpan({ text: '+', cls: 'amm-change-marker' });
-    line.createSpan({ text: node.name });
-    if (node.children.length > 0) renderTree(row, node.children);
-  }
-}
 
 export class BackfillPreviewModal extends Modal {
   constructor(

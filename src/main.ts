@@ -20,6 +20,8 @@ import {
 import { AttachmentOrganizer } from './attachment-organizer';
 import { runInBackground } from './background-task';
 import { routeAttachment } from './attachment-rules';
+import { DeletionManager } from './deletion-manager';
+import { confirmDeletion } from './deletion-modal';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -29,6 +31,7 @@ export default class AttMetaMapPlugin extends Plugin {
   upgradeManager: UpgradeManager;
   pairOpener: PairOpener;
   attachmentOrganizer: AttachmentOrganizer;
+  deletionManager: DeletionManager;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -40,6 +43,9 @@ export default class AttMetaMapPlugin extends Plugin {
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
     this.attachmentOrganizer = new AttachmentOrganizer(this.app, () => this.settings);
+    this.deletionManager = new DeletionManager(this.app, () => this.settings,
+      plan => confirmDeletion(this.app, plan));
+    this.register(() => this.deletionManager.stop());
 
     this.registerView(RESOURCE_RELATIONS_VIEW, leaf => new ResourceRelationsView(
       leaf,
@@ -54,6 +60,7 @@ export default class AttMetaMapPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       this.registerVaultEvents();
+      this.deletionManager.start(event => this.registerEvent(event));
     });
 
     this.addCommand({

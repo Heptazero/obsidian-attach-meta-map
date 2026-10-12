@@ -67,6 +67,7 @@ export function defaultSettings(): AttMetaMapSettings {
     extraTemplateFolders: [],
     groups: [createGroup({ name: 'Attachments' })],
     attachmentRules: [],
+    deletion: { resourceToNote: false, noteToResources: false, confirm: true },
   };
 }
 
@@ -102,6 +103,11 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       attachmentRules: Array.isArray(candidate.attachmentRules)
         ? candidate.attachmentRules.map(rule => createAttachmentRule(rule))
         : [],
+      deletion: {
+        resourceToNote: candidate.deletion?.resourceToNote === true,
+        noteToResources: candidate.deletion?.noteToResources === true,
+        confirm: candidate.deletion?.confirm !== false,
+      },
     };
   }
 

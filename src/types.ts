@@ -121,6 +121,13 @@ export interface AttMetaMapSettings {
   groups: MappingGroup[];
   /** Ordered fallback rules for attachments outside every mapping-group root. */
   attachmentRules: AttachmentRule[];
+  deletion: DeletionSettings;
+}
+
+export interface DeletionSettings {
+  resourceToNote: boolean;
+  noteToResources: boolean;
+  confirm: boolean;
 }
 
 export const SETTINGS_VERSION = 6;

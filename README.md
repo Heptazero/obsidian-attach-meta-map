@@ -129,13 +129,21 @@ If a note-name template requires `{{year}}` but the filename has no year, the wh
 
 File-menu actions also organize one note's attachments, one attachment, one folder, or one folder recursively. Every entry uses the same planner, preview, and guarded executor.
 
-In change previews, red `−` means a file leaves its old path; it does not mean deletion. Green `+` means a new path, note, or `source` value will appear. Cancelling performs zero writes.
+In organization and backfill previews, red `−` means a file leaves its old path; it does not mean deletion. Green `+` means a new path, note, or `source` value will appear. Cancelling those previews performs zero writes. Linked deletion has its own preview, where red means moving a remaining file to trash or removing a `source` entry.
 
 ## Automation and safety
 
 Mapping groups register `create`, `rename`, and `modify` listeners while the plugin is enabled. Scripts, sync tools, and Git operations may therefore trigger the same events as changes made in Obsidian. General attachment rules do not register automatic listeners.
 
-Att Meta Map never listens for `delete` and never automatically deletes notes. If a resource disappears, the note and its inspectable broken `source` link remain.
+Linked deletion is optional under **General → Linked deletion**. Both directions default to off; change confirmation defaults to on. With both directions off, a deleted resource leaves its note and broken `source` link intact.
+
+- **Resource → note:** deleting the last `source` resource moves the managed note to trash. If other `source` entries remain, including unresolved links, only the deleted resource's entry is removed.
+- **Note → resources:** deleting a managed note moves its resolved `source` resources to trash, except resources still referenced by any other note's `source`. Markdown and Canvas targets are excluded.
+- **Confirmation:** shows the remaining changes as a folder tree. The first file has already been deleted by Obsidian; cancelling preserves the other files and their properties, and does not restore the first file. Turning confirmation off applies the same rules automatically.
+
+Only notes in note roots of groups that create notes trigger linked deletion. Resources may be anywhere if their `source` binding was resolved while they existed. The plugin remembers relations during the current session; it does not infer them from names or delete old orphan notes on startup. It follows individual file deletion events; folder events themselves do not trigger a recursive cascade. Sync, scripts, and Git can also produce deletion events, so enable these settings only where this behavior is intended.
+
+All plugin-triggered file deletions use Obsidian's trash preference (vault `.trash` or system trash); no permanent deletion fallback is used. Pending previews are serialized. Restoring the first file, changing a candidate file or its relations, disabling the direction, or unloading the plugin stops the pending operation. Plugin-triggered deletions do not cascade again. A failed operation stops and reports an error; already completed steps remain in trash.
 
 Additional boundaries:
 
@@ -164,6 +172,7 @@ The implementation keeps deterministic policy separate from Obsidian mutations:
 - `creation-plan.ts` defines previewable note/folder changes.
 - `attachment-rules.ts` plans general attachment moves; `attachment-organizer.ts` executes confirmed plans.
 - `note-manager.ts` is the Obsidian-facing service that resolves relationships and performs guarded note operations.
+- `deletion-policy.ts` plans linked changes from explicit source snapshots; `deletion-manager.ts` maintains the session index and applies guarded trash/property changes; `deletion-modal.ts` shows the confirmation tree.
 
 ## Development
 

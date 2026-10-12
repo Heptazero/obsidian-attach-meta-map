@@ -45,6 +45,16 @@
     "unbind": "Unbind this resource",
     "openFailed": "Could not open this resource."
   },
+  "deletion": {
+    "title": "Confirm linked deletion",
+    "origin": "Already deleted: ${path}. Cancel keeps the remaining files.",
+    "legend": "− Red: move to trash or remove from source",
+    "shared": "Gray resources remain: other notes reference them in source.",
+    "confirm": "Apply linked changes",
+    "changed": "Files or relations changed; linked deletion stopped.",
+    "complete": "Applied ${count} linked change(s).",
+    "failed": "Linked deletion stopped after an error. Check the remaining files and trash."
+  },
   "organizer": {
     "previewTitle": "Confirm attachment organization",
     "previewSubtitle": "${changes} move(s) or rename(s); ${managed} owned by mapping groups, ${unmatched} unmatched.",
@@ -92,6 +102,13 @@
     }
   },
   "settings": {
+    "deletion": {
+      "title": "Linked deletion",
+      "resourceToNote": "Delete note when its last source resource is deleted",
+      "noteToResources": "Delete unshared source resources when a note is deleted",
+      "confirm": "Show change preview before linked deletion",
+      "confirmDesc": "Off: apply automatically. Uses Obsidian's trash preference."
+    },
     "tabs": {
       "general": "General",
       "mapping": "Field mapping",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildChangeTree, ChangeTreeNode } from '../src/change-tree';
+import { buildChangeTree, buildDeletionTree, ChangeTreeNode } from '../src/change-tree';
 
 function find(node: ChangeTreeNode, path: string): ChangeTreeNode | undefined {
   if (node.path === path) return node;
@@ -11,6 +11,21 @@ function find(node: ChangeTreeNode, path: string): ChangeTreeNode | undefined {
 }
 
 describe('batch change tree', () => {
+  it('shows trashed files and removed source entries in red, shared resources as retained', () => {
+    const tree = buildDeletionTree({
+      origin: 'Files/p.pdf', direction: 'resourceToNote',
+      changes: [
+        { kind: 'trash', path: 'Notes/one.md' },
+        { kind: 'unlink', path: 'Notes/two.md', targets: ['p.pdf', 'p-alias.pdf'] },
+      ],
+      shared: ['Files/shared.pdf'],
+    });
+    expect(find(tree, 'Notes/one.md')?.tone).toBe('removed');
+    expect(find(tree, 'Notes/two.md')?.tone).toBe('neutral');
+    expect(find(tree, 'Notes/two.md')?.children).toHaveLength(2);
+    expect(find(tree, 'Notes/two.md#source')?.tone).toBe('removed');
+    expect(find(tree, 'Files/shared.pdf')?.tone).toBe('neutral');
+  });
   it('shows both sides of a move without calling it a file deletion', () => {
     const tree = buildChangeTree([{
       kind: 'move', from: 'Library/paper.pdf', to: 'Library/paper/paper.pdf',

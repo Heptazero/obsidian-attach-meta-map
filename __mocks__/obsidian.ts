@@ -2,6 +2,10 @@ import { vi } from 'vitest';
 
 export const requestUrl = vi.fn();
 export const getLanguage = vi.fn(() => 'en');
+// Deletion tests supply JSON frontmatter so source validation stays independent
+// of the host's YAML parser, while exercising reads and stale-cache detection.
+export const getFrontMatterInfo = (content: string) => ({ exists: Boolean(content), frontmatter: content });
+export const parseYaml = (text: string): unknown => JSON.parse(text);
 
 export class TAbstractFile {
   path: string = '';

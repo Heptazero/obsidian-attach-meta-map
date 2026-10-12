@@ -37,6 +37,9 @@ const SEARCHABLE_SETTING_KEYS = [
   'settings.templateFolders.name',
   'settings.sections.mapping',
   'settings.rules.title',
+  'settings.deletion.resourceToNote',
+  'settings.deletion.noteToResources',
+  'settings.deletion.confirm',
   'settings.group.name',
   'settings.group.layout.name',
   'settings.group.createNoteFile.name',
@@ -219,6 +222,27 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           this.plugin.registry.invalidate();
           await this.plugin.saveSettings();
         }));
+
+    this.section(containerEl, t('settings.deletion.title'), false, body => {
+      let confirmSetting: Setting | null = null;
+      for (const key of ['resourceToNote', 'noteToResources', 'confirm'] as const) {
+        const setting = new Setting(body).setName(t(`settings.deletion.${key}`));
+        const inactive = key === 'confirm' && !this.plugin.settings.deletion.resourceToNote &&
+          !this.plugin.settings.deletion.noteToResources;
+        if (key === 'confirm') {
+          confirmSetting = setting;
+          setting.setDesc(t('settings.deletion.confirmDesc'));
+        }
+        setting.addToggle(toggle => toggle.setValue(this.plugin.settings.deletion[key])
+          .onChange(value => runInBackground(async () => {
+            this.plugin.settings.deletion[key] = value;
+            confirmSetting?.setDisabled(!this.plugin.settings.deletion.resourceToNote &&
+              !this.plugin.settings.deletion.noteToResources);
+            await this.plugin.saveSettings();
+          }, 'Could not save deletion settings')));
+        setting.setDisabled(inactive);
+      }
+    });
   }
 
   // --- field mappings ----------------------------------------------------

@@ -17,6 +17,7 @@ export default defineConfig({
       include: [
         'src/attachment-rules.ts', 'src/creation-plan.ts', 'src/metadata-diff.ts',
         'src/paths.ts', 'src/resource-links.ts', 'src/settings-model.ts',
+        'src/deletion-policy.ts',
         'src/sources.ts', 'src/template.ts',
       ],
       thresholds: {

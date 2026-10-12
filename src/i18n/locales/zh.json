@@ -45,6 +45,16 @@
     "unbind": "解绑这个资源",
     "openFailed": "无法打开这个资源。"
   },
+  "deletion": {
+    "title": "确认联动删除",
+    "origin": "已删除：${path}。取消会保留剩余文件。",
+    "legend": "− 红色：移入废纸篓，或从 source 移除",
+    "shared": "灰色资源保留：仍被其他笔记的 source 引用。",
+    "confirm": "执行联动变化",
+    "changed": "文件或关系已变化，联动删除已停止。",
+    "complete": "已执行 ${count} 项联动变化。",
+    "failed": "联动删除遇到错误后停止，请检查剩余文件和废纸篓。"
+  },
   "organizer": {
     "previewTitle": "确认附件整理",
     "previewSubtitle": "${changes} 个移动或重命名；${managed} 个由映射组接管，${unmatched} 个未匹配。",
@@ -92,6 +102,13 @@
     }
   },
   "settings": {
+    "deletion": {
+      "title": "联动删除",
+      "resourceToNote": "删除最后一个 source 资源后删除笔记",
+      "noteToResources": "删除笔记后删除未共享的 source 资源",
+      "confirm": "联动删除前显示变化预览",
+      "confirmDesc": "关闭后自动执行。遵循 Obsidian 废纸篓偏好。"
+    },
     "tabs": {
       "general": "通用",
       "mapping": "字段映射",

@@ -1,4 +1,5 @@
 import type { CreateChange } from './creation-plan';
+import type { DeletionPlan } from './deletion-policy';
 
 export type ChangeTone = 'removed' | 'added' | 'neutral';
 export type ChangeNodeKind = 'folder' | 'file' | 'property';
@@ -72,6 +73,26 @@ export function buildChangeTree(changes: CreateChange[]): ChangeTreeNode {
     }
   }
 
+  sortTree(root);
+  return root;
+}
+
+export function buildDeletionTree(plan: DeletionPlan): ChangeTreeNode {
+  const root: ChangeTreeNode = {
+    name: '', path: '', kind: 'folder', tone: 'neutral', children: [],
+  };
+  for (const change of plan.changes) {
+    if (change.kind === 'trash') addPath(root, change.path, 'removed');
+    else {
+      for (const target of change.targets) {
+        addPath(root, change.path, 'neutral', {
+          name: `source − [[${target}]]`, path: `${change.path}#source`,
+          kind: 'property', tone: 'removed', children: [],
+        });
+      }
+    }
+  }
+  for (const path of plan.shared) addPath(root, path, 'neutral');
   sortTree(root);
   return root;
 }

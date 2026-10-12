@@ -4267,7 +4267,7 @@ __export(main_exports, {
   default: () => AttMetaMapPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/types.ts
 var SETTINGS_VERSION = 6;
@@ -4785,14 +4785,15 @@ function defaultSettings() {
     mapping: defaultMapping(),
     extraTemplateFolders: [],
     groups: [createGroup({ name: "Attachments" })],
-    attachmentRules: []
+    attachmentRules: [],
+    deletion: { resourceToNote: false, noteToResources: false, confirm: true }
   };
 }
 function groupCreatesNotes(group) {
   return group.layout === "sidecar" || group.createNoteFile;
 }
 function normalizeSettings(raw) {
-  var _a, _b, _c;
+  var _a, _b, _c, _d, _e, _f;
   if (!raw || typeof raw !== "object") return defaultSettings();
   const candidate = raw;
   if (Array.isArray(candidate.groups)) {
@@ -4808,7 +4809,12 @@ function normalizeSettings(raw) {
       mapping,
       extraTemplateFolders: (_c = candidate.extraTemplateFolders) != null ? _c : [],
       groups: groups.length ? groups : defaultSettings().groups,
-      attachmentRules: Array.isArray(candidate.attachmentRules) ? candidate.attachmentRules.map((rule) => createAttachmentRule(rule)) : []
+      attachmentRules: Array.isArray(candidate.attachmentRules) ? candidate.attachmentRules.map((rule) => createAttachmentRule(rule)) : [],
+      deletion: {
+        resourceToNote: ((_d = candidate.deletion) == null ? void 0 : _d.resourceToNote) === true,
+        noteToResources: ((_e = candidate.deletion) == null ? void 0 : _e.noteToResources) === true,
+        confirm: ((_f = candidate.deletion) == null ? void 0 : _f.confirm) !== false
+      }
     };
   }
   return defaultSettings();
@@ -22795,6 +22801,16 @@ var en_default = {
     unbind: "Unbind this resource",
     openFailed: "Could not open this resource."
   },
+  deletion: {
+    title: "Confirm linked deletion",
+    origin: "Already deleted: ${path}. Cancel keeps the remaining files.",
+    legend: "\u2212 Red: move to trash or remove from source",
+    shared: "Gray resources remain: other notes reference them in source.",
+    confirm: "Apply linked changes",
+    changed: "Files or relations changed; linked deletion stopped.",
+    complete: "Applied ${count} linked change(s).",
+    failed: "Linked deletion stopped after an error. Check the remaining files and trash."
+  },
   organizer: {
     previewTitle: "Confirm attachment organization",
     previewSubtitle: "${changes} move(s) or rename(s); ${managed} owned by mapping groups, ${unmatched} unmatched.",
@@ -22842,6 +22858,13 @@ var en_default = {
     }
   },
   settings: {
+    deletion: {
+      title: "Linked deletion",
+      resourceToNote: "Delete note when its last source resource is deleted",
+      noteToResources: "Delete unshared source resources when a note is deleted",
+      confirm: "Show change preview before linked deletion",
+      confirmDesc: "Off: apply automatically. Uses Obsidian's trash preference."
+    },
     tabs: {
       general: "General",
       mapping: "Field mapping",
@@ -23090,6 +23113,16 @@ var zh_default = {
     unbind: "\u89E3\u7ED1\u8FD9\u4E2A\u8D44\u6E90",
     openFailed: "\u65E0\u6CD5\u6253\u5F00\u8FD9\u4E2A\u8D44\u6E90\u3002"
   },
+  deletion: {
+    title: "\u786E\u8BA4\u8054\u52A8\u5220\u9664",
+    origin: "\u5DF2\u5220\u9664\uFF1A${path}\u3002\u53D6\u6D88\u4F1A\u4FDD\u7559\u5269\u4F59\u6587\u4EF6\u3002",
+    legend: "\u2212 \u7EA2\u8272\uFF1A\u79FB\u5165\u5E9F\u7EB8\u7BD3\uFF0C\u6216\u4ECE source \u79FB\u9664",
+    shared: "\u7070\u8272\u8D44\u6E90\u4FDD\u7559\uFF1A\u4ECD\u88AB\u5176\u4ED6\u7B14\u8BB0\u7684 source \u5F15\u7528\u3002",
+    confirm: "\u6267\u884C\u8054\u52A8\u53D8\u5316",
+    changed: "\u6587\u4EF6\u6216\u5173\u7CFB\u5DF2\u53D8\u5316\uFF0C\u8054\u52A8\u5220\u9664\u5DF2\u505C\u6B62\u3002",
+    complete: "\u5DF2\u6267\u884C ${count} \u9879\u8054\u52A8\u53D8\u5316\u3002",
+    failed: "\u8054\u52A8\u5220\u9664\u9047\u5230\u9519\u8BEF\u540E\u505C\u6B62\uFF0C\u8BF7\u68C0\u67E5\u5269\u4F59\u6587\u4EF6\u548C\u5E9F\u7EB8\u7BD3\u3002"
+  },
   organizer: {
     previewTitle: "\u786E\u8BA4\u9644\u4EF6\u6574\u7406",
     previewSubtitle: "${changes} \u4E2A\u79FB\u52A8\u6216\u91CD\u547D\u540D\uFF1B${managed} \u4E2A\u7531\u6620\u5C04\u7EC4\u63A5\u7BA1\uFF0C${unmatched} \u4E2A\u672A\u5339\u914D\u3002",
@@ -23137,6 +23170,13 @@ var zh_default = {
     }
   },
   settings: {
+    deletion: {
+      title: "\u8054\u52A8\u5220\u9664",
+      resourceToNote: "\u5220\u9664\u6700\u540E\u4E00\u4E2A source \u8D44\u6E90\u540E\u5220\u9664\u7B14\u8BB0",
+      noteToResources: "\u5220\u9664\u7B14\u8BB0\u540E\u5220\u9664\u672A\u5171\u4EAB\u7684 source \u8D44\u6E90",
+      confirm: "\u8054\u52A8\u5220\u9664\u524D\u663E\u793A\u53D8\u5316\u9884\u89C8",
+      confirmDesc: "\u5173\u95ED\u540E\u81EA\u52A8\u6267\u884C\u3002\u9075\u5FAA Obsidian \u5E9F\u7EB8\u7BD3\u504F\u597D\u3002"
+    },
     tabs: {
       general: "\u901A\u7528",
       mapping: "\u5B57\u6BB5\u6620\u5C04",
@@ -23396,9 +23436,10 @@ function removeSourceLinks(value, targets) {
     return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : typeof value === "string" ? value : void 0;
   }
   const entries = (Array.isArray(value) ? value : [value]).filter((entry) => typeof entry === "string" && entry.trim().length > 0);
-  const remaining = entries.filter(
-    (entry) => !sourceLinkTargets(entry).some((target) => selected.has(target))
-  );
+  const remaining = entries.map((entry) => entry.replace(
+    WIKI_LINK_RE,
+    (match, target) => selected.has(target.trim()) ? "" : match
+  ).trim()).filter(Boolean);
   if (remaining.length === 0) return void 0;
   return remaining.length === 1 ? remaining[0] : remaining;
 }
@@ -24045,6 +24086,45 @@ function buildChangeTree(changes) {
   sortTree(root);
   return root;
 }
+function buildDeletionTree(plan) {
+  const root = {
+    name: "",
+    path: "",
+    kind: "folder",
+    tone: "neutral",
+    children: []
+  };
+  for (const change of plan.changes) {
+    if (change.kind === "trash") addPath(root, change.path, "removed");
+    else {
+      for (const target of change.targets) {
+        addPath(root, change.path, "neutral", {
+          name: `source \u2212 [[${target}]]`,
+          path: `${change.path}#source`,
+          kind: "property",
+          tone: "removed",
+          children: []
+        });
+      }
+    }
+  }
+  for (const path of plan.shared) addPath(root, path, "neutral");
+  sortTree(root);
+  return root;
+}
+
+// src/change-tree-view.ts
+function renderTree(parent, nodes) {
+  const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
+  for (const node of nodes) {
+    const row = list2.createEl("li");
+    const line = row.createDiv({ cls: `amm-change-line is-${node.kind} is-${node.tone}` });
+    if (node.tone === "removed") line.createSpan({ text: "\u2212", cls: "amm-change-marker" });
+    if (node.tone === "added") line.createSpan({ text: "+", cls: "amm-change-marker" });
+    line.createSpan({ text: node.name });
+    if (node.children.length > 0) renderTree(row, node.children);
+  }
+}
 
 // src/background-task.ts
 function reportFailure(context, error2) {
@@ -24059,19 +24139,6 @@ function runInBackground(task, context) {
 }
 
 // src/backfill-modal.ts
-function renderTree(parent, nodes) {
-  const list2 = parent.createEl("ul", { cls: "amm-change-tree" });
-  for (const node of nodes) {
-    const row = list2.createEl("li");
-    const line = row.createDiv({
-      cls: `amm-change-line is-${node.kind} is-${node.tone}`
-    });
-    if (node.tone === "removed") line.createSpan({ text: "\u2212", cls: "amm-change-marker" });
-    if (node.tone === "added") line.createSpan({ text: "+", cls: "amm-change-marker" });
-    line.createSpan({ text: node.name });
-    if (node.children.length > 0) renderTree(row, node.children);
-  }
-}
 var BackfillPreviewModal = class extends import_obsidian5.Modal {
   constructor(app, plans, onConfirm, onCancel) {
     super(app);
@@ -24794,6 +24861,9 @@ var SEARCHABLE_SETTING_KEYS = [
   "settings.templateFolders.name",
   "settings.sections.mapping",
   "settings.rules.title",
+  "settings.deletion.resourceToNote",
+  "settings.deletion.noteToResources",
+  "settings.deletion.confirm",
   "settings.group.name",
   "settings.group.layout.name",
   "settings.group.createNoteFile.name",
@@ -24942,6 +25012,23 @@ var AttMetaMapSettingTab = class extends import_obsidian13.PluginSettingTab {
       this.plugin.registry.invalidate();
       await this.plugin.saveSettings();
     }));
+    this.section(containerEl, t2("settings.deletion.title"), false, (body) => {
+      let confirmSetting = null;
+      for (const key of ["resourceToNote", "noteToResources", "confirm"]) {
+        const setting = new import_obsidian13.Setting(body).setName(t2(`settings.deletion.${key}`));
+        const inactive = key === "confirm" && !this.plugin.settings.deletion.resourceToNote && !this.plugin.settings.deletion.noteToResources;
+        if (key === "confirm") {
+          confirmSetting = setting;
+          setting.setDesc(t2("settings.deletion.confirmDesc"));
+        }
+        setting.addToggle((toggle) => toggle.setValue(this.plugin.settings.deletion[key]).onChange((value) => runInBackground(async () => {
+          this.plugin.settings.deletion[key] = value;
+          confirmSetting == null ? void 0 : confirmSetting.setDisabled(!this.plugin.settings.deletion.resourceToNote && !this.plugin.settings.deletion.noteToResources);
+          await this.plugin.saveSettings();
+        }, "Could not save deletion settings")));
+        setting.setDisabled(inactive);
+      }
+    });
   }
   // --- field mappings ----------------------------------------------------
   renderMapping(containerEl) {
@@ -25461,8 +25548,274 @@ var AttachmentOrganizer = class {
   }
 };
 
+// src/deletion-manager.ts
+var import_obsidian17 = require("obsidian");
+
+// src/deletion-policy.ts
+function planDeletion(origin, direction, notes, deletedNote) {
+  const changes = [];
+  const shared = [];
+  if (direction === "noteToResources") {
+    if (deletedNote == null ? void 0 : deletedNote.managed) {
+      const paths = [...new Set(deletedNote.links.map((link) => link.path).filter((path) => path !== null))];
+      for (const path of paths) {
+        if (notes.some((note) => note.links.some((link) => link.path === path))) shared.push(path);
+        else changes.push({ kind: "trash", path });
+      }
+    }
+  } else {
+    for (const note of notes) {
+      if (!note.managed) continue;
+      const removed = note.links.filter((link) => link.path === origin);
+      if (removed.length === 0) continue;
+      if (removed.length === note.links.length) changes.push({ kind: "trash", path: note.path });
+      else changes.push({ kind: "unlink", path: note.path, targets: removed.map((link) => link.target) });
+    }
+  }
+  changes.sort((a, b) => a.path.localeCompare(b.path));
+  shared.sort();
+  return { origin, direction, changes, shared };
+}
+
+// src/deletion-manager.ts
+var DeletionManager = class {
+  constructor(app, settings, confirm) {
+    this.app = app;
+    this.settings = settings;
+    this.confirm = confirm;
+    this.notes = /* @__PURE__ */ new Map();
+    this.pending = /* @__PURE__ */ new Set();
+    this.queue = Promise.resolve();
+    this.stopped = false;
+  }
+  start(registerEvent) {
+    this.refresh();
+    registerEvent(this.app.metadataCache.on("changed", (file) => this.update(file)));
+    registerEvent(this.app.metadataCache.on("resolved", () => this.refresh()));
+    registerEvent(this.app.vault.on("rename", () => this.refresh()));
+    registerEvent(this.app.vault.on("delete", (file) => {
+      if (file instanceof import_obsidian17.TFile) this.onDelete(file);
+    }));
+  }
+  stop() {
+    this.stopped = true;
+    this.notes.clear();
+  }
+  isLive(file) {
+    return this.app.vault.getFileByPath(file.path) === file;
+  }
+  update(file) {
+    var _a;
+    if (file.extension.toLowerCase() !== "md" || !this.isLive(file)) return;
+    const cache = this.app.metadataCache.getFileCache(file);
+    if (!cache) return;
+    const previous = this.notes.get(file);
+    const value = (_a = cache.frontmatter) == null ? void 0 : _a[SOURCE_PROPERTY];
+    const links = sourceLinkTargets(value).map((target) => {
+      var _a2;
+      const resolved = this.app.metadataCache.getFirstLinkpathDest(target, file.path);
+      const resource = resolved && !["md", "canvas"].includes(resolved.extension.toLowerCase()) ? resolved : null;
+      const old = (_a2 = previous == null ? void 0 : previous.links.find((link) => link.target === target)) == null ? void 0 : _a2.file;
+      return { target, file: old && !this.isLive(old) && (resource == null ? void 0 : resource.path) !== old.path ? old : resource };
+    });
+    this.notes.set(file, { file, links, mtime: file.stat.mtime, size: file.stat.size });
+  }
+  refresh() {
+    for (const file of this.app.vault.getMarkdownFiles()) this.update(file);
+  }
+  snapshot(note) {
+    const group = groupForNote(this.settings().groups, note.file.path);
+    return {
+      path: note.file.path,
+      managed: Boolean(group && groupCreatesNotes(group)),
+      links: note.links.map((link) => {
+        var _a, _b;
+        return { target: link.target, path: (_b = (_a = link.file) == null ? void 0 : _a.path) != null ? _b : null };
+      })
+    };
+  }
+  /** Capture cached identity synchronously, before metadata for a deleted note is discarded. */
+  onDelete(file) {
+    var _a, _b;
+    const origin = file.path;
+    const cached = this.notes.get(file);
+    const deletedNote = cached && cached.mtime === file.stat.mtime && cached.size === file.stat.size ? this.snapshot(cached) : void 0;
+    if (deletedNote) {
+      deletedNote.links = ((_a = cached == null ? void 0 : cached.links) != null ? _a : []).map((link) => ({
+        target: link.target,
+        path: link.file && this.isLive(link.file) ? link.file.path : null
+      }));
+    }
+    this.notes.delete(file);
+    if (this.pending.has(file) || this.stopped || file.extension.toLowerCase() === "canvas") return;
+    const direction = file.extension.toLowerCase() === "md" ? "noteToResources" : "resourceToNote";
+    if (!this.settings().deletion[direction]) return;
+    const originalResources = new Map(((_b = cached == null ? void 0 : cached.links) != null ? _b : []).flatMap((link) => link.file ? [[link.file.path, {
+      file: link.file,
+      path: link.file.path,
+      mtime: link.file.stat.mtime,
+      size: link.file.stat.size
+    }]] : []));
+    this.queue = this.queue.then(() => this.process(origin, direction, deletedNote, originalResources)).catch((error2) => {
+      console.error("[Att Meta Map] Linked deletion failed", error2);
+      new import_obsidian17.Notice(t2("deletion.failed"));
+    });
+  }
+  /** Wait for queued work; also useful for deterministic event tests. */
+  async settled() {
+    await this.queue;
+  }
+  plan(origin, direction, deletedNote) {
+    this.refresh();
+    const live = [...this.notes.values()].filter((note) => this.isLive(note.file)).map((note) => this.snapshot(note));
+    const group = groupForNote(this.settings().groups, origin);
+    const eligible = deletedNote && { ...deletedNote, managed: Boolean(group && groupCreatesNotes(group)) };
+    return planDeletion(origin, direction, live, eligible);
+  }
+  async process(origin, direction, deletedNote, originalResources) {
+    if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin)) return;
+    const plan = this.plan(origin, direction, deletedNote);
+    if (plan.changes.length === 0) return;
+    const stamps = [];
+    for (const change of plan.changes) {
+      const file = this.app.vault.getFileByPath(change.path);
+      if (!file) return;
+      if (direction === "noteToResources") {
+        const original = originalResources.get(change.path);
+        if (!original || !this.unchanged(original)) {
+          new import_obsidian17.Notice(t2("deletion.changed"));
+          return;
+        }
+      }
+      stamps.push({ file, path: file.path, mtime: file.stat.mtime, size: file.stat.size });
+    }
+    if (!await this.verifySources(plan)) {
+      new import_obsidian17.Notice(t2("deletion.changed"));
+      return;
+    }
+    if (this.settings().deletion.confirm && !await this.confirm(plan)) return;
+    if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin)) return;
+    const fresh = this.plan(origin, direction, deletedNote);
+    if (JSON.stringify(fresh) !== JSON.stringify(plan) || !await this.verifySources(plan) || !stamps.every((stamp) => this.unchanged(stamp))) {
+      new import_obsidian17.Notice(t2("deletion.changed"));
+      return;
+    }
+    for (let i3 = 0; i3 < plan.changes.length; i3++) {
+      const change = plan.changes[i3];
+      const stamp = stamps[i3];
+      if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin) || !this.unchanged(stamp)) {
+        new import_obsidian17.Notice(t2("deletion.changed"));
+        return;
+      }
+      if (direction === "noteToResources") {
+        this.refresh();
+        if (await this.hasOwner(stamp.file)) {
+          new import_obsidian17.Notice(t2("deletion.changed"));
+          return;
+        }
+      }
+      if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin) || !this.unchanged(stamp)) {
+        new import_obsidian17.Notice(t2("deletion.changed"));
+        return;
+      }
+      if (change.kind === "trash") {
+        this.pending.add(stamp.file);
+        try {
+          await this.app.fileManager.trashFile(stamp.file);
+        } finally {
+          this.pending.delete(stamp.file);
+        }
+      } else {
+        await this.app.fileManager.processFrontMatter(stamp.file, (frontmatter) => {
+          var _a, _b;
+          const expected = (_b = (_a = this.notes.get(stamp.file)) == null ? void 0 : _a.links.map((link) => link.target)) != null ? _b : [];
+          if (JSON.stringify(sourceLinkTargets(frontmatter[SOURCE_PROPERTY])) !== JSON.stringify(expected)) {
+            throw new Error("Source changed before unlink");
+          }
+          const remaining = removeSourceLinks(frontmatter[SOURCE_PROPERTY], change.targets);
+          if (remaining === void 0) delete frontmatter[SOURCE_PROPERTY];
+          else frontmatter[SOURCE_PROPERTY] = remaining;
+        });
+        this.update(stamp.file);
+      }
+    }
+    new import_obsidian17.Notice(t2("deletion.complete", { count: plan.changes.length }));
+  }
+  unchanged(stamp) {
+    return this.app.vault.getFileByPath(stamp.path) === stamp.file && stamp.file.path === stamp.path && stamp.file.stat.mtime === stamp.mtime && stamp.file.stat.size === stamp.size;
+  }
+  async diskTargets(file) {
+    const info = (0, import_obsidian17.getFrontMatterInfo)(await this.app.vault.read(file));
+    if (!info.exists) return [];
+    const value = (0, import_obsidian17.parseYaml)(info.frontmatter);
+    const source = value && typeof value === "object" ? value[SOURCE_PROPERTY] : void 0;
+    return sourceLinkTargets(source);
+  }
+  async hasOwner(resource) {
+    for (const note of this.app.vault.getMarkdownFiles()) {
+      const targets = await this.diskTargets(note);
+      if (targets.some((target) => this.app.metadataCache.getFirstLinkpathDest(target, note.path) === resource)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  async verifySources(plan) {
+    var _a, _b;
+    for (const change of plan.changes) {
+      const file = this.app.vault.getFileByPath(change.path);
+      if (!file) return false;
+      if (plan.direction === "noteToResources") {
+        if (await this.hasOwner(file)) return false;
+      } else {
+        const expected = (_b = (_a = this.notes.get(file)) == null ? void 0 : _a.links.map((link) => link.target)) != null ? _b : [];
+        if (JSON.stringify(await this.diskTargets(file)) !== JSON.stringify(expected)) return false;
+      }
+    }
+    return true;
+  }
+};
+
+// src/deletion-modal.ts
+var import_obsidian18 = require("obsidian");
+var DeletionModal = class extends import_obsidian18.Modal {
+  constructor(app, plan, answer) {
+    super(app);
+    this.plan = plan;
+    this.answer = answer;
+    this.answered = false;
+  }
+  onOpen() {
+    this.modalEl.addClass("amm-backfill-modal");
+    this.contentEl.addClass("amm-backfill-content");
+    this.contentEl.createEl("h3", { text: t2("deletion.title") });
+    this.contentEl.createEl("p", { text: t2("deletion.origin", { path: this.plan.origin }) });
+    const legend = this.contentEl.createDiv({ cls: "amm-change-legend" });
+    legend.createSpan({ text: t2("deletion.legend"), cls: "is-removed" });
+    if (this.plan.shared.length > 0) {
+      this.contentEl.createEl("p", { text: t2("deletion.shared") });
+    }
+    renderTree(
+      this.contentEl.createDiv({ cls: "amm-change-tree-viewport" }),
+      buildDeletionTree(this.plan).children
+    );
+    new import_obsidian18.Setting(this.contentEl).addButton((button) => button.setButtonText(t2("common.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t2("deletion.confirm")).setCta().onClick(() => {
+      this.answered = true;
+      this.answer(true);
+      this.close();
+    }));
+  }
+  onClose() {
+    if (!this.answered) this.answer(false);
+    this.contentEl.empty();
+  }
+};
+function confirmDeletion(app, plan) {
+  return new Promise((resolve) => new DeletionModal(app, plan, resolve).open());
+}
+
 // src/main.ts
-var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
+var AttMetaMapPlugin = class extends import_obsidian19.Plugin {
   async onload() {
     await this.loadSettings();
     await this.applyLanguage();
@@ -25472,6 +25825,12 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
     this.attachmentOrganizer = new AttachmentOrganizer(this.app, () => this.settings);
+    this.deletionManager = new DeletionManager(
+      this.app,
+      () => this.settings,
+      (plan) => confirmDeletion(this.app, plan)
+    );
+    this.register(() => this.deletionManager.stop());
     this.registerView(RESOURCE_RELATIONS_VIEW, (leaf) => new ResourceRelationsView(
       leaf,
       this.noteManager,
@@ -25484,6 +25843,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     ));
     this.app.workspace.onLayoutReady(() => {
       this.registerVaultEvents();
+      this.deletionManager.start((event) => this.registerEvent(event));
     });
     this.addCommand({
       id: "open-pair",
@@ -25576,7 +25936,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
       preselected,
       async (selected) => {
         const count = await this.noteManager.unbindSources(note, selected);
-        new import_obsidian17.Notice(t2("notices.unbound", { count }));
+        new import_obsidian19.Notice(t2("notices.unbound", { count }));
       }
     ).open();
   }
@@ -25592,7 +25952,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
   }
   registerOrganizerMenus() {
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
-      if (file instanceof import_obsidian17.TFile) {
+      if (file instanceof import_obsidian19.TFile) {
         if (file.extension === "md") {
           menu.addItem((item) => item.setTitle(t2("commands.organizeNoteAttachments")).setIcon("folder-input").onClick(() => {
             this.attachmentOrganizer.organizeNote(file);
@@ -25602,7 +25962,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
             this.processAttachment(file);
           }));
         }
-      } else if (file instanceof import_obsidian17.TFolder) {
+      } else if (file instanceof import_obsidian19.TFolder) {
         menu.addItem((item) => item.setTitle(t2("commands.organizeFolder")).setIcon("folder-input").onClick(() => {
           this.attachmentOrganizer.organizeFolder(file, false);
         }));
@@ -25622,7 +25982,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
       return;
     }
     if (route.kind === "protected") {
-      new import_obsidian17.Notice(t2("organizer.protectedNoMatch", {
+      new import_obsidian19.Notice(t2("organizer.protectedNoMatch", {
         file: file.name,
         group: route.group.name
       }));
@@ -25635,23 +25995,23 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     var _a;
     const pair = this.pairOpener.resolvePair(file, this.settings.groups);
     if (!pair) {
-      new import_obsidian17.Notice(t2("notices.noGroup", { file: file.name }));
+      new import_obsidian19.Notice(t2("notices.noGroup", { file: file.name }));
       return;
     }
     let note = pair.note;
     if (!note && pair.attachment) {
       note = await this.noteManager.createNote(pair.attachment, pair.group);
       if (note) {
-        new import_obsidian17.Notice(t2("notices.noteReady", { note: note.basename }));
+        new import_obsidian19.Notice(t2("notices.noteReady", { note: note.basename }));
         return;
       }
     }
     if (!pair.attachment) {
-      new import_obsidian17.Notice(t2("notices.noAttachment", { file: file.name }));
+      new import_obsidian19.Notice(t2("notices.noAttachment", { file: file.name }));
       return;
     }
     if (!note) {
-      new import_obsidian17.Notice(t2("notices.noNote", { group: pair.group.name }));
+      new import_obsidian19.Notice(t2("notices.noNote", { group: pair.group.name }));
       return;
     }
     const resolvedNote = note;
@@ -25659,7 +26019,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     const { template } = await this.noteManager.templateFor(pair.group);
     const keys = Array.from(/* @__PURE__ */ new Set([...Object.keys(frontmatter != null ? frontmatter : {}), ...template.keys]));
     if (keys.length === 0) {
-      new import_obsidian17.Notice(t2("notices.noProperties", { note: resolvedNote.basename }));
+      new import_obsidian19.Notice(t2("notices.noProperties", { note: resolvedNote.basename }));
       return;
     }
     const rows = await this.noteManager.resolveFor(
@@ -25671,18 +26031,18 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     const diff = buildDiffRows(rows, frontmatter);
     new RefreshModal(this.app, resolvedNote, diff, async (accepted) => {
       if (accepted.length === 0) {
-        new import_obsidian17.Notice(t2("notices.nothingApplied"));
+        new import_obsidian19.Notice(t2("notices.nothingApplied"));
         return;
       }
       for (const row of accepted) {
         await this.noteManager.setProperty(resolvedNote, row.property, row.incoming);
       }
-      new import_obsidian17.Notice(t2("notices.applied", { count: accepted.length }));
+      new import_obsidian19.Notice(t2("notices.applied", { count: accepted.length }));
     }).open();
   }
   registerVaultEvents() {
     this.registerEvent(this.app.vault.on("create", (file) => {
-      if (!(file instanceof import_obsidian17.TFile)) return;
+      if (!(file instanceof import_obsidian19.TFile)) return;
       const group = this.groupFor(file);
       if (!(group == null ? void 0 : group.autoCreateOnNew)) return;
       window.setTimeout(() => runInBackground(
@@ -25692,7 +26052,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       var _a, _b;
-      if (!(file instanceof import_obsidian17.TFile)) return;
+      if (!(file instanceof import_obsidian19.TFile)) return;
       if (this.noteManager.isPendingMove(oldPath) || this.attachmentOrganizer.isPendingMove(oldPath)) return;
       const oldExt = (_b = ((_a = oldPath.split("/").pop()) != null ? _a : "").split(".").pop()) != null ? _b : "";
       const before = groupForAttachment(this.settings.groups, oldPath, oldExt);
@@ -25706,7 +26066,7 @@ var AttMetaMapPlugin = class extends import_obsidian17.Plugin {
       }, "Could not synchronize renamed resource");
     }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (!(file instanceof import_obsidian17.TFile)) return;
+      if (!(file instanceof import_obsidian19.TFile)) return;
       const group = this.groupFor(file);
       if (!(group == null ? void 0 : group.syncUpdatedOnModify)) return;
       runInBackground(
