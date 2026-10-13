@@ -135,7 +135,11 @@ In organization and backfill previews, red `−` means a file leaves its old pat
 
 Mapping groups register `create`, `rename`, and `modify` listeners while the plugin is enabled. Scripts, sync tools, and Git operations may therefore trigger the same events as changes made in Obsidian. General attachment rules do not register automatic listeners.
 
-Linked deletion is optional under **General → Linked deletion**. Both directions default to off; change confirmation defaults to on. With both directions off, a deleted resource leaves its note and broken `source` link intact.
+Linked deletion is optional under **General → Linked deletion**. The plugin's two directions default to off; change confirmation defaults to on. With resource-to-note deletion off, a deleted resource leaves its note and broken `source` link intact.
+
+On Obsidian 1.12+, when **Files & Links → Delete attachments when deleting files** is set to **Ask each time** (Obsidian's default) or **Always**, the note-to-resources row appears checked and disabled, with a small label showing that Obsidian handles it. The plugin skips this direction, preventing a second confirmation window. Native cleanup follows Obsidian's link rules and confirmation preference; the plugin's preview toggle does not control it. Set the native preference to **Never** to enable the plugin's source-only option. Its previous toggle value is retained. Earlier Obsidian versions keep the plugin option available.
+
+Detection uses the vault's actual configuration directory, refreshes when settings open and every two seconds, and rechecks before plugin deletion. The plugin never writes native settings. If native configuration cannot be read, this direction is paused until detection recovers.
 
 - **Resource → note:** deleting the last `source` resource moves the managed note to trash. If other `source` entries remain, including unresolved links, only the deleted resource's entry is removed.
 - **Note → resources:** deleting a managed note moves its resolved `source` resources to trash, except resources still referenced by any other note's `source`. Markdown and Canvas targets are excluded.

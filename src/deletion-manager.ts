@@ -5,6 +5,7 @@ import { groupCreatesNotes } from './settings-model';
 import { removeSourceLinks, SOURCE_PROPERTY, sourceLinkTargets } from './resource-links';
 import { DeletionNote, DeletionPlan, planDeletion } from './deletion-policy';
 import { t } from './i18n/i18n';
+import { NativeDeletionProvider, nativeBlocksPluginDeletion } from './native-deletion';
 
 interface CachedNote {
   file: TFile;
@@ -30,6 +31,7 @@ export class DeletionManager {
     private app: App,
     private settings: () => AttMetaMapSettings,
     private confirm: (plan: DeletionPlan) => Promise<boolean>,
+    private nativeDeletion?: NativeDeletionProvider,
   ) {}
 
   start(registerEvent: (event: EventRef) => void): void {
@@ -98,6 +100,7 @@ export class DeletionManager {
     this.notes.delete(file);
     if (this.pending.has(file) || this.stopped || file.extension.toLowerCase() === 'canvas') return;
     const direction = file.extension.toLowerCase() === 'md' ? 'noteToResources' : 'resourceToNote';
+    // Read the latest persisted native preference in the queued operation.
     if (!this.settings().deletion[direction]) return;
     const originalResources = new Map((cached?.links ?? []).flatMap(link => link.file
       ? [[link.file.path, { file: link.file, path: link.file.path,
@@ -126,7 +129,8 @@ export class DeletionManager {
     origin: string, direction: DeletionPlan['direction'], deletedNote: DeletionNote | undefined,
     originalResources: Map<string, FileStamp>,
   ): Promise<void> {
-    if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin)) return;
+    if (direction === 'noteToResources') await this.nativeDeletion?.refresh();
+    if (this.stopped || !this.enabled(direction) || this.app.vault.getFileByPath(origin)) return;
     const plan = this.plan(origin, direction, deletedNote);
     if (plan.changes.length === 0) return;
     const stamps: FileStamp[] = [];
@@ -147,7 +151,8 @@ export class DeletionManager {
       return;
     }
     if (this.settings().deletion.confirm && !await this.confirm(plan)) return;
-    if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin)) return;
+    if (direction === 'noteToResources') await this.nativeDeletion?.refresh();
+    if (this.stopped || !this.enabled(direction) || this.app.vault.getFileByPath(origin)) return;
     const fresh = this.plan(origin, direction, deletedNote);
     if (JSON.stringify(fresh) !== JSON.stringify(plan) || !await this.verifySources(plan) ||
       !stamps.every(stamp => this.unchanged(stamp))) {
@@ -157,7 +162,7 @@ export class DeletionManager {
     for (let i = 0; i < plan.changes.length; i++) {
       const change = plan.changes[i];
       const stamp = stamps[i];
-      if (this.stopped || !this.settings().deletion[direction] || this.app.vault.getFileByPath(origin) || !this.unchanged(stamp)) {
+      if (this.stopped || !this.enabled(direction) || this.app.vault.getFileByPath(origin) || !this.unchanged(stamp)) {
         new Notice(t('deletion.changed'));
         return;
       }
@@ -169,7 +174,8 @@ export class DeletionManager {
           return;
         }
       }
-      if (this.stopped || !this.settings().deletion[direction] ||
+      if (direction === 'noteToResources') await this.nativeDeletion?.refresh();
+      if (this.stopped || !this.enabled(direction) ||
         this.app.vault.getFileByPath(origin) || !this.unchanged(stamp)) {
         new Notice(t('deletion.changed'));
         return;
@@ -200,6 +206,11 @@ export class DeletionManager {
   private unchanged(stamp: FileStamp): boolean {
     return this.app.vault.getFileByPath(stamp.path) === stamp.file && stamp.file.path === stamp.path &&
       stamp.file.stat.mtime === stamp.mtime && stamp.file.stat.size === stamp.size;
+  }
+
+  private enabled(direction: DeletionPlan['direction']): boolean {
+    return this.settings().deletion[direction] && (direction !== 'noteToResources' ||
+      !nativeBlocksPluginDeletion(this.nativeDeletion?.mode ?? 'unsupported'));
   }
 
   private async diskTargets(file: TFile): Promise<string[]> {

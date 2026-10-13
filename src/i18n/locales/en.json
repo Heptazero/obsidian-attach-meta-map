@@ -107,7 +107,11 @@
       "resourceToNote": "Delete note when its last source resource is deleted",
       "noteToResources": "Delete unshared source resources when a note is deleted",
       "confirm": "Show change preview before linked deletion",
-      "confirmDesc": "Off: apply automatically. Uses Obsidian's trash preference."
+      "confirmDesc": "Applies to plugin-managed deletion. Off: apply automatically.",
+      "nativeNoteToResources": "Clean up attachments when a note is deleted",
+      "nativeHandled": "Handled by Obsidian (${mode}).",
+      "nativeUnknown": "Native setting unavailable; plugin deletion is paused.",
+      "nativeMode": { "ask": "Ask each time", "always": "Always" }
     },
     "tabs": {
       "general": "General",

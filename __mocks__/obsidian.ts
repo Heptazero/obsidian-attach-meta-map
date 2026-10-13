@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 
 export const requestUrl = vi.fn();
 export const getLanguage = vi.fn(() => 'en');
+export const requireApiVersion = vi.fn(() => true);
 // Deletion tests supply JSON frontmatter so source validation stays independent
 // of the host's YAML parser, while exercising reads and stale-cache detection.
 export const getFrontMatterInfo = (content: string) => ({ exists: Boolean(content), frontmatter: content });

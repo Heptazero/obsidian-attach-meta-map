@@ -22,6 +22,7 @@ import { runInBackground } from './background-task';
 import { routeAttachment } from './attachment-rules';
 import { DeletionManager } from './deletion-manager';
 import { confirmDeletion } from './deletion-modal';
+import { NativeDeletionMonitor } from './native-deletion';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -32,10 +33,17 @@ export default class AttMetaMapPlugin extends Plugin {
   pairOpener: PairOpener;
   attachmentOrganizer: AttachmentOrganizer;
   deletionManager: DeletionManager;
+  nativeDeletion: NativeDeletionMonitor;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     await this.applyLanguage();
+    this.nativeDeletion = new NativeDeletionMonitor(this.app);
+    await this.nativeDeletion.refresh();
+    this.register(() => this.nativeDeletion.stop());
+    this.registerInterval(window.setInterval(() => {
+      runInBackground(() => this.nativeDeletion.refresh(), 'Could not refresh native deletion settings');
+    }, 2000));
 
     this.registry = new TemplateRegistry(this.app, () => this.settings);
     this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
@@ -44,7 +52,7 @@ export default class AttMetaMapPlugin extends Plugin {
     this.pairOpener = new PairOpener(this.app, this.noteManager);
     this.attachmentOrganizer = new AttachmentOrganizer(this.app, () => this.settings);
     this.deletionManager = new DeletionManager(this.app, () => this.settings,
-      plan => confirmDeletion(this.app, plan));
+      plan => confirmDeletion(this.app, plan), this.nativeDeletion);
     this.register(() => this.deletionManager.stop());
 
     this.registerView(RESOURCE_RELATIONS_VIEW, leaf => new ResourceRelationsView(

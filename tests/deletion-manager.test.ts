@@ -3,6 +3,7 @@ import { App, TFile } from 'obsidian';
 import { DeletionManager } from '../src/deletion-manager';
 import { DeletionPlan } from '../src/deletion-policy';
 import { createGroup, defaultSettings, normalizeSettings } from '../src/settings-model';
+import type { NativeDeletionProvider } from '../src/native-deletion';
 
 function harness(initial: Record<string, unknown>) {
   const files = new Map<string, TFile>();
@@ -15,6 +16,9 @@ function harness(initial: Record<string, unknown>) {
   const prompts: DeletionPlan[] = [];
   let decide: (plan: DeletionPlan) => Promise<boolean> = async () => true;
   const handlers: Record<string, (...args: any[]) => void> = {};
+  const native: NativeDeletionProvider = {
+    mode: 'unsupported', refresh: vi.fn(async () => native.mode),
+  };
   const add = (path: string, source?: unknown) => {
     const file = new TFile();
     const name = path.split('/').pop()!;
@@ -55,7 +59,7 @@ function harness(initial: Record<string, unknown>) {
     },
     fileManager: { trashFile: trash, processFrontMatter: writes },
   } as unknown as App;
-  manager = new DeletionManager(app, () => settings, async plan => { prompts.push(plan); return decide(plan); });
+  manager = new DeletionManager(app, () => settings, async plan => { prompts.push(plan); return decide(plan); }, native);
   manager.start(() => {});
   const remove = (path: string) => {
     const file = files.get(path)!;
@@ -63,11 +67,60 @@ function harness(initial: Record<string, unknown>) {
     fm.delete(path); // Host metadata for a deleted note is no longer available.
     handlers['vault:delete'](file);
   };
-  return { manager, settings, files, fm, disk, prompts, deleted, trash, writes, remove, add, handlers,
+  return { manager, settings, files, fm, disk, prompts, deleted, trash, writes, remove, add, handlers, native,
     decide: (callback: typeof decide) => { decide = callback; } };
 }
 
 describe('linked deletion', () => {
+  it.each(['ask', 'always', 'unknown'] as const)('does not open a second preview or trash resources when native mode is %s', async mode => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
+    h.native.mode = mode;
+    h.remove('Notes/p.md');
+    await h.manager.settled();
+    expect(h.prompts).toEqual([]);
+    expect(h.deleted).toEqual([]);
+    expect(h.files.has('Files/p.pdf')).toBe(true);
+  });
+
+  it('keeps resource-to-note handling available while native cleanup is enabled', async () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
+    h.native.mode = 'ask';
+    h.remove('Files/p.pdf');
+    await h.manager.settled();
+    expect(h.deleted).toEqual(['Notes/p.md']);
+  });
+
+  it('resumes the saved plugin option when the native preference changes to never', async () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
+    h.native.mode = 'ask';
+    h.native.refresh = async () => { h.native.mode = 'never'; return 'never'; };
+    h.remove('Notes/p.md');
+    await h.manager.settled();
+    expect(h.prompts).toHaveLength(1);
+    expect(h.deleted).toEqual(['Files/p.pdf']);
+    expect(h.settings.deletion.noteToResources).toBe(true);
+  });
+
+  it('checks newly enabled native cleanup before opening a plugin preview', async () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
+    h.native.mode = 'never';
+    h.native.refresh = async () => { h.native.mode = 'ask'; return 'ask'; };
+    h.remove('Notes/p.md');
+    await h.manager.settled();
+    expect(h.prompts).toEqual([]);
+    expect(h.deleted).toEqual([]);
+  });
+
+  it('stops an already open preview if native cleanup is enabled before confirmation', async () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
+    h.native.mode = 'never';
+    h.decide(async () => { h.native.mode = 'always'; return true; });
+    h.remove('Notes/p.md');
+    await h.manager.settled();
+    expect(h.prompts).toHaveLength(1);
+    expect(h.deleted).toEqual([]);
+  });
+
   it('keeps both directions off and confirmation on for old and default settings', () => {
     const expected = { resourceToNote: false, noteToResources: false, confirm: true };
     expect(defaultSettings().deletion).toEqual(expected);

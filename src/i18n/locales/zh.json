@@ -107,7 +107,11 @@
       "resourceToNote": "删除最后一个 source 资源后删除笔记",
       "noteToResources": "删除笔记后删除未共享的 source 资源",
       "confirm": "联动删除前显示变化预览",
-      "confirmDesc": "关闭后自动执行。遵循 Obsidian 废纸篓偏好。"
+      "confirmDesc": "仅控制插件联动删除。关闭后自动执行。",
+      "nativeNoteToResources": "删除笔记后清理附件",
+      "nativeHandled": "由 Obsidian 原生处理（${mode}）。",
+      "nativeUnknown": "原生设置暂不可读，已暂停插件此方向。",
+      "nativeMode": { "ask": "每次询问", "always": "始终" }
     },
     "tabs": {
       "general": "通用",

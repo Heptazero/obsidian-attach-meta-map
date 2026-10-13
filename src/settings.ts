@@ -1,4 +1,4 @@
-import { App, Modal, PluginSettingTab, requireApiVersion, Setting } from 'obsidian';
+import { App, Modal, PluginSettingTab, requireApiVersion, Setting, ToggleComponent } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import type AttMetaMapPlugin from './main';
 import { SOURCE_DEFS } from './sources';
@@ -8,6 +8,7 @@ import { FolderSuggest, PropertySuggest, TemplateFileSuggest } from './suggester
 import { t } from './i18n/i18n';
 import { AttachmentRuleSettings } from './attachment-rule-settings';
 import { runInBackground } from './background-task';
+import { deletionControlState, nativeBlocksPluginDeletion, nativeHandlesDeletion } from './native-deletion';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -69,6 +70,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
   private activeTab: TabId = 'general';
   private tabButtons = new Map<TabId, HTMLButtonElement>();
   private declarativeHost: HTMLElement | null = null;
+  private unsubscribeNative: (() => void) | null = null;
 
   constructor(app: App, private plugin: AttMetaMapPlugin) {
     super(app, plugin);
@@ -103,6 +105,8 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
   }
 
   private renderSettings(containerEl: HTMLElement): void {
+    this.unsubscribeNative?.();
+    this.unsubscribeNative = null;
     containerEl.empty();
     containerEl.addClass('amm-settings');
     this.plugin.registry.invalidate();
@@ -121,6 +125,11 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
       if (group) this.renderGroup(content, group);
       else { this.activeTab = 'general'; this.renderGeneral(content); }
     }
+  }
+
+  hide(): void {
+    this.unsubscribeNative?.();
+    this.unsubscribeNative = null;
   }
 
   /** A settings change on the active tab: rebuild but keep the scroll spot. */
@@ -224,24 +233,43 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         }));
 
     this.section(containerEl, t('settings.deletion.title'), false, body => {
-      let confirmSetting: Setting | null = null;
+      const controls = new Map<'resourceToNote' | 'noteToResources' | 'confirm', {
+        setting: Setting; toggle: ToggleComponent;
+      }>();
+      let updating = false;
+      const update = (): void => {
+        updating = true;
+        const mode = this.plugin.nativeDeletion.mode;
+        const native = nativeHandlesDeletion(mode);
+        const state = deletionControlState(this.plugin.settings.deletion, mode);
+        const note = controls.get('noteToResources');
+        note?.setting.setName(t(native ? 'settings.deletion.nativeNoteToResources' : 'settings.deletion.noteToResources'));
+        note?.setting.setDesc(native
+          ? t('settings.deletion.nativeHandled', { mode: t(`settings.deletion.nativeMode.${mode}`) })
+          : mode === 'unknown' ? t('settings.deletion.nativeUnknown') : '');
+        note?.toggle.setValue(state.noteChecked);
+        note?.setting.setDisabled(state.noteDisabled);
+        controls.get('confirm')?.setting.setDisabled(state.confirmDisabled);
+        updating = false;
+      };
       for (const key of ['resourceToNote', 'noteToResources', 'confirm'] as const) {
         const setting = new Setting(body).setName(t(`settings.deletion.${key}`));
-        const inactive = key === 'confirm' && !this.plugin.settings.deletion.resourceToNote &&
-          !this.plugin.settings.deletion.noteToResources;
         if (key === 'confirm') {
-          confirmSetting = setting;
           setting.setDesc(t('settings.deletion.confirmDesc'));
         }
-        setting.addToggle(toggle => toggle.setValue(this.plugin.settings.deletion[key])
-          .onChange(value => runInBackground(async () => {
+        setting.addToggle(toggle => {
+          controls.set(key, { setting, toggle });
+          toggle.setValue(this.plugin.settings.deletion[key]).onChange(value => {
+            if (updating || (key === 'noteToResources' && nativeBlocksPluginDeletion(this.plugin.nativeDeletion.mode))) return;
             this.plugin.settings.deletion[key] = value;
-            confirmSetting?.setDisabled(!this.plugin.settings.deletion.resourceToNote &&
-              !this.plugin.settings.deletion.noteToResources);
-            await this.plugin.saveSettings();
-          }, 'Could not save deletion settings')));
-        setting.setDisabled(inactive);
+            update();
+            runInBackground(() => this.plugin.saveSettings(), 'Could not save deletion settings');
+          });
+        });
       }
+      update();
+      this.unsubscribeNative = this.plugin.nativeDeletion.subscribe(update);
+      runInBackground(() => this.plugin.nativeDeletion.refresh(), 'Could not read native deletion settings');
     });
   }
 
