@@ -224,9 +224,16 @@
         "name": "包含更深子级",
         "desc": "同时处理所选层级以下的所有子级。"
       },
+      "extensionMode": {
+        "name": "后缀筛选方式",
+        "allowlist": "白名单",
+        "blocklist": "黑名单"
+      },
       "extensions": {
         "name": "监听的扩展名",
-        "desc": "逗号分隔，例如 .pdf, .epub。"
+        "excludedName": "排除的扩展名",
+        "desc": "逗号分隔；留空不处理。Markdown 始终排除。",
+        "blocklistDesc": "逗号分隔；留空处理全部附件。Markdown 始终排除。"
       },
       "template": {
         "name": "模板文件",

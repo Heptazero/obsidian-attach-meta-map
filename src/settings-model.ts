@@ -4,6 +4,7 @@ import {
 import { SOURCE_DEFS } from './sources';
 import { renderTemplate, templateVars } from './paths';
 import { createAttachmentRule } from './attachment-rules';
+import { DEFAULT_EXCLUDED_EXTENSIONS, normalizeExtensions } from './extension-filter';
 
 /** Prevent an extensionless source link from resolving to the note itself. */
 export function unambiguousLinkTemplate(group: MappingGroup): string {
@@ -32,7 +33,10 @@ export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
     name: partial.name ?? 'New group',
     auxiliaryPrefix: partial.auxiliaryPrefix ?? '',
     createNoteFile: partial.createNoteFile ?? true,
-    watchedExtensions: partial.watchedExtensions ?? ['.pdf'],
+    extensionMode: partial.extensionMode === 'blocklist' ? 'blocklist' as const : 'allowlist' as const,
+    watchedExtensions: normalizeExtensions(partial.watchedExtensions ?? ['.pdf']),
+    excludedExtensions: normalizeExtensions(Array.isArray(partial.excludedExtensions)
+      ? partial.excludedExtensions : DEFAULT_EXCLUDED_EXTENSIONS),
     templatePath: partial.templatePath ?? '',
     noteNameTemplate: partial.noteNameTemplate ?? '{{basename}}',
     linkTemplate: partial.linkTemplate ?? '[[{{name}}]]',

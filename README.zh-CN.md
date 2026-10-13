@@ -26,6 +26,8 @@ Fork 自 [Attachments Library](https://github.com/compadrejunior/attachments-lib
 
 Folder 组可以配置多个附属文件前缀，例如 `cn_`、`zh_`、`slides_`。去掉前缀后与已有条目同名的文件会加入那个条目文件夹，并追加到笔记的 `source` 列表。
 
+每个组可切换「白名单／黑名单」。默认白名单只处理列出的后缀，留空不处理；黑名单处理未被排除的附件，留空也包含无后缀文件。两份列表独立保存，切换时恢复各自内容。原 `watchedExtensions` 字段继续保存白名单，已有组行为不变。黑名单默认排除 `.md、.canvas、.base`，Canvas 和 Base 可以移除；Markdown 始终排除，即使移出黑名单或加入白名单也不处理，避免自动生成「笔记的笔记」。右键、批量、自动监听共用筛选及原有层级规则；已有 `source` 关系仍可打开，不受后缀筛选影响。
+
 ### 让模板控制元数据
 
 每组选择一篇 Markdown 模板。模板 frontmatter 的键就是这组笔记的字段白名单；全局映射表决定每个键可以从哪里取得值。

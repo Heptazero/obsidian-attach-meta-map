@@ -55,6 +55,59 @@ function harness(files: TFile[], frontmatter: Record<string, Record<string, unkn
   return { app, created, manager, settings };
 }
 
+describe('blocklist processing boundaries', () => {
+  it('creates a note for an unlisted format but not for generated Markdown', async () => {
+    const attachment = makeFile('Library/report.dat');
+    const note = makeFile('Library/existing.md');
+    const { manager, created } = harness([attachment, note], {});
+    const group = createGroup({ layout: 'folder', collectionFolder: 'Library',
+      extensionMode: 'blocklist', excludedExtensions: [], includeSubfolders: true });
+    await manager.createNote(attachment, group);
+    expect(created.size).toBe(1);
+    expect(created.values().next().value).toContain('source: "[[report.dat]]"');
+    expect(await manager.createNote(note, group)).toBeNull();
+    expect(manager.planCreate(note, group)).toBeNull();
+    expect(created.size).toBe(1);
+  });
+
+  it('shares batch filtering with depth, defaults and explicit extensionless support', () => {
+    const files = ['Library/Topic/a.epub', 'Library/Topic/Sub/b.csv', 'Library/Topic/canvas.canvas',
+      'Library/Topic/query.base', 'Library/Topic/note.md', 'Library/Topic/README', 'Library/root.pdf',
+      'Elsewhere/a.epub'].map(makeFile);
+    const { manager, app } = harness(files, {});
+    const group = createGroup({ layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+      includeSubfolders: true, extensionMode: 'blocklist' });
+    const backfill = new BackfillManager(app, manager);
+    expect(backfill.attachmentsOf(group, [group]).map(file => file.path)).toEqual([
+      'Library/Topic/a.epub', 'Library/Topic/Sub/b.csv', 'Library/Topic/README',
+    ]);
+    expect(backfill.plansFor([group], [group])).toHaveLength(3);
+  });
+
+  it('rejects a previously approved plan after its extension is excluded', async () => {
+    const attachment = makeFile('Files/a.zip');
+    const { manager, created } = harness([attachment], {});
+    const group = createGroup({ resourceFolder: 'Files', noteFolder: 'Notes', extensionMode: 'blocklist' });
+    const plan = manager.planCreate(attachment, group)!;
+    expect(plan).not.toBeNull();
+    group.excludedExtensions.push('.zip');
+    await expect(manager.applyCreatePlan(plan)).rejects.toThrow();
+    expect(created.size).toBe(0);
+    expect(await manager.createNote(attachment, group)).toBeNull();
+  });
+
+  it('keeps existing source relations available even after exclusion', async () => {
+    const note = makeFile('Notes/a.md');
+    const attachment = makeFile('Files/a.epub');
+    const { manager } = harness([note, attachment], { [note.path]: { source: '[[a.epub]]' } });
+    const group = createGroup({ resourceFolder: 'Files', noteFolder: 'Notes', extensionMode: 'blocklist',
+      excludedExtensions: ['.epub'] });
+    expect(manager.findNoteBySource([group], attachment.path)?.note).toBe(note);
+    expect(manager.findAttachment(group, note)).toBe(attachment);
+    expect(await manager.createNote(attachment, group)).toBe(note);
+  });
+});
+
 describe('source-based resource relation', () => {
   it('always writes source when it creates an index note', async () => {
     const attachment = makeFile('Files/paper.pdf');

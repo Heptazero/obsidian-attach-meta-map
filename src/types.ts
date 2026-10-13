@@ -25,11 +25,15 @@ export interface SourceDefinition {
  * folder: loose resources and their item folders share one collection root.
  */
 export type GroupLayout = 'sidecar' | 'folder';
+export type ExtensionMode = 'allowlist' | 'blocklist';
 
 export interface MappingGroupCommon {
   id: string;
   name: string;
+  extensionMode: ExtensionMode;
+  /** Allowlist; retained under its original persisted key. */
   watchedExtensions: string[];
+  excludedExtensions: string[];
 
   /**
    * Folder layout only. Comma-separated prefixes (e.g. "cn_, zh_") mark

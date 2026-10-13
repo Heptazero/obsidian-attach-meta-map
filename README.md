@@ -26,6 +26,8 @@ At any configured depth, a loose resource is folded into its matching item folde
 
 Folder groups can recognize several companion prefixes such as `cn_`, `zh_`, or `slides_`. A companion whose remaining name matches an existing item joins that item folder and is appended to the note's `source` list.
 
+Each group has an **Allowlist / Blocklist** extension filter. Allowlist is the default and processes only listed suffixes; an empty allowlist processes nothing. Blocklist processes every attachment except listed suffixes; an empty blocklist also includes extensionless files. Both lists are saved independently and restored when switching modes. The original `watchedExtensions` setting remains the allowlist, so existing groups keep their behavior. Blocklist defaults to `.md, .canvas, .base`; Canvas and Base can be removed. Markdown is always excluded, even if removed or explicitly allowed, to prevent generated notes from recursively spawning notes. Right-click, batch, and automatic processing share this filter and the existing folder-depth policy. Existing `source` relationships can still be opened regardless of the filter.
+
 ### Let templates control metadata
 
 Each group selects one Markdown template. Its frontmatter keys are the allow-list for the note; a global mapping says which source may fill each key.

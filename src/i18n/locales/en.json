@@ -224,9 +224,16 @@
         "name": "Include deeper subfolders",
         "desc": "Include all levels below the selected depth."
       },
+      "extensionMode": {
+        "name": "Extension filter",
+        "allowlist": "Allowlist",
+        "blocklist": "Blocklist"
+      },
       "extensions": {
         "name": "Watched extensions",
-        "desc": "Comma separated, e.g. .pdf, .epub."
+        "excludedName": "Excluded extensions",
+        "desc": "Comma separated; empty watches nothing. Markdown is always excluded.",
+        "blocklistDesc": "Comma separated; empty watches all attachments. Markdown is always excluded."
       },
       "template": {
         "name": "Template file",

@@ -19,6 +19,7 @@ export default defineConfig({
         'src/paths.ts', 'src/resource-links.ts', 'src/settings-model.ts',
         'src/deletion-policy.ts',
         'src/native-deletion.ts',
+        'src/extension-filter.ts',
         'src/sources.ts', 'src/template.ts',
       ],
       thresholds: {

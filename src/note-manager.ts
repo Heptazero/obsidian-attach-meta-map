@@ -17,6 +17,7 @@ import {
   lookupDoi, lookupIsbn,
 } from './pdf-extractor';
 import { t } from './i18n/i18n';
+import { matchesGroupExtension } from './extension-filter';
 import {
   appendSourceLink, removeSourceLinks, SOURCE_PROPERTY, sourceLinkTargets, stripAuxiliaryPrefix,
 } from './resource-links';
@@ -343,6 +344,7 @@ export class NoteManager {
   async createNote(attachment: TFile, group: MappingGroup): Promise<TFile | null> {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
+    if (!matchesGroupExtension(group, attachment.extension)) return null;
 
     // Folder layout applies the group's exact/recursive depth policy, with
     // matching item-folder recovery and existing source relations preserved.
@@ -361,6 +363,7 @@ export class NoteManager {
 
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
+    if (!matchesGroupExtension(group, attachment.extension)) return null;
     // A source hit is authoritative. Otherwise apply the configured depth
     // range, including matching item-folder recovery.
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;

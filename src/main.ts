@@ -150,7 +150,8 @@ export default class AttMetaMapPlugin extends Plugin {
       name: t('commands.processActiveAttachment'),
       checkCallback: (checking: boolean) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension === 'md' || file.extension === 'canvas') return false;
+        if (!file || file.extension === 'md' ||
+          (file.extension === 'canvas' && !this.groupFor(file))) return false;
         if (!checking) this.processAttachment(file);
         return true;
       },
@@ -193,7 +194,7 @@ export default class AttMetaMapPlugin extends Plugin {
             .setTitle(t('commands.organizeNoteAttachments'))
             .setIcon('folder-input')
             .onClick(() => { this.attachmentOrganizer.organizeNote(file); }));
-        } else if (file.extension !== 'canvas') {
+        } else if (file.extension !== 'canvas' || this.groupFor(file)) {
           menu.addItem(item => item
             .setTitle(t('commands.organizeAttachment'))
             .setIcon('folder-input')

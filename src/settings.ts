@@ -9,6 +9,7 @@ import { t } from './i18n/i18n';
 import { AttachmentRuleSettings } from './attachment-rule-settings';
 import { runInBackground } from './background-task';
 import { deletionControlState, nativeBlocksPluginDeletion, nativeHandlesDeletion } from './native-deletion';
+import { renderExtensionFilter } from './extension-filter-settings';
 
 function confirmModal(app: App, message: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -51,6 +52,8 @@ const SEARCHABLE_SETTING_KEYS = [
   'settings.group.resourceFolder.name',
   'settings.group.noteFolder.name',
   'settings.group.extensions.name',
+  'settings.group.extensionMode.name',
+  'settings.group.extensions.excludedName',
   'settings.group.template.name',
   'settings.group.mirror.name',
   'settings.group.noteName.name',
@@ -479,20 +482,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           });
       }
 
-      new Setting(el)
-        .setName(t('settings.group.extensions.name'))
-        .setDesc(t('settings.group.extensions.desc'))
-        .addText(text => text
-          .setPlaceholder('.pdf, .epub')
-          .setValue(group.watchedExtensions.join(', '))
-          .onChange(async value => {
-            group.watchedExtensions = value
-              .split(',')
-              .map(part => part.trim().toLowerCase())
-              .filter(part => part.length > 0)
-              .map(part => (part.startsWith('.') ? part : `.${part}`));
-            await this.plugin.saveSettings();
-          }));
+      renderExtensionFilter(el, group, () => this.plugin.saveSettings());
 
       if (createsNotes) this.renderTemplatePicker(el, group);
 

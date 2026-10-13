@@ -1,4 +1,5 @@
 import { MappingGroup } from './types';
+import { matchesGroupExtension } from './extension-filter';
 
 /** Trailing-slash-free, backslash-free folder path. */
 export function cleanFolder(folder: string): string {
@@ -93,7 +94,7 @@ export function groupForAttachment(
     if (!folder) continue;
     if (!isInFolder(path, folder)) continue;
     if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, path)) continue;
-    if (!group.watchedExtensions.map(e => e.toLowerCase()).includes('.' + extension.toLowerCase())) continue;
+    if (!matchesGroupExtension(group, extension)) continue;
     if (folder.length > bestLen) { best = group; bestLen = folder.length; }
   }
   return best;
@@ -296,16 +297,19 @@ export function linkFor(group: MappingGroup, attachmentPath: string): string {
  * in priority order — the note name may or may not carry the extension.
  */
 export function attachmentCandidates(group: MappingGroup, notePath: string): string[] {
+  // An open-ended blocklist cannot enumerate resource names; resolve source instead.
+  if (group.extensionMode === 'blocklist') return [];
   const relative = relativeTo(notePath, noteRoot(group)).replace(/\.md$/, '');
   const attachments = resourceRoot(group);
   const base = [attachments, relative].filter(Boolean).join('/');
 
   const out: string[] = [];
   const { ext } = splitName(relative.split('/').pop() ?? relative);
-  if (ext && group.watchedExtensions.map(e => e.slice(1).toLowerCase()).includes(ext.toLowerCase())) {
+  if (ext && matchesGroupExtension(group, ext)) {
     out.push(base);
   }
   for (const watched of group.watchedExtensions) {
+    if (!matchesGroupExtension(group, watched)) continue;
     out.push(base + watched);
   }
   return out;
