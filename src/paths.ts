@@ -79,8 +79,8 @@ export function templateVars(attachmentPath: string): Record<string, string> {
 }
 
 /**
- * A group owns a loose attachment at the configured depth, or an attachment
- * one level deeper whose parent is already its matching item folder. The most
+ * A group owns loose attachments at its configured depth (and deeper when
+ * enabled), plus matching item folders one level below the exact depth. The most
  * specific root wins, so nested groups resolve predictably.
  */
 export function groupForAttachment(
@@ -182,11 +182,12 @@ export function isInMatchingItemFolder(group: MappingGroup, attachmentPath: stri
   return folderItemNames(group, attachmentPath).some(name => sameFolderName(parentName, name));
 }
 
-/** Loose input depth plus one recoverable, already-created item-folder depth. */
+/** Exact or recursive loose input depth, plus recovery of an existing item folder. */
 export function isFolderAttachmentCandidate(group: MappingGroup, attachmentPath: string): boolean {
   if (group.layout !== 'folder') return false;
   const depth = folderDepth(attachmentPath, resourceRoot(group));
   if (depth === group.attachmentDepth) return true;
+  if (group.includeSubfolders && depth !== null && depth > group.attachmentDepth) return true;
   return depth === group.attachmentDepth + 1 && isInMatchingItemFolder(group, attachmentPath);
 }
 

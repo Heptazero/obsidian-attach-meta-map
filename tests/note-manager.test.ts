@@ -3,6 +3,7 @@ import { App, TFile } from 'obsidian';
 import { NoteManager } from '../src/note-manager';
 import { createGroup, defaultSettings } from '../src/settings-model';
 import { TemplateRegistry } from '../src/template-registry';
+import { BackfillManager } from '../src/backfill';
 
 function makeFile(path: string): TFile {
   const file = new TFile();
@@ -23,6 +24,7 @@ function harness(files: TFile[], frontmatter: Record<string, Record<string, unkn
   const created = new Map<string, string>();
   const app = {
     vault: {
+      getFiles: () => files,
       getMarkdownFiles: () => files.filter(file => file.extension === 'md'),
       getFileByPath: (path: string) => files.find(file => file.path === path) ?? null,
       createFolder: async () => {},
@@ -50,7 +52,7 @@ function harness(files: TFile[], frontmatter: Record<string, Record<string, unkn
 
   const settings = defaultSettings();
   const manager = new NoteManager(app, () => settings, {} as TemplateRegistry);
-  return { created, manager, settings };
+  return { app, created, manager, settings };
 }
 
 describe('source-based resource relation', () => {
@@ -271,6 +273,68 @@ describe('source-based resource relation', () => {
 
     expect(manager.planCreate(root, group)).toBeNull();
     expect(manager.planCreate(deeper, group)).toBeNull();
+  });
+
+  it('folds a deep loose attachment at its existing location when recursion is enabled', async () => {
+    const attachment = makeFile('Library/Topic/Sub/More/paper.pdf');
+    const { created, manager } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, includeSubfolders: true,
+      enablePdfMetadataExtraction: false,
+    });
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'move', from: 'Library/Topic/Sub/More/paper.pdf', to: 'Library/Topic/Sub/More/paper/paper.pdf' },
+      { kind: 'create-note', path: 'Library/Topic/Sub/More/paper/paper.md' },
+    ]);
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Topic/Sub/More/paper/paper.pdf');
+    expect(created.get('Library/Topic/Sub/More/paper/paper.md')).toContain('source: "[[paper.pdf]]"');
+  });
+
+  it('reuses a deep matching item folder and preserves existing source bindings', () => {
+    const attachment = makeFile('Library/Topic/Sub/Paper/paper.pdf');
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, includeSubfolders: true,
+    });
+    const { manager } = harness([attachment], {});
+    expect(manager.planCreate(attachment, group)?.changes).toEqual([
+      { kind: 'create-note', path: 'Library/Topic/Sub/Paper/paper.md' },
+    ]);
+    const note = makeFile('Library/Topic/Custom/index.md');
+    const renamed = makeFile('Library/Topic/Custom/different.pdf');
+    const linked = harness([note, renamed], { [note.path]: { source: '[[different.pdf]]' } });
+    expect(linked.manager.planCreate(renamed, group)).toBeNull();
+  });
+
+  it('does not repeatedly nest deep folder-only items', async () => {
+    const attachment = makeFile('Library/Topic/Sub/paper.pdf');
+    const { manager, created } = harness([attachment], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1,
+      includeSubfolders: true, createNoteFile: false,
+    });
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Topic/Sub/paper/paper.pdf');
+    expect(manager.planCreate(attachment, group)).toBeNull();
+    await manager.createNote(attachment, group);
+    expect(attachment.path).toBe('Library/Topic/Sub/paper/paper.pdf');
+    expect(created.size).toBe(0);
+  });
+
+  it('uses the same recursive scope for batch preview and keeps nested groups separate', () => {
+    const root = makeFile('Library/root.pdf');
+    const first = makeFile('Library/Topic/first.pdf');
+    const deep = makeFile('Library/Topic/Sub/deep.pdf');
+    const special = makeFile('Library/Special/Other/special.pdf');
+    const { app, manager } = harness([root, first, deep, special], {});
+    const group = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, includeSubfolders: true,
+    });
+    const nested = createGroup({ layout: 'folder', collectionFolder: 'Library/Special', includeSubfolders: true });
+    const batch = new BackfillManager(app, manager);
+    expect(batch.attachmentsOf(group, [group, nested])).toEqual([first, deep]);
+    expect(batch.plansFor([group], [group, nested]).map(plan => plan.attachment)).toEqual([first, deep]);
+    expect(batch.attachmentsOf(nested, [group, nested])).toEqual([special]);
   });
 
   it('does not auto-match a prefixed auxiliary file already inside a child folder', async () => {

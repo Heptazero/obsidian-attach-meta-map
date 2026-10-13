@@ -49,6 +49,7 @@ export function createGroup(partial: MappingGroupInput = {}): MappingGroup {
       layout: 'folder',
       collectionFolder: partial.collectionFolder ?? 'Library',
       attachmentDepth,
+      includeSubfolders: partial.includeSubfolders === true,
     }
     : {
       ...common,

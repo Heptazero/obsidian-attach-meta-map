@@ -141,6 +141,29 @@ describe('group resolution', () => {
     expect(isFolderAttachmentCandidate(collection, 'Library/Topic/Other/paper.pdf')).toBe(false);
   });
 
+  it('includes the selected depth and every deeper level only when requested', () => {
+    const recursive = createGroup({
+      layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1, includeSubfolders: true,
+    });
+    for (const path of ['Library/Topic/a.pdf', 'Library/Topic/Sub/a.pdf', 'Library/Topic/Sub/More/a.pdf']) {
+      expect(groupForAttachment([recursive], path, 'pdf')).toBe(recursive);
+    }
+    expect(groupForAttachment([recursive], 'Library/a.pdf', 'pdf')).toBeNull();
+    expect(groupForAttachment([recursive], 'Elsewhere/Topic/Sub/a.pdf', 'pdf')).toBeNull();
+    expect(groupForAttachment([recursive], 'Library/Topic/Sub/a.png', 'png')).toBeNull();
+    const exact = createGroup({ ...recursive, includeSubfolders: false });
+    expect(groupForAttachment([exact], 'Library/Topic/Sub/a.pdf', 'pdf')).toBeNull();
+  });
+
+  it('handles root-level recursive groups while retaining nested group priority', () => {
+    const outer = createGroup({ layout: 'folder', collectionFolder: 'Library', includeSubfolders: true });
+    const inner = createGroup({ layout: 'folder', collectionFolder: 'Library/Special', includeSubfolders: true });
+    expect(groupForAttachment([outer], 'Library/a.pdf', 'pdf')).toBe(outer);
+    expect(groupForAttachment([outer], 'Library/Topic/Sub/a.pdf', 'pdf')).toBe(outer);
+    expect(groupForAttachment([outer, inner], 'Library/Special/Topic/a.pdf', 'pdf')).toBe(inner);
+    expect(groupForAttachment([inner, outer], 'Library/Special/Topic/a.pdf', 'pdf')).toBe(inner);
+  });
+
   it('ignores groups with an empty folder', () => {
     const broken = createGroup({ resourceFolder: '', noteFolder: '' });
     expect(groupForAttachment([broken], 'a.pdf', 'pdf')).toBeNull();

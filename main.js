@@ -4512,6 +4512,7 @@ function isFolderAttachmentCandidate(group, attachmentPath) {
   if (group.layout !== "folder") return false;
   const depth = folderDepth(attachmentPath, resourceRoot(group));
   if (depth === group.attachmentDepth) return true;
+  if (group.includeSubfolders && depth !== null && depth > group.attachmentDepth) return true;
   return depth === group.attachmentDepth + 1 && isInMatchingItemFolder(group, attachmentPath);
 }
 function notePathCandidates(group, attachmentPath) {
@@ -4769,7 +4770,8 @@ function createGroup(partial = {}) {
     ...common,
     layout: "folder",
     collectionFolder: (_o = partial.collectionFolder) != null ? _o : "Library",
-    attachmentDepth
+    attachmentDepth,
+    includeSubfolders: partial.includeSubfolders === true
   } : {
     ...common,
     layout: "sidecar",
@@ -22976,6 +22978,10 @@ var en_default = {
         name: "Loose attachment depth",
         desc: "0 is the root, 1 is one level down. A matching item folder is reused; otherwise one is created here."
       },
+      includeSubfolders: {
+        name: "Include deeper subfolders",
+        desc: "Include all levels below the selected depth."
+      },
       extensions: {
         name: "Watched extensions",
         desc: "Comma separated, e.g. .pdf, .epub."
@@ -23291,6 +23297,10 @@ var zh_default = {
       attachmentDepth: {
         name: "\u5F85\u6574\u7406\u9644\u4EF6\u6240\u5728\u5C42\u7EA7",
         desc: "0 \u662F\u6839\u76EE\u5F55\uFF0C1 \u662F\u4E0B\u4E00\u5C42\u3002\u5DF2\u6709\u5BF9\u5E94\u6761\u76EE\u6587\u4EF6\u5939\u5C31\u590D\u7528\uFF0C\u5426\u5219\u5728\u8FD9\u4E00\u5C42\u5EFA\u7ACB\u3002"
+      },
+      includeSubfolders: {
+        name: "\u5305\u542B\u66F4\u6DF1\u5B50\u7EA7",
+        desc: "\u540C\u65F6\u5904\u7406\u6240\u9009\u5C42\u7EA7\u4EE5\u4E0B\u7684\u6240\u6709\u5B50\u7EA7\u3002"
       },
       extensions: {
         name: "\u76D1\u542C\u7684\u6269\u5C55\u540D",
@@ -24947,6 +24957,7 @@ var SEARCHABLE_SETTING_KEYS = [
   "settings.group.auxiliaryPrefix.name",
   "settings.group.collectionFolder.name",
   "settings.group.attachmentDepth.name",
+  "settings.group.includeSubfolders.name",
   "settings.group.resourceFolder.name",
   "settings.group.noteFolder.name",
   "settings.group.extensions.name",
@@ -25235,6 +25246,10 @@ var AttMetaMapSettingTab = class extends import_obsidian14.PluginSettingTab {
             await this.plugin.saveSettings();
           });
         });
+        new import_obsidian14.Setting(el).setName(t2("settings.group.includeSubfolders.name")).setDesc(t2("settings.group.includeSubfolders.desc")).addToggle((toggle) => toggle.setValue(group.includeSubfolders).onChange((value) => runInBackground(async () => {
+          group.includeSubfolders = value;
+          await this.plugin.saveSettings();
+        }, "Could not save folder depth scope")));
       } else {
         new import_obsidian14.Setting(el).setName(t2("settings.group.resourceFolder.name")).setDesc(t2("settings.group.resourceFolder.desc")).addText((text) => {
           text.setPlaceholder("Attachments").setValue(group.resourceFolder).onChange(async (value) => {

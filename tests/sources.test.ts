@@ -175,6 +175,15 @@ describe('current settings shape', () => {
     expect(settings.groups[0]).not.toHaveProperty('mirrorFolderStructure');
   });
 
+  it('keeps recursive depth opt-in across settings normalization', () => {
+    const old = normalizeSettings({ groups: [{ layout: 'folder', collectionFolder: 'Library', attachmentDepth: 1 }] });
+    expect(old.groups[0]).toMatchObject({ attachmentDepth: 1, includeSubfolders: false });
+    const recursive = normalizeSettings({ groups: [{ layout: 'folder', collectionFolder: 'Library', attachmentDepth: 2, includeSubfolders: true }] });
+    expect(recursive.groups[0]).toMatchObject({ attachmentDepth: 2, includeSubfolders: true });
+    const invalid = normalizeSettings({ groups: [{ layout: 'folder', collectionFolder: 'Library', includeSubfolders: 'true' }] });
+    expect(invalid.groups[0]).toMatchObject({ includeSubfolders: false });
+  });
+
   it('repairs a link template that would point at the note itself', () => {
     const settings = normalizeSettings({
       version: 4,

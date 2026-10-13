@@ -47,6 +47,7 @@ const SEARCHABLE_SETTING_KEYS = [
   'settings.group.auxiliaryPrefix.name',
   'settings.group.collectionFolder.name',
   'settings.group.attachmentDepth.name',
+  'settings.group.includeSubfolders.name',
   'settings.group.resourceFolder.name',
   'settings.group.noteFolder.name',
   'settings.group.extensions.name',
@@ -432,6 +433,16 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             });
           });
+
+        new Setting(el)
+          .setName(t('settings.group.includeSubfolders.name'))
+          .setDesc(t('settings.group.includeSubfolders.desc'))
+          .addToggle(toggle => toggle
+            .setValue(group.includeSubfolders)
+            .onChange(value => runInBackground(async () => {
+              group.includeSubfolders = value;
+              await this.plugin.saveSettings();
+            }, 'Could not save folder depth scope')));
       } else {
         new Setting(el)
           .setName(t('settings.group.resourceFolder.name'))

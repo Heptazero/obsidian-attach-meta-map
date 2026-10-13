@@ -220,6 +220,10 @@
         "name": "Loose attachment depth",
         "desc": "0 is the root, 1 is one level down. A matching item folder is reused; otherwise one is created here."
       },
+      "includeSubfolders": {
+        "name": "Include deeper subfolders",
+        "desc": "Include all levels below the selected depth."
+      },
       "extensions": {
         "name": "Watched extensions",
         "desc": "Comma separated, e.g. .pdf, .epub."

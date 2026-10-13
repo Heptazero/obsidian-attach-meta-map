@@ -74,8 +74,10 @@ export interface SidecarGroup extends MappingGroupCommon {
 export interface FolderGroup extends MappingGroupCommon {
   layout: 'folder';
   collectionFolder: string;
-  /** Exact folder depth of loose attachments to organize. Root files are depth 0. */
+  /** Starting folder depth of loose attachments. Root files are depth 0. */
   attachmentDepth: number;
+  /** When true, also organize loose attachments deeper than attachmentDepth. */
+  includeSubfolders: boolean;
 }
 
 export type MappingGroup = SidecarGroup | FolderGroup;
@@ -86,6 +88,7 @@ export type MappingGroupInput = Partial<MappingGroupCommon> & {
   noteFolder?: string;
   collectionFolder?: string;
   attachmentDepth?: number;
+  includeSubfolders?: boolean;
   mirrorFolderStructure?: boolean;
 };
 

@@ -344,8 +344,8 @@ export class NoteManager {
     const existing = this.findNote(group, attachment.path);
     if (existing) return existing;
 
-    // Folder layout handles loose resources at one exact configured depth,
-    // plus the matching item folder one level below for missing-note recovery.
+    // Folder layout applies the group's exact/recursive depth policy, with
+    // matching item-folder recovery and existing source relations preserved.
     if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
     }
@@ -361,8 +361,8 @@ export class NoteManager {
 
   /** Read-only half of creation, used to preview every batch mutation. */
   planCreate(attachment: TFile, group: MappingGroup): CreatePlan | null {
-    // A source hit is authoritative. Otherwise accept the configured loose
-    // depth, or one matching item-folder depth for missing-note recovery.
+    // A source hit is authoritative. Otherwise apply the configured depth
+    // range, including matching item-folder recovery.
     if (this.findNoteBySourceInGroup(group, attachment.path)) return null;
     if (group.layout === 'folder' && !isFolderAttachmentCandidate(group, attachment.path)) {
       return null;
