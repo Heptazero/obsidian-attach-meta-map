@@ -1,8 +1,27 @@
-# Att Meta Map
+# Att Meta Map — attachment notes and organization for Obsidian
 
 [简体中文](./README.zh-CN.md)
 
-Att Meta Map turns resource collections into index notes in Obsidian. The model is deliberately simple: **`source` defines the relationship, the template defines the fields, and the mapping defines where other values come from.**
+Att Meta Map is an **Obsidian plugin for creating Markdown companion notes for PDFs and other attachments, filling note properties from file/PDF metadata, and organizing attachments with folder and naming rules**. Use it for a document library, research papers with original and translated PDFs, or attachments that need searchable note properties.
+
+Keep files in place with **Sidecar** notes, or collect a resource and its note in an item folder with **Folder** layout. A note's `source` property explicitly links its files; one note can describe several resources, not just one PDF.
+
+[Install](#install) · [Quick start](#quick-start) · [Common questions](#common-questions) · [Automation and safety](#automation-and-safety)
+
+## Which workflow do you need?
+
+| What you might ask | What Att Meta Map provides |
+|---|---|
+| How do I automatically create a Markdown note for each PDF in Obsidian? | [Mapping groups](#choose-a-sidecar-or-folder-layout) can create companion notes for new matching attachments. Existing files use the batch backfill preview. |
+| Can I put PDF title, author, and page count into note properties? | [Template-driven metadata](#let-templates-control-metadata) fills configured frontmatter fields from PDF/file metadata, with optional DOI/ISBN lookup. It does not summarize the paper. |
+| Can an original PDF, a translated PDF, and slides share one note? | A [`source` link list](#keep-one-explicit-relationship) associates multiple resources with one note. Folder groups can recognize configured companion prefixes; the plugin does not translate files. |
+| How do I open an attachment beside its note and manage the links? | **Open paired view** opens the pair; the **Resource relations** panel lists, opens, and unbinds `source` entries without deleting files. See [commands](#commands-and-file-menus). |
+| Can I organize attachments into per-item folders, or keep PDFs where they are? | [Folder and Sidecar layouts](#layout-details) support both. Folder layout has depth controls and can organize files without creating notes. |
+| Can I watch all document types instead of listing every extension? | Use [Blocklist](#watch-selected-extensions-or-all-attachments) and clear its exclusions. Markdown remains excluded; no literal `*` is supported. |
+| Can I move and rename attachments by extension, source folder, and priority? | [Ordered attachment rules](#organize-unmanaged-attachments-with-ordered-rules) provide include/exclude conditions and sequential numbering. These rules are manual, previewed, and limited to files outside mapping-group roots. |
+| Can deleting a PDF also delete its note, or vice versa? | [Optional source-linked deletion](#automation-and-safety) supports both directions with shared-resource protection. Both plugin directions default to off; native Obsidian cleanup is handled separately. |
+
+**Before enabling automation:** Folder layout moves matching files; Sidecar layout leaves resources in place. Automatic mapping events do not show a batch confirmation. Start with a small test folder and read [Automation and safety](#automation-and-safety), especially when sync tools or other attachment managers also modify the vault.
 
 Forked from [Attachments Library](https://github.com/compadrejunior/attachments-library) by José Compadre Junior (MIT).
 
@@ -26,7 +45,16 @@ At any configured depth, a loose resource is folded into its matching item folde
 
 Folder groups can recognize several companion prefixes such as `cn_`, `zh_`, or `slides_`. A companion whose remaining name matches an existing item joins that item folder and is appended to the note's `source` list.
 
-Each group has an **Allowlist / Blocklist** extension filter. Allowlist is the default and processes only listed suffixes; an empty allowlist processes nothing. Blocklist processes every attachment except listed suffixes; an empty blocklist also includes extensionless files. Both lists are saved independently and restored when switching modes. The original `watchedExtensions` setting remains the allowlist, so existing groups keep their behavior. Blocklist defaults to `.md, .canvas, .base`; Canvas and Base can be removed. Markdown is always excluded, even if removed or explicitly allowed, to prevent generated notes from recursively spawning notes. Right-click, batch, and automatic processing share this filter and the existing folder-depth policy. Existing `source` relationships can still be opened regardless of the filter.
+### Watch selected extensions or all attachments
+
+In **Settings → Att Meta Map → your mapping group → Paths & files → Extension filter**, select:
+
+- **Allowlist** (default): process only listed suffixes, such as `.pdf, .epub`. An empty allowlist processes nothing.
+- **Blocklist**: process every attachment except listed suffixes. An empty blocklist includes all attachment types, even extensionless files, within the group's folder/depth scope. Use this for a Documents folder without maintaining a long extension list; a literal `*` is not supported.
+
+The initial blocklist is `.md, .canvas, .base`. Canvas and Base can be removed. Markdown is always excluded, even if removed or explicitly allowed, to prevent generated notes from recursively spawning notes.
+
+Both lists are saved independently and restored when switching modes. The original `watchedExtensions` setting remains the allowlist, so existing groups keep their behavior. Right-click, batch, and automatic processing share this filter and the existing folder-depth policy. Existing `source` relationships can still be opened regardless of the filter. See the [filter implementation](./src/extension-filter.ts) and [tests](./tests/extension-filter.test.ts).
 
 ### Let templates control metadata
 
@@ -51,6 +79,8 @@ Attachment rules move and rename files that are outside every mapping-group reso
 - `{{index}}` is recalculated from a complete target snapshot and uses the smallest available positive integers, so a folder containing `1` and `82` can be compacted to `1` and `2`.
 
 Mapping-group roots are a hard protection boundary. General rules never touch files already owned by a group. Rules are manual only and always show the complete change tree before confirmation.
+
+For example, place a PDF-specific rule for `Inbox/Papers` first and a broader fallback rule last. A matching file uses the first rule only, not every matching rule. Conditions have separate include/exclude fields; this is not a scripting language. See the [rule planner](./src/attachment-rules.ts).
 
 ## Install
 
@@ -85,6 +115,19 @@ The model has three rules:
 3. **The global mapping decides where values come from.** If `PDF author → author` is configured but the template has no `author` key, nothing is written.
 
 The template is therefore the field switch. Att Meta Map always maintains `source`; every other property must be accepted by both the template and the mapping.
+
+For example, one paper note can link to three existing files:
+
+```yaml
+---
+source:
+  - "[[paper.pdf]]"
+  - "[[cn_paper.pdf]]"
+  - "[[paper-slides.pptx]]"
+---
+```
+
+These links define the relationship whether the resources share a folder or live separately. Ordinary body links and backlinks do not establish this binding. Adding several `source` links does not translate, copy, or merge the files. See the [source-link parser](./src/resource-links.ts).
 
 ## Layout details
 
@@ -161,6 +204,24 @@ Additional boundaries:
 - Folder layout follows the configured depth scope (including deeper levels only when enabled) and marks its own moves so the rename listener does not process them again.
 
 Changes to `data.json` are loaded only when the plugin starts. Disable and re-enable the plugin, use *View → Force Reload*, or restart Obsidian after editing that file externally.
+
+## Common questions
+
+### Does Att Meta Map convert PDFs to Markdown, translate papers, or extract annotations?
+
+No. A companion note is a Markdown file linked to the attachment, not a conversion of its contents. Att Meta Map reads PDF metadata and can look up bibliographic fields using a detected DOI/ISBN; it does not provide OCR, full-text conversion, translation, annotation extraction, citation counts, or AI summaries. Use separate tools for those tasks and link their resulting files through `source` when appropriate.
+
+### Is it only for PDFs, or can I manage EPUBs, images, and slides?
+
+Mapping groups can create companion notes for non-Markdown file types allowed by their extension filter, including EPUBs, images, and slide files. General file metadata is available for these attachments; embedded title/author/page metadata extraction is PDF-specific. Linking a file does not add a new viewer for its format.
+
+### Can it replace an attachment-management plugin?
+
+For manual, rule-based moves and renames outside mapping-group roots, Att Meta Map includes attachment-management features. It is not a drop-in replacement for every attachment manager: general rules do not intercept paste/drop events, override Obsidian's attachment-location setting, or run automatically. Mapping-group creation has its own automatic listeners. Avoid assigning overlapping file-moving responsibilities to multiple plugins.
+
+### Does it need an AI service, account, or internet connection?
+
+No AI service or account is required. Creating companion notes, local PDF metadata extraction, relationship management, and attachment organization work locally. Optional DOI/ISBN lookup uses Crossref/Open Library and requires a network connection; it is off by default.
 
 ## Privacy, language, and architecture
 
