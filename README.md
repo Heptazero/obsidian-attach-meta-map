@@ -181,6 +181,10 @@ In organization and backfill previews, red `−` means a file leaves its old pat
 
 Mapping groups register `create`, `rename`, and `modify` listeners while the plugin is enabled. Scripts, sync tools, and Git operations may therefore trigger the same events as changes made in Obsidian. General attachment rules do not register automatic listeners.
 
+Automatic note creation, including files renamed into scope, uses one shared serial queue. Duplicate events for the same file are coalesced, and the file's identity, current group, and creation setting are checked before queued work starts. Unloading the plugin clears waiting tasks and their timer; an already running operation is not rolled back. Manual operations remain separate, and complete batch previews are unchanged.
+
+The linked-deletion cache is populated only while at least one plugin deletion direction is effective. It retains only notes with `source` links, including owners outside mapping groups, and is cleared when no direction is effective. Disk-based ownership and pre-execution safety checks remain in place. PDF text-detection tasks release their own parsing resources on success or failure without touching reader documents.
+
 Linked deletion is optional under **General → Linked deletion**. The plugin's two directions default to off; change confirmation defaults to on. With resource-to-note deletion off, a deleted resource leaves its note and broken `source` link intact.
 
 On Obsidian 1.12+, when **Files & Links → Delete attachments when deleting files** is set to **Ask each time** (Obsidian's default) or **Always**, the note-to-resources row appears checked and disabled, with a small label showing that Obsidian handles it. The plugin skips this direction, preventing a second confirmation window. Native cleanup follows Obsidian's link rules and confirmation preference; the plugin's preview toggle does not control it. Set the native preference to **Never** to enable the plugin's source-only option. Its previous toggle value is retained. Earlier Obsidian versions keep the plugin option available.

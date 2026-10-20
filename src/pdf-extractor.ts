@@ -84,15 +84,26 @@ export class PdfMetadataExtractor {
   private async readFirstPagesText(file: TFile, pages: number): Promise<string> {
     interface TextItem { str?: string }
     interface PdfPage { getTextContent(): Promise<{ items: TextItem[] }> }
-    interface PdfDoc { numPages: number; getPage(n: number): Promise<PdfPage> }
-    interface PdfJsLib { getDocument(src: { data: ArrayBuffer }): { promise: Promise<PdfDoc> } }
+    interface PdfDoc {
+      numPages: number;
+      getPage(n: number): Promise<PdfPage>;
+      destroy?(): Promise<void> | void;
+    }
+    interface PdfTask {
+      promise: Promise<PdfDoc>;
+      destroy?(): Promise<void> | void;
+    }
+    interface PdfJsLib { getDocument(src: { data: ArrayBuffer }): PdfTask }
 
     const lib = (window as unknown as { pdfjsLib?: PdfJsLib }).pdfjsLib;
     if (!lib?.getDocument) return '';
 
+    let task: PdfTask | undefined;
+    let doc: PdfDoc | undefined;
     try {
       const data = await this.app.vault.readBinary(file);
-      const doc = await lib.getDocument({ data }).promise;
+      task = lib.getDocument({ data });
+      doc = await task.promise;
       const limit = Math.min(pages, doc.numPages);
       const chunks: string[] = [];
       for (let i = 1; i <= limit; i++) {
@@ -104,6 +115,14 @@ export class PdfMetadataExtractor {
     } catch (err) {
       console.warn(`[Att Meta Map] Could not read PDF text from ${file.path}:`, err);
       return '';
+    } finally {
+      // Only destroy the task/document created here, never the reader's active PDF.
+      try {
+        if (task?.destroy) await task.destroy();
+        else await doc?.destroy?.();
+      } catch (error) {
+        console.warn('[Att Meta Map] Could not release PDF text task', error);
+      }
     }
   }
 }

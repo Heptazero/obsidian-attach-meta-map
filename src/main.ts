@@ -23,6 +23,7 @@ import { routeAttachment } from './attachment-rules';
 import { DeletionManager } from './deletion-manager';
 import { confirmDeletion } from './deletion-modal';
 import { NativeDeletionMonitor } from './native-deletion';
+import { DeferredTaskQueue } from './deferred-task-queue';
 
 export default class AttMetaMapPlugin extends Plugin {
   settings: AttMetaMapSettings;
@@ -34,6 +35,7 @@ export default class AttMetaMapPlugin extends Plugin {
   attachmentOrganizer: AttachmentOrganizer;
   deletionManager: DeletionManager;
   nativeDeletion: NativeDeletionMonitor;
+  private creationQueue: DeferredTaskQueue<TFile>;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -47,6 +49,13 @@ export default class AttMetaMapPlugin extends Plugin {
 
     this.registry = new TemplateRegistry(this.app, () => this.settings);
     this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
+    this.creationQueue = new DeferredTaskQueue(async file => {
+      // Resolve the current group at execution, not the old path/settings at enqueue.
+      if (this.app.vault.getFileByPath(file.path) !== file) return;
+      const group = this.groupFor(file);
+      if (group?.autoCreateOnNew) await this.noteManager.createNote(file, group);
+    }, 'Could not create note for new resource');
+    this.register(() => this.creationQueue.stop());
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
@@ -54,6 +63,7 @@ export default class AttMetaMapPlugin extends Plugin {
     this.deletionManager = new DeletionManager(this.app, () => this.settings,
       plan => confirmDeletion(this.app, plan), this.nativeDeletion);
     this.register(() => this.deletionManager.stop());
+    this.register(this.nativeDeletion.subscribe(() => this.deletionManager.syncSettings()));
 
     this.registerView(RESOURCE_RELATIONS_VIEW, leaf => new ResourceRelationsView(
       leaf,
@@ -293,10 +303,7 @@ export default class AttMetaMapPlugin extends Plugin {
       const group = this.groupFor(file);
       if (!group?.autoCreateOnNew) return;
       // Give Obsidian a moment to finish writing the file before reading it.
-      window.setTimeout(() => runInBackground(
-        () => this.noteManager.createNote(file, group),
-        'Could not create note for new resource',
-      ), 500);
+      this.creationQueue.enqueue(file, 500);
     }));
 
     this.registerEvent(this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
@@ -313,7 +320,7 @@ export default class AttMetaMapPlugin extends Plugin {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
         } else {
-          if (after?.autoCreateOnNew) await this.noteManager.createNote(file, after);
+          if (after?.autoCreateOnNew) this.creationQueue.enqueue(file, 500);
         }
       }, 'Could not synchronize renamed resource');
     }));
@@ -341,6 +348,7 @@ export default class AttMetaMapPlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
+    this.deletionManager?.syncSettings();
     await this.saveData(this.settings);
   }
 }

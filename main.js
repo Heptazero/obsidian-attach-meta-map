@@ -20430,25 +20430,36 @@ var PdfMetadataExtractor = class {
     return { doi: doi.replace(/[.,;)]+$/, ""), isbn };
   }
   async readFirstPagesText(file, pages) {
+    var _a;
     const lib = window.pdfjsLib;
     if (!(lib == null ? void 0 : lib.getDocument)) return "";
+    let task;
+    let doc;
     try {
       const data = await this.app.vault.readBinary(file);
-      const doc = await lib.getDocument({ data }).promise;
+      task = lib.getDocument({ data });
+      doc = await task.promise;
       const limit = Math.min(pages, doc.numPages);
       const chunks = [];
       for (let i3 = 1; i3 <= limit; i3++) {
         const page = await doc.getPage(i3);
         const content = await page.getTextContent();
         chunks.push(content.items.map((item) => {
-          var _a;
-          return (_a = item.str) != null ? _a : "";
+          var _a2;
+          return (_a2 = item.str) != null ? _a2 : "";
         }).join(" "));
       }
       return chunks.join("\n");
     } catch (err) {
       console.warn(`[Att Meta Map] Could not read PDF text from ${file.path}:`, err);
       return "";
+    } finally {
+      try {
+        if (task == null ? void 0 : task.destroy) await task.destroy();
+        else await ((_a = doc == null ? void 0 : doc.destroy) == null ? void 0 : _a.call(doc));
+      } catch (error2) {
+        console.warn("[Att Meta Map] Could not release PDF text task", error2);
+      }
     }
   }
 };
@@ -25770,9 +25781,12 @@ var DeletionManager = class {
     this.pending = /* @__PURE__ */ new Set();
     this.queue = Promise.resolve();
     this.stopped = false;
+    this.started = false;
+    this.tracking = false;
   }
   start(registerEvent) {
-    this.refresh();
+    this.started = true;
+    this.syncSettings();
     registerEvent(this.app.metadataCache.on("changed", (file) => this.update(file)));
     registerEvent(this.app.metadataCache.on("resolved", () => this.refresh()));
     registerEvent(this.app.vault.on("rename", () => this.refresh()));
@@ -25782,19 +25796,34 @@ var DeletionManager = class {
   }
   stop() {
     this.stopped = true;
+    this.tracking = false;
     this.notes.clear();
+  }
+  /** No vault snapshots are needed while both plugin directions are ineffective. */
+  syncSettings() {
+    const active = this.started && !this.stopped && (this.enabled("resourceToNote") || this.enabled("noteToResources"));
+    if (active === this.tracking) return;
+    this.tracking = active;
+    this.notes.clear();
+    if (active) this.refresh();
   }
   isLive(file) {
     return this.app.vault.getFileByPath(file.path) === file;
   }
   update(file) {
     var _a;
+    if (!this.tracking || this.stopped) return;
     if (file.extension.toLowerCase() !== "md" || !this.isLive(file)) return;
     const cache = this.app.metadataCache.getFileCache(file);
     if (!cache) return;
     const previous = this.notes.get(file);
     const value = (_a = cache.frontmatter) == null ? void 0 : _a[SOURCE_PROPERTY];
-    const links = sourceLinkTargets(value).map((target) => {
+    const targets = sourceLinkTargets(value);
+    if (targets.length === 0) {
+      this.notes.delete(file);
+      return;
+    }
+    const links = targets.map((target) => {
       var _a2;
       const resolved = this.app.metadataCache.getFirstLinkpathDest(target, file.path);
       const resource = resolved && !["md", "canvas"].includes(resolved.extension.toLowerCase()) ? resolved : null;
@@ -25804,6 +25833,7 @@ var DeletionManager = class {
     this.notes.set(file, { file, links, mtime: file.stat.mtime, size: file.stat.size });
   }
   refresh() {
+    if (!this.tracking || this.stopped) return;
     for (const file of this.app.vault.getMarkdownFiles()) this.update(file);
   }
   snapshot(note) {
@@ -26005,6 +26035,48 @@ function confirmDeletion(app, plan) {
   return new Promise((resolve) => new DeletionModal(app, plan, resolve).open());
 }
 
+// src/deferred-task-queue.ts
+var DeferredTaskQueue = class {
+  constructor(run, context) {
+    this.run = run;
+    this.context = context;
+    this.waiting = /* @__PURE__ */ new Map();
+    this.timer = null;
+    this.active = null;
+    this.stopped = false;
+  }
+  enqueue(key, delayMs = 0) {
+    if (this.stopped || this.active && this.active.key === key || this.waiting.has(key)) return;
+    this.waiting.set(key, Date.now() + delayMs);
+    this.schedule();
+  }
+  stop() {
+    this.stopped = true;
+    this.waiting.clear();
+    if (this.timer !== null) window.clearTimeout(this.timer);
+    this.timer = null;
+  }
+  schedule() {
+    if (this.stopped || this.active || this.timer !== null) return;
+    const next = this.waiting.entries().next();
+    if (next.done) return;
+    const [key, readyAt] = next.value;
+    this.timer = window.setTimeout(() => {
+      this.timer = null;
+      this.waiting.delete(key);
+      this.active = { key };
+      runInBackground(async () => {
+        try {
+          await this.run(key);
+        } finally {
+          this.active = null;
+          this.schedule();
+        }
+      }, this.context);
+    }, Math.max(0, readyAt - Date.now()));
+  }
+};
+
 // src/main.ts
 var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
   async onload() {
@@ -26018,6 +26090,12 @@ var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
     }, 2e3));
     this.registry = new TemplateRegistry(this.app, () => this.settings);
     this.noteManager = new NoteManager(this.app, () => this.settings, this.registry);
+    this.creationQueue = new DeferredTaskQueue(async (file) => {
+      if (this.app.vault.getFileByPath(file.path) !== file) return;
+      const group = this.groupFor(file);
+      if (group == null ? void 0 : group.autoCreateOnNew) await this.noteManager.createNote(file, group);
+    }, "Could not create note for new resource");
+    this.register(() => this.creationQueue.stop());
     this.backfillManager = new BackfillManager(this.app, this.noteManager);
     this.upgradeManager = new UpgradeManager(this.app, this.noteManager);
     this.pairOpener = new PairOpener(this.app, this.noteManager);
@@ -26029,6 +26107,7 @@ var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
       this.nativeDeletion
     );
     this.register(() => this.deletionManager.stop());
+    this.register(this.nativeDeletion.subscribe(() => this.deletionManager.syncSettings()));
     this.registerView(RESOURCE_RELATIONS_VIEW, (leaf) => new ResourceRelationsView(
       leaf,
       this.noteManager,
@@ -26243,10 +26322,7 @@ var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
       if (!(file instanceof import_obsidian21.TFile)) return;
       const group = this.groupFor(file);
       if (!(group == null ? void 0 : group.autoCreateOnNew)) return;
-      window.setTimeout(() => runInBackground(
-        () => this.noteManager.createNote(file, group),
-        "Could not create note for new resource"
-      ), 500);
+      this.creationQueue.enqueue(file, 500);
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       var _a, _b;
@@ -26259,7 +26335,7 @@ var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
         if (before && after && before.id === after.id) {
           await this.noteManager.renameNote(after, oldPath, file.path);
         } else {
-          if (after == null ? void 0 : after.autoCreateOnNew) await this.noteManager.createNote(file, after);
+          if (after == null ? void 0 : after.autoCreateOnNew) this.creationQueue.enqueue(file, 500);
         }
       }, "Could not synchronize renamed resource");
     }));
@@ -26281,6 +26357,8 @@ var AttMetaMapPlugin = class extends import_obsidian21.Plugin {
     this.settings = normalizeSettings(await this.loadData());
   }
   async saveSettings() {
+    var _a;
+    (_a = this.deletionManager) == null ? void 0 : _a.syncSettings();
     await this.saveData(this.settings);
   }
 };

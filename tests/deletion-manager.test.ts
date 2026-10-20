@@ -4,14 +4,15 @@ import { DeletionManager } from '../src/deletion-manager';
 import { DeletionPlan } from '../src/deletion-policy';
 import { createGroup, defaultSettings, normalizeSettings } from '../src/settings-model';
 import type { NativeDeletionProvider } from '../src/native-deletion';
+import type { DeletionSettings } from '../src/types';
 
-function harness(initial: Record<string, unknown>) {
+function harness(initial: Record<string, unknown>, deletion: Partial<DeletionSettings> = {}) {
   const files = new Map<string, TFile>();
   const fm = new Map<string, Record<string, unknown>>();
   const disk = new Map<string, Record<string, unknown>>();
   const settings = defaultSettings();
   settings.groups = [createGroup({ resourceFolder: 'Files', noteFolder: 'Notes' })];
-  settings.deletion = { resourceToNote: true, noteToResources: true, confirm: true };
+  settings.deletion = { resourceToNote: true, noteToResources: true, confirm: true, ...deletion };
   const deleted: string[] = [];
   const prompts: DeletionPlan[] = [];
   let decide: (plan: DeletionPlan) => Promise<boolean> = async () => true;
@@ -45,9 +46,10 @@ function harness(initial: Record<string, unknown>) {
     file.stat.mtime++;
     handlers['metadata:changed'](file);
   });
+  const scan = vi.fn(() => [...files.values()].filter(file => file.extension === 'md'));
   const app = {
     vault: {
-      getMarkdownFiles: () => [...files.values()].filter(file => file.extension === 'md'),
+      getMarkdownFiles: scan,
       getFileByPath: (path: string) => files.get(path) ?? null,
       read: async (file: TFile) => JSON.stringify(disk.get(file.path) ?? {}),
       on: (event: string, handler: (...args: any[]) => void) => { handlers[`vault:${event}`] = handler; return {}; },
@@ -67,11 +69,78 @@ function harness(initial: Record<string, unknown>) {
     fm.delete(path); // Host metadata for a deleted note is no longer available.
     handlers['vault:delete'](file);
   };
-  return { manager, settings, files, fm, disk, prompts, deleted, trash, writes, remove, add, handlers, native,
+  const cache = (manager as unknown as { notes: Map<TFile, unknown> }).notes;
+  return { manager, settings, files, fm, disk, prompts, deleted, trash, writes, remove, add, handlers, native, cache, scan,
     decide: (callback: typeof decide) => { decide = callback; } };
 }
 
 describe('linked deletion', () => {
+  it('does not scan or retain vault notes when both directions are off', () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Other/no-source.md': undefined, 'Files/p.pdf': null },
+      { resourceToNote: false, noteToResources: false });
+    h.handlers['metadata:resolved']();
+    h.handlers['metadata:changed'](h.files.get('Notes/p.md'));
+    h.handlers['vault:rename']();
+    expect(h.scan).not.toHaveBeenCalled();
+    expect(h.cache.size).toBe(0);
+  });
+
+  it('keeps only one relation record among 5000 unrelated notes', () => {
+    const initial: Record<string, unknown> = Object.fromEntries(Array.from({ length: 5000 }, (_, i) => [`Other/n${i}.md`, undefined]));
+    initial['Notes/p.md'] = '[[p.pdf]]';
+    initial['Files/p.pdf'] = null;
+    const h = harness(initial);
+    expect(h.scan()).toHaveLength(5001);
+    expect(h.cache.size).toBe(1);
+    h.settings.deletion = { resourceToNote: false, noteToResources: false, confirm: true };
+    h.manager.syncSettings();
+    expect(h.cache.size).toBe(0);
+  });
+
+  it('retains only source-bearing notes, including unresolved links and external owners', () => {
+    const h = harness({ 'Notes/p.md': '[[missing.pdf]]', 'Other/owner.md': '[[p.pdf]]',
+      'Other/no-source.md': undefined, 'Files/p.pdf': null });
+    expect(h.cache.size).toBe(2);
+    h.fm.get('Other/owner.md')!.source = [];
+    h.handlers['metadata:changed'](h.files.get('Other/owner.md'));
+    expect(h.cache.size).toBe(1);
+  });
+
+  it('warms current relations on enable and releases them immediately on disable', async () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null },
+      { resourceToNote: false, noteToResources: false });
+    h.settings.deletion.resourceToNote = true;
+    h.manager.syncSettings();
+    expect(h.cache.size).toBe(1);
+    h.remove('Files/p.pdf');
+    await h.manager.settled();
+    expect(h.deleted).toEqual(['Notes/p.md']);
+    h.settings.deletion.resourceToNote = false;
+    h.manager.syncSettings();
+    h.scan.mockClear();
+    h.handlers['metadata:resolved']();
+    expect(h.cache.size).toBe(0);
+    expect(h.scan).not.toHaveBeenCalled();
+    h.manager.stop();
+    h.settings.deletion.resourceToNote = true;
+    h.manager.syncSettings();
+    expect(h.scan).not.toHaveBeenCalled();
+  });
+
+  it('drops the note-to-resource cache while delegated to native cleanup and warms it when restored', () => {
+    const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null }, { resourceToNote: false });
+    expect(h.cache.size).toBe(1);
+    h.native.mode = 'ask';
+    h.manager.syncSettings();
+    expect(h.cache.size).toBe(0);
+    h.scan.mockClear();
+    h.handlers['metadata:resolved']();
+    expect(h.scan).not.toHaveBeenCalled();
+    h.native.mode = 'never';
+    h.manager.syncSettings();
+    expect(h.cache.size).toBe(1);
+  });
+
   it.each(['ask', 'always', 'unknown'] as const)('does not open a second preview or trash resources when native mode is %s', async mode => {
     const h = harness({ 'Notes/p.md': '[[p.pdf]]', 'Files/p.pdf': null });
     h.native.mode = mode;

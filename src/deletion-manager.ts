@@ -26,6 +26,8 @@ export class DeletionManager {
   private pending = new Set<TFile>();
   private queue: Promise<void> = Promise.resolve();
   private stopped = false;
+  private started = false;
+  private tracking = false;
 
   constructor(
     private app: App,
@@ -35,7 +37,8 @@ export class DeletionManager {
   ) {}
 
   start(registerEvent: (event: EventRef) => void): void {
-    this.refresh();
+    this.started = true;
+    this.syncSettings();
     registerEvent(this.app.metadataCache.on('changed', file => this.update(file)));
     registerEvent(this.app.metadataCache.on('resolved', () => this.refresh()));
     registerEvent(this.app.vault.on('rename', () => this.refresh()));
@@ -46,7 +49,18 @@ export class DeletionManager {
 
   stop(): void {
     this.stopped = true;
+    this.tracking = false;
     this.notes.clear();
+  }
+
+  /** No vault snapshots are needed while both plugin directions are ineffective. */
+  syncSettings(): void {
+    const active = this.started && !this.stopped &&
+      (this.enabled('resourceToNote') || this.enabled('noteToResources'));
+    if (active === this.tracking) return;
+    this.tracking = active;
+    this.notes.clear();
+    if (active) this.refresh();
   }
 
   private isLive(file: TFile): boolean {
@@ -54,13 +68,19 @@ export class DeletionManager {
   }
 
   private update(file: TFile): void {
+    if (!this.tracking || this.stopped) return;
     if (file.extension.toLowerCase() !== 'md' || !this.isLive(file)) return;
     const cache = this.app.metadataCache.getFileCache(file);
     // A temporarily unavailable cache must not erase the last known binding.
     if (!cache) return;
     const previous = this.notes.get(file);
     const value: unknown = cache.frontmatter?.[SOURCE_PROPERTY];
-    const links = sourceLinkTargets(value).map(target => {
+    const targets = sourceLinkTargets(value);
+    if (targets.length === 0) {
+      this.notes.delete(file);
+      return;
+    }
+    const links = targets.map(target => {
       const resolved = this.app.metadataCache.getFirstLinkpathDest(target, file.path);
       const resource = resolved && !['md', 'canvas'].includes(resolved.extension.toLowerCase())
         ? resolved : null;
@@ -73,6 +93,7 @@ export class DeletionManager {
   }
 
   private refresh(): void {
+    if (!this.tracking || this.stopped) return;
     for (const file of this.app.vault.getMarkdownFiles()) this.update(file);
     // Deleted notes are removed by onDelete, which first captures their links.
   }

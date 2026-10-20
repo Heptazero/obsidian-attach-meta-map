@@ -20,6 +20,7 @@ export default defineConfig({
         'src/deletion-policy.ts',
         'src/native-deletion.ts',
         'src/extension-filter.ts',
+        'src/deferred-task-queue.ts',
         'src/sources.ts', 'src/template.ts',
       ],
       thresholds: {
