@@ -149,7 +149,7 @@ Disable **Create a note for new attachments** when you only want folder organiza
 
 ## Templates and mappings
 
-Att Meta Map automatically discovers the Templater `templates_folder` and the core Templates folder. Additional template folders can be added in settings.
+The **Template file** picker searches every Markdown file in the current vault without a template-folder setting. Att Meta Map writes `source` automatically, so a template does not need that property.
 
 The template body is copied to each new note. Existing frontmatter values such as `type: paper` or `status: active` are preserved. Templater `<% ... %>` blocks are removed rather than executed, because commands such as `tp.file.move()` can move the new note outside the configured relationship boundary. Run Templater manually afterward when dynamic template behavior is needed.
 

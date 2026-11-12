@@ -123,8 +123,6 @@ export interface AttMetaMapSettings {
   language: UiLanguage;
   /** Metadata source id -> frontmatter property. The source relation itself is fixed. */
   mapping: Record<string, string>;
-  /** Extra folders to scan for templates, beyond the ones auto-detected. */
-  extraTemplateFolders: string[];
   groups: MappingGroup[];
   /** Ordered fallback rules for attachments outside every mapping-group root. */
   attachmentRules: AttachmentRule[];
@@ -137,7 +135,7 @@ export interface DeletionSettings {
   confirm: boolean;
 }
 
-export const SETTINGS_VERSION = 6;
+export const SETTINGS_VERSION = 7;
 
 /** Values gathered from every source before the mapping decides their names. */
 export interface SourceValues {

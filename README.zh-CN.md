@@ -149,7 +149,7 @@ Folder 组配置一个集合根目录、待整理附件层级，以及可选的�
 
 ## 模板和映射
 
-Att Meta Map 会自动发现 Templater 的 `templates_folder` 和核心 Templates 插件目录，设置里还可以添加额外模板文件夹。
+「模板文件」可直接搜索当前库中的任意 Markdown 文件，不用设置模板目录。插件会自动写入 `source`，模板本身无需预先包含该字段。
 
 模板正文会复制到新笔记。`type: paper`、`status: active` 等模板自带值原样保留。Templater 的 `<% ... %>` 块不会执行，而是被移除，因为 `tp.file.move()` 一类命令可能把新笔记移出映射边界。需要动态行为时，可以创建后手动运行 Templater。
 

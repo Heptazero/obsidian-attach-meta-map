@@ -195,12 +195,11 @@ describe('current settings shape', () => {
     expect(settings.groups[0].linkTemplate).toBe('[[{{name}}]]');
   });
 
-  it('keeps current language, mapping, template folders and group settings', () => {
+  it('keeps current language, mapping and group settings', () => {
     const settings = normalizeSettings({
       version: 4,
       language: 'zh',
       mapping: { pdfTitle: '标题' },
-      extraTemplateFolders: ['99_assets/template'],
       groups: [{
         id: 'g1', name: 'P', layout: 'sidecar', resourceFolder: 'A', noteFolder: 'B',
         templatePath: 'T.md',
@@ -213,7 +212,6 @@ describe('current settings shape', () => {
     expect(settings.language).toBe('zh');
     expect(settings.mapping.pdfTitle).toBe('标题');
     expect(settings.mapping.pdfAuthor).toBe('author');
-    expect(settings.extraTemplateFolders).toEqual(['99_assets/template']);
     expect(settings.groups[0].templatePath).toBe('T.md');
     expect(settings.attachmentRules[0]).toMatchObject({
       id: 'r1', name: 'PDF', extensions: ['.pdf'], destinationFolder: 'Papers',

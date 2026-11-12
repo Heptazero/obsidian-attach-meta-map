@@ -69,7 +69,6 @@ export function defaultSettings(): AttMetaMapSettings {
     version: SETTINGS_VERSION,
     language: 'auto',
     mapping: defaultMapping(),
-    extraTemplateFolders: [],
     groups: [createGroup({ name: 'Attachments' })],
     attachmentRules: [],
     deletion: { resourceToNote: false, noteToResources: false, confirm: true },
@@ -103,7 +102,6 @@ export function normalizeSettings(raw: unknown): AttMetaMapSettings {
       version: SETTINGS_VERSION,
       language: candidate.language ?? 'auto',
       mapping,
-      extraTemplateFolders: candidate.extraTemplateFolders ?? [],
       groups: groups.length ? groups : defaultSettings().groups,
       attachmentRules: Array.isArray(candidate.attachmentRules)
         ? candidate.attachmentRules.map(rule => createAttachmentRule(rule))

@@ -36,7 +36,6 @@ const KIND_ORDER: SourceKind[] = ['vault', 'pdf', 'lookup'];
 
 const SEARCHABLE_SETTING_KEYS = [
   'settings.language.name',
-  'settings.templateFolders.name',
   'settings.sections.mapping',
   'settings.rules.title',
   'settings.deletion.resourceToNote',
@@ -218,22 +217,6 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           await this.plugin.applyLanguage();
           this.redisplay();
-        }));
-
-    const detected = this.plugin.registry.detectedFolders();
-    new Setting(containerEl)
-      .setName(t('settings.templateFolders.name'))
-      .setDesc(detected.length
-        ? t('settings.templateFolders.detected', { folders: detected.join('、') })
-        : t('settings.templateFolders.none'))
-      .addText(text => text
-        .setPlaceholder(t('settings.templateFolders.placeholder'))
-        .setValue(this.plugin.settings.extraTemplateFolders.join(', '))
-        .onChange(async value => {
-          this.plugin.settings.extraTemplateFolders = value
-            .split(',').map(part => part.trim()).filter(part => part.length > 0);
-          this.plugin.registry.invalidate();
-          await this.plugin.saveSettings();
         }));
 
     this.section(containerEl, t('settings.deletion.title'), false, body => {
@@ -571,6 +554,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         .setValue(group.templatePath)
         .onChange(async value => {
           group.templatePath = value.trim();
+          this.plugin.registry.invalidate();
           await this.plugin.saveSettings();
           showKeys(group.templatePath);
         });
@@ -581,6 +565,7 @@ export class AttMetaMapSettingTab extends PluginSettingTab {
         () => this.plugin.registry.files(),
         async value => {
           group.templatePath = value;
+          this.plugin.registry.invalidate();
           await this.plugin.saveSettings();
           showKeys(value);
         },

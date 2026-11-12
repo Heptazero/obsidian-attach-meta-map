@@ -127,12 +127,6 @@
       "name": "Interface language",
       "auto": "Follow Obsidian"
     },
-    "templateFolders": {
-      "name": "Extra template folders",
-      "detected": "Detected: ${folders}. Add more with commas.",
-      "none": "Separate multiple paths with commas.",
-      "placeholder": "Templates"
-    },
     "mapping": {
       "desc": "Source → property. Empty skips it; source is fixed. Fuzzy matching is supported.",
       "unmapped": "not mapped"

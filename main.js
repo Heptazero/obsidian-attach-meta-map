@@ -4270,7 +4270,7 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian21 = require("obsidian");
 
 // src/types.ts
-var SETTINGS_VERSION = 6;
+var SETTINGS_VERSION = 7;
 
 // src/sources.ts
 var SOURCE_DEFS = [
@@ -4808,7 +4808,6 @@ function defaultSettings() {
     version: SETTINGS_VERSION,
     language: "auto",
     mapping: defaultMapping(),
-    extraTemplateFolders: [],
     groups: [createGroup({ name: "Attachments" })],
     attachmentRules: [],
     deletion: { resourceToNote: false, noteToResources: false, confirm: true }
@@ -4818,7 +4817,7 @@ function groupCreatesNotes(group) {
   return group.layout === "sidecar" || group.createNoteFile;
 }
 function normalizeSettings(raw) {
-  var _a, _b, _c, _d, _e, _f;
+  var _a, _b, _c, _d, _e;
   if (!raw || typeof raw !== "object") return defaultSettings();
   const candidate = raw;
   if (Array.isArray(candidate.groups)) {
@@ -4832,13 +4831,12 @@ function normalizeSettings(raw) {
       version: SETTINGS_VERSION,
       language: (_b = candidate.language) != null ? _b : "auto",
       mapping,
-      extraTemplateFolders: (_c = candidate.extraTemplateFolders) != null ? _c : [],
       groups: groups.length ? groups : defaultSettings().groups,
       attachmentRules: Array.isArray(candidate.attachmentRules) ? candidate.attachmentRules.map((rule) => createAttachmentRule(rule)) : [],
       deletion: {
-        resourceToNote: ((_d = candidate.deletion) == null ? void 0 : _d.resourceToNote) === true,
-        noteToResources: ((_e = candidate.deletion) == null ? void 0 : _e.noteToResources) === true,
-        confirm: ((_f = candidate.deletion) == null ? void 0 : _f.confirm) !== false
+        resourceToNote: ((_c = candidate.deletion) == null ? void 0 : _c.resourceToNote) === true,
+        noteToResources: ((_d = candidate.deletion) == null ? void 0 : _d.noteToResources) === true,
+        confirm: ((_e = candidate.deletion) == null ? void 0 : _e.confirm) !== false
       }
     };
   }
@@ -22919,12 +22917,6 @@ var en_default = {
       name: "Interface language",
       auto: "Follow Obsidian"
     },
-    templateFolders: {
-      name: "Extra template folders",
-      detected: "Detected: ${folders}. Add more with commas.",
-      none: "Separate multiple paths with commas.",
-      placeholder: "Templates"
-    },
     mapping: {
       desc: "Source \u2192 property. Empty skips it; source is fixed. Fuzzy matching is supported.",
       unmapped: "not mapped"
@@ -23245,12 +23237,6 @@ var zh_default = {
     language: {
       name: "\u754C\u9762\u8BED\u8A00",
       auto: "\u8DDF\u968F Obsidian"
-    },
-    templateFolders: {
-      name: "\u989D\u5916\u7684\u6A21\u677F\u6587\u4EF6\u5939",
-      detected: "\u5DF2\u68C0\u6D4B\uFF1A${folders}\u3002\u53EF\u7528\u9017\u53F7\u8865\u5145\u3002",
-      none: "\u7528\u9017\u53F7\u5206\u9694\u591A\u4E2A\u8DEF\u5F84\u3002",
-      placeholder: "99_assets/template"
     },
     mapping: {
       desc: "\u6765\u6E90 \u2192 \u5C5E\u6027\u3002\u7559\u7A7A\u4E0D\u5199\uFF1Bsource \u56FA\u5B9A\u3002\u652F\u6301\u6A21\u7CCA\u5339\u914D\u3002",
@@ -24028,35 +24014,13 @@ var TemplateRegistry = class {
     this.settings = settings;
     this.keyCache = null;
   }
-  /** Template folders configured elsewhere in the vault. */
-  detectedFolders() {
-    var _a, _b, _c, _d, _e, _f, _g;
-    const internals = this.app;
-    const found = [];
-    try {
-      const templater = (_b = (_a = internals.plugins) == null ? void 0 : _a.plugins) == null ? void 0 : _b["templater-obsidian"];
-      const folder = (_c = templater == null ? void 0 : templater.settings) == null ? void 0 : _c.templates_folder;
-      if (folder) found.push(cleanFolder(folder));
-    } catch (e) {
-    }
-    try {
-      const core = (_e = (_d = internals.internalPlugins) == null ? void 0 : _d.getPluginById) == null ? void 0 : _e.call(_d, "templates");
-      const folder = (_g = (_f = core == null ? void 0 : core.instance) == null ? void 0 : _f.options) == null ? void 0 : _g.folder;
-      if (folder) found.push(cleanFolder(folder));
-    } catch (e) {
-    }
-    return [...new Set(found.filter((folder) => folder.length > 0))];
-  }
-  folders() {
-    const extra = this.settings().extraTemplateFolders.map(cleanFolder).filter(Boolean);
-    return [.../* @__PURE__ */ new Set([...this.detectedFolders(), ...extra])];
-  }
   files() {
-    const folders2 = this.folders();
-    const inFolders = this.app.vault.getMarkdownFiles().filter((file) => folders2.some((folder) => isInFolder(file.path, folder)));
-    const configured = this.settings().groups.map((group) => group.templatePath.trim()).filter((path) => path.length > 0).map((path) => this.app.vault.getFileByPath((0, import_obsidian4.normalizePath)(path))).filter((file) => file !== null);
+    return this.app.vault.getMarkdownFiles();
+  }
+  selectedFiles() {
+    const configured = this.settings().groups.map((group) => group.templatePath.trim()).filter((path) => path.length > 0).map((path) => this.app.vault.getFileByPath((0, import_obsidian4.normalizePath)(path))).filter((file) => (file == null ? void 0 : file.extension.toLowerCase()) === "md");
     const seen = /* @__PURE__ */ new Set();
-    return [...inFolders, ...configured].filter((file) => {
+    return configured.filter((file) => {
       if (seen.has(file.path)) return false;
       seen.add(file.path);
       return true;
@@ -24064,15 +24028,15 @@ var TemplateRegistry = class {
   }
   async parse(path) {
     const file = this.app.vault.getFileByPath((0, import_obsidian4.normalizePath)(path.trim()));
-    if (!file) return null;
+    if (!file || file.extension.toLowerCase() !== "md") return null;
     return parseTemplate(await this.app.vault.cachedRead(file));
   }
-  /** Property names across all known templates, most common first. */
+  /** Property names across selected templates, most common first. */
   async knownKeys() {
     var _a;
     if (this.keyCache) return this.keyCache;
     const counts = /* @__PURE__ */ new Map();
-    for (const file of this.files()) {
+    for (const file of this.selectedFiles()) {
       const parsed = parseTemplate(await this.app.vault.cachedRead(file));
       for (const key of parsed.keys) {
         counts.set(key, ((_a = counts.get(key)) != null ? _a : 0) + 1);
@@ -25019,7 +24983,6 @@ function confirmModal(app, message) {
 var KIND_ORDER = ["vault", "pdf", "lookup"];
 var SEARCHABLE_SETTING_KEYS = [
   "settings.language.name",
-  "settings.templateFolders.name",
   "settings.sections.mapping",
   "settings.rules.title",
   "settings.deletion.resourceToNote",
@@ -25178,12 +25141,6 @@ var AttMetaMapSettingTab = class extends import_obsidian15.PluginSettingTab {
       await this.plugin.saveSettings();
       await this.plugin.applyLanguage();
       this.redisplay();
-    }));
-    const detected = this.plugin.registry.detectedFolders();
-    new import_obsidian15.Setting(containerEl).setName(t2("settings.templateFolders.name")).setDesc(detected.length ? t2("settings.templateFolders.detected", { folders: detected.join("\u3001") }) : t2("settings.templateFolders.none")).addText((text) => text.setPlaceholder(t2("settings.templateFolders.placeholder")).setValue(this.plugin.settings.extraTemplateFolders.join(", ")).onChange(async (value) => {
-      this.plugin.settings.extraTemplateFolders = value.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
-      this.plugin.registry.invalidate();
-      await this.plugin.saveSettings();
     }));
     this.section(containerEl, t2("settings.deletion.title"), false, (body) => {
       const controls = /* @__PURE__ */ new Map();
@@ -25398,6 +25355,7 @@ var AttMetaMapSettingTab = class extends import_obsidian15.PluginSettingTab {
     setting.addText((text) => {
       text.setPlaceholder(t2("settings.group.template.placeholder")).setValue(group.templatePath).onChange(async (value) => {
         group.templatePath = value.trim();
+        this.plugin.registry.invalidate();
         await this.plugin.saveSettings();
         showKeys(group.templatePath);
       });
@@ -25407,6 +25365,7 @@ var AttMetaMapSettingTab = class extends import_obsidian15.PluginSettingTab {
         () => this.plugin.registry.files(),
         async (value) => {
           group.templatePath = value;
+          this.plugin.registry.invalidate();
           await this.plugin.saveSettings();
           showKeys(value);
         }

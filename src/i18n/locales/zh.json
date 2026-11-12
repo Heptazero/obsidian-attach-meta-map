@@ -127,12 +127,6 @@
       "name": "界面语言",
       "auto": "跟随 Obsidian"
     },
-    "templateFolders": {
-      "name": "额外的模板文件夹",
-      "detected": "已检测：${folders}。可用逗号补充。",
-      "none": "用逗号分隔多个路径。",
-      "placeholder": "99_assets/template"
-    },
     "mapping": {
       "desc": "来源 → 属性。留空不写；source 固定。支持模糊匹配。",
       "unmapped": "不映射"
